@@ -8,6 +8,7 @@ import About from './components/About'
 import Services from './components/Services'
 import Contact from './components/Contact'
 import ThemeToggle from './components/ThemeToggle'
+import WhatsAppFab from './components/WhatsAppFab'
 import NotesPage from './components/NotesPage'
 
 function Layout({ activePage, setActivePage, children }) {
@@ -27,6 +28,7 @@ function Layout({ activePage, setActivePage, children }) {
   return (
     <main>
       <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+      <WhatsAppFab />
       <Sidebar />
       <div className="main-content">
         <Navbar activePage={activePage} setActivePage={setActivePage} />
