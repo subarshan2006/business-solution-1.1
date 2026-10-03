@@ -22,11 +22,11 @@
 
   /* dark mode look — deep onyx + golden icon */
   background: #1e1e1e;
-  color: var(--award-gold, #fccf5e);
-  border: 1.5px solid var(--award-gold, #fccf5e);
+  color: var(--award-gold, #ff6b6b);
+  border: 1.5px solid var(--award-gold, #ff6b6b);
   box-shadow:
     0 4px 16px hsla(0, 0%, 0%, 0.5),
-    0 0 0 0 hsla(45, 100%, 62%, 0);
+    0 0 0 0 hsla(0, 100%, 62%, 0);
 
   /* smooth all changes */
   transition:
@@ -47,24 +47,24 @@
   transform: translateY(-3px) scale(1.08);
   box-shadow:
     0 8px 28px hsla(0, 0%, 0%, 0.55),
-    0 0 0 6px hsla(45, 100%, 62%, 0.20);
+    0 0 0 6px hsla(0, 100%, 62%, 0.20);
 }
 
 /* ─── Light mode variant ──────────────────────────────────────────────────── */
 
 [data-theme='light'] .theme-fab {
   background: var(--color-brand-white, #fffeff);
-  color: #8f6a12;
-  border-color: var(--award-gold, #fccf5e);
+  color: #8b0000;
+  border-color: var(--award-gold, #ff6b6b);
   box-shadow:
-    0 4px 16px hsla(45, 40%, 30%, 0.20),
-    0 0 0 0 hsla(45, 90%, 50%, 0);
+    0 4px 16px hsla(0, 40%, 30%, 0.20),
+    0 0 0 0 hsla(0, 90%, 50%, 0);
 }
 
 [data-theme='light'] .theme-fab:hover {
   box-shadow:
-    0 8px 28px hsla(45, 40%, 30%, 0.30),
-    0 0 0 6px hsla(45, 90%, 50%, 0.20);
+    0 8px 28px hsla(0, 40%, 30%, 0.30),
+    0 0 0 6px hsla(0, 90%, 50%, 0.20);
 }
 
 /* ─── SVG icon size ───────────────────────────────────────────────────────── */
