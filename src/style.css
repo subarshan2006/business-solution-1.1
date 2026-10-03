@@ -342,7 +342,7 @@ article.active {
 \*-----------------------------------*/
 
 main {
-  margin: 15px 12px;
+  margin: 0;
   margin-bottom: 75px;
   min-width: 259px;
 }
@@ -355,7 +355,7 @@ main {
 \*-----------------------------------*/
 
 .sidebar {
-  margin-bottom: 15px;
+  margin-bottom: 0;
   max-height: 112px;
   overflow: hidden;
   transition: var(--transition-2);
@@ -1545,8 +1545,9 @@ textarea.form-input::-webkit-resizer { display: none; }
   .sidebar, article {
     width: 520px;
     margin-inline: auto;
-    padding: 30px;
   }
+
+  article { padding: 30px; }
 
   .article-title {
     font-weight: var(--fw-600);
@@ -1584,7 +1585,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 
   .sidebar {
     max-height: 180px;
-    margin-bottom: 30px;
+    margin-bottom: 0;
   }
 
   .sidebar.active { max-height: 584px; }
@@ -2054,8 +2055,8 @@ textarea.form-input::-webkit-resizer { display: none; }
    */
 
   main {
-    max-width: 1200px;
-    margin-inline: auto;
+    max-width: none;
+    margin-inline: 0;
     display: flex;
     justify-content: center;
     align-items: stretch;
@@ -2076,11 +2077,14 @@ textarea.form-input::-webkit-resizer { display: none; }
 
   .sidebar {
     position: sticky;
-    top: 60px;
-    max-height: max-content;
+    top: 0;
+    max-height: 100vh;
     height: 100%;
     margin-bottom: 0;
-    padding-top: 60px;
+    padding-top: 0;
+    padding-bottom: 20px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     z-index: 1;
   }
 

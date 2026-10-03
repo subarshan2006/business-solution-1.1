@@ -4,7 +4,7 @@ function Sidebar() {
   const [isActive, setIsActive] = useState(false)
 
   return (
-    <aside className={`sidebar${isActive ? ' active' : ''}`} data-sidebar>
+    <aside className={`sidebar has-scrollbar${isActive ? ' active' : ''}`} data-sidebar>
 
       <div className="sidebar-info">
 
