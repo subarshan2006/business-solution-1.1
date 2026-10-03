@@ -226,11 +226,11 @@ body {
 
 .sidebar,
 article {
-  background: var(--eerie-black-2);
+  background: transparent;
   border: 1px solid var(--jet);
   border-radius: 20px;
   padding: 15px;
-  box-shadow: var(--shadow-1);
+  box-shadow: none;
   z-index: 1;
 }
 
@@ -3057,11 +3057,16 @@ textarea.form-input::-webkit-resizer { display: none; }
 
 /* ── Sidebar & articles ────────────────────────────────────────────────────────── */
 
-[data-theme='light'] .sidebar,
-[data-theme='light'] article {
+[data-theme='light'] .sidebar {
   background: var(--surface-1);
   border-color: var(--hairline);
   box-shadow: var(--shadow-2);
+}
+
+[data-theme='light'] article {
+  background: transparent;
+  border-color: var(--hairline);
+  box-shadow: none;
 }
 
 [data-theme='light'] .separator {
