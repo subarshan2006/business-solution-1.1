@@ -209,12 +209,13 @@ body {
 
 .sidebar,
 article {
+  position: relative;
+  z-index: 1;
   background: transparent;
   border: 1px solid var(--jet);
   border-radius: 20px;
   padding: 15px;
   box-shadow: none;
-  z-index: 1;
 }
 
 .separator {
@@ -355,13 +356,28 @@ main {
 \*-----------------------------------*/
 
 .sidebar {
+  position: relative;
+  z-index: 1;
   margin-bottom: 0;
   max-height: 112px;
   overflow: hidden;
   transition: var(--transition-2);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.sidebar.active { max-height: 405px; }
+/* Hide the scrollbar while keeping the sidebar scrollable */
+.sidebar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.sidebar.active {
+  max-height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 .sidebar-info {
   position: relative;
@@ -1588,7 +1604,11 @@ textarea.form-input::-webkit-resizer { display: none; }
     margin-bottom: 0;
   }
 
-  .sidebar.active { max-height: 584px; }
+  .sidebar.active {
+    max-height: 100vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 
   .sidebar-info { gap: 25px; }
 
@@ -2339,11 +2359,12 @@ textarea.form-input::-webkit-resizer { display: none; }
     margin-left: auto;
     margin-right: auto;
     font-size: clamp(1.1rem, 6vw, 1.8rem);
-    white-space: nowrap;
+    white-space: normal;
     text-align: center;
-    height: 2.8em;
+    height: auto;
+    min-height: 2.8em;
     line-height: 1.4;
-    overflow: hidden;
+    overflow: visible;
     display: block;
   }
 
