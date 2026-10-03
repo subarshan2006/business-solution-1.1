@@ -42,7 +42,7 @@ function Layout({ activePage, setActivePage, children }) {
 
 function App() {
   return (
-    <BrowserRouter basename="/">
+    <BrowserRouter basename="/business-solution-1.1">
       <Routes>
         <Route path="/studentrecords/:slug" element={
           <Layout activePage="notes" setActivePage={() => {}}>

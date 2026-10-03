@@ -180,7 +180,7 @@ function Contact({ activePage }) {
 
       {/* Advertisement Banner */}
       <section className="ad-banner">
-        <img src="/assets/images/image.png" alt="Advertisement" className="ad-banner-img" />
+        <img src={`${import.meta.env.BASE_URL}assets/images/image.png`} alt="Advertisement" className="ad-banner-img" />
       </section>
 
       {/* Footer */}

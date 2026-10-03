@@ -104,7 +104,7 @@ function NotesPage() {
                     <p className="demo-popover-text">Sample homework & correction pdf</p>
                   </div>
                   <a
-                    href="/demo-pre-algebra.pdf"
+                    href={`${import.meta.env.BASE_URL}demo-pre-algebra.pdf`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="demo-open-btn"
@@ -121,7 +121,7 @@ function NotesPage() {
                     <p className="demo-popover-text">Demo correction sample</p>
                   </div>
                   <a
-                    href="/demo-algebra-1.jpeg"
+                    href={`${import.meta.env.BASE_URL}demo-algebra-1.jpeg`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="demo-open-btn"

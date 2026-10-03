@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
-const VIDEO_SRC = '/assets/videos/bg-loop.mp4'
-const POSTER_SRC = '/assets/videos/bg-poster.jpg'
+const VIDEO_SRC = `${import.meta.env.BASE_URL}assets/videos/bg-loop.mp4`
+const POSTER_SRC = `${import.meta.env.BASE_URL}assets/videos/bg-poster.jpg`
 
 function BackgroundVideo() {
   const videoRef = useRef(null)
