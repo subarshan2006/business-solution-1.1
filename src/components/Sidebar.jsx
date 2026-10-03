@@ -9,13 +9,13 @@ function Sidebar() {
       <div className="sidebar-info">
 
         <figure className="avatar-box">
-          <img src={`${import.meta.env.BASE_URL}assets/images/avatar-3.png`} alt="Kavitha JR" width="80" />
+          <img src={`${import.meta.env.BASE_URL}assets/images/avatar-3.png`} alt="Jivanaut Test Prep" width="80" />
         </figure>
 
         <div className="info-content">
-          <h1 className="name" title="Kavitha JR">Kavitha JR</h1>
+          <h1 className="name" title="Jivanaut Test Prep">Jivanaut Test Prep</h1>
           <p className="title">
-            <span className="status-dot"></span> Online Math Tutor
+            <span className="status-dot"></span> AP Life Science Mentor
           </p>
         </div>
 
@@ -61,8 +61,28 @@ function Sidebar() {
               <ion-icon name="ribbon-outline"></ion-icon>
             </div>
             <div className="contact-info">
+              <p className="contact-title">Credentials</p>
+              <span className="contact-link" style={{ cursor: 'default' }}>Double M.Sc. &amp; B.Ed.</span>
+            </div>
+          </li>
+
+          <li className="contact-item">
+            <div className="icon-box">
+              <ion-icon name="flask-outline"></ion-icon>
+            </div>
+            <div className="contact-info">
+              <p className="contact-title">Specialisation</p>
+              <span className="contact-link" style={{ cursor: 'default' }}>AP Biology · APES · AP Psych</span>
+            </div>
+          </li>
+
+          <li className="contact-item">
+            <div className="icon-box">
+              <ion-icon name="ribbon-outline"></ion-icon>
+            </div>
+            <div className="contact-info">
               <p className="contact-title">Experience</p>
-              <span className="contact-link" style={{ cursor: 'default' }}>11+ Years Teaching</span>
+              <span className="contact-link" style={{ cursor: 'default' }}>10+ Years Teaching</span>
             </div>
           </li>
 
@@ -72,7 +92,7 @@ function Sidebar() {
             </div>
             <div className="contact-info">
               <p className="contact-title">Location</p>
-              <address>Online — US &amp; Canada</address>
+              <address>Online — US (EST–PST) &amp; Global</address>
             </div>
           </li>
 

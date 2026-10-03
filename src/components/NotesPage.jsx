@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getStudentBySlug } from '../data/students'
 
-const BASE_TITLE = 'Next Step Tutoring'
+const BASE_TITLE = 'Jivanaut Test Prep'
 
 function NotesPage() {
   const { slug } = useParams()

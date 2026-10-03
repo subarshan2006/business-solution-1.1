@@ -1,61 +1,60 @@
-function Services({ activePage, setActivePage }) {
+const ENROLL_FORM =
+  'https://docs.google.com/forms/d/e/1FAIpQLScQ5j02hoEAjPNSjb7SOhjNzGnXARnFZ281JZst6DHF7nOWWA/viewform'
+
+function Services({ activePage }) {
   return (
     <article className={`services${activePage === 'services' ? ' active' : ''}`} data-page="services">
 
       <header>
-        <h2 className="h2 article-title">Services</h2>
+        <h2 className="h2 article-title">Courses</h2>
       </header>
 
       <p className="page-subtitle">
-        Tutoring designed around how your child actually learns.
+        Structured curricula &amp; instructional offerings.
       </p>
 
       {/* What I Offer */}
       <section className="service">
-        <h3 className="h3 service-title">What I Offer</h3>
+        <h3 className="h3 service-title">Academic Programs</h3>
 
         <p className="section-intro-text">
-          All sessions are one-on-one and fully online, so lessons can move at exactly the pace
-          your child needs — no rushing to keep up with a group, and no waiting around either.
-          I work with students across all grade levels, from elementary through high school.
+          Every session is 100% online, one-on-one private live instruction delivered via Zoom or
+          Google Meet with an interactive digital board. Each programme is paced to your student's
+          exact school syllabus, unit tests, midterms, and May College Board exam deadlines.
         </p>
 
         <ul className="service-list">
 
           <li className="service-item">
             <div className="service-icon-box">
-              <ion-icon name="flag-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+              <ion-icon name="leaf-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
             </div>
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">US Curriculum</h4>
+              <h4 className="h4 service-item-title">AP Biology <span style={{ color: 'var(--orange-yellow-crayola)', fontSize: 'var(--fs-8)' }}>Signature Program</span></h4>
               <p className="service-item-text">
-                Math support aligned with US grade-level standards — from foundational arithmetic
-                through algebra, geometry, and beyond.
+                <strong>Scope:</strong> Full College Board Units 1–8 coverage — biochemistry,
+                energetics, heredity, gene regulation, and ecology.
+              </p>
+              <p className="service-item-text" style={{ marginTop: '8px' }}>
+                <strong>Strategy:</strong> Mastery of stimulus-based MCQs, experimental design
+                hypotheses, chi-square statistical analysis, and dedicated FRQ rubric drills.
               </p>
             </div>
           </li>
 
           <li className="service-item">
             <div className="service-icon-box">
-              <ion-icon name="globe-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+              <ion-icon name="earth-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
             </div>
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">Canadian Curriculum</h4>
+              <h4 className="h4 service-item-title">AP Environmental Science (APES)</h4>
               <p className="service-item-text">
-                Tailored support aligned with provincial math curricula, helping students stay
-                confident and on track with coursework.
+                <strong>Scope:</strong> Earth systems, population biology, renewable and
+                non-renewable resource management, pollution, and global climatic trends.
               </p>
-            </div>
-          </li>
-
-          <li className="service-item">
-            <div className="service-icon-box">
-              <ion-icon name="document-text-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
-            </div>
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">Homework &amp; Exam Support</h4>
-              <p className="service-item-text">
-                Focused help with homework, test preparation, and clearing specific doubts as they come up.
+              <p className="service-item-text" style={{ marginTop: '8px' }}>
+                <strong>Strategy:</strong> Integrating interdisciplinary science with quantitative
+                mathematical calculations and policy critique.
               </p>
             </div>
           </li>
@@ -65,57 +64,73 @@ function Services({ activePage, setActivePage }) {
               <ion-icon name="bulb-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
             </div>
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">Concept Building</h4>
+              <h4 className="h4 service-item-title">AP Psychology</h4>
               <p className="service-item-text">
-                For students who want to strengthen fundamentals, not just get through the next test.
+                <strong>Scope:</strong> Biological bases of behavior, cognition, developmental
+                milestones, clinical psychology, and social interactions.
+              </p>
+              <p className="service-item-text" style={{ marginTop: '8px' }}>
+                <strong>Strategy:</strong> Emphasis on research methodology, ethical testing
+                principles, and contextual concept-application questions.
+              </p>
+            </div>
+          </li>
+
+          <li className="service-item">
+            <div className="service-icon-box">
+              <ion-icon name="school-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+            </div>
+            <div className="service-content-box">
+              <h4 className="h4 service-item-title">Honors Biology &amp; General Science</h4>
+              <p className="service-item-text">
+                <strong>Scope:</strong> Middle and early high school life sciences and physical
+                sciences.
+              </p>
+              <p className="service-item-text" style={{ marginTop: '8px' }}>
+                <strong>Strategy:</strong> Establishing rigorous scientific vocabulary, deductive
+                reasoning, and study systems ahead of high school AP pathways.
               </p>
             </div>
           </li>
 
           <li className="service-item service-item--addon">
             <div className="service-icon-box">
-              <ion-icon name="alarm-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+              <ion-icon name="trophy-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
             </div>
             <div className="service-content-box">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '7px' }}>
                 <h4 className="h4 service-item-title" style={{ marginBottom: 0 }}>
-                  Exam Revision Sessions
+                  USA Biology Olympiad (USABO)
                 </h4>
+                <span className="hero-badge" style={{ marginBottom: 0, padding: '3px 10px' }}>
+                  <span>Competitive Enrichment</span>
+                </span>
               </div>
               <p className="service-item-text">
-                Early morning sessions before a test to revise key topics and clear last-minute
-                doubts — booked separately, as needed.
+                <strong>Strategic Scope:</strong> A specialised offering tailored for ambitious high
+                school students embarking on competition-level biology.
+              </p>
+              <p className="service-item-text" style={{ marginTop: '8px' }}>
+                <strong>Focus:</strong> In-depth study of advanced biological systems and Campbell
+                Biology topics, building the foundational data interpretation and problem solving
+                required for Olympiad-level challenges.
               </p>
             </div>
           </li>
-
-           <li className="service-item">
-            <div className="service-icon-box">
-              <ion-icon name="bulb-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
-            </div>
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">No Advanced Payment</h4>
-              <p className="service-item-text">
-                "Trust is gained when actions meet words." - Chris Butler Our no-advance payment policy bestows priority on classes rather than payments. Make the payment at the end of the month just for. the sessions attended. No admission fee! No pre-cancellation fee! No post-cancellation fee!
-              </p>
-            </div>
-          </li>
-
-         
 
         </ul>
       </section>
 
-      {/* How Sessions Work */}
+      {/* Delivery Logistics */}
       <section className="sessions-info">
-        <h3 className="h3 sessions-info-title">How Sessions Work</h3>
+        <h3 className="h3 sessions-info-title">Delivery Logistics</h3>
 
         <div className="sessions-table-wrapper content-card" style={{ paddingTop: '20px', cursor: 'default' }}>
           <table className="sessions-table">
             <thead>
               <tr>
-                <th>Format</th>
-                <th>Details</th>
+                <th>Operational Dimension</th>
+                <th>Implementation Detail</th>
               </tr>
             </thead>
             <tbody>
@@ -123,46 +138,37 @@ function Services({ activePage, setActivePage }) {
                 <td>
                   <div className="table-label">
                     <ion-icon name="person-outline"></ion-icon>
-                    <span>Session Type</span>
+                    <span>Session Format</span>
                   </div>
                 </td>
-                <td>One-on-one, fully online</td>
-              </tr>
-              <tr>
-                <td>
-                  <div className="table-label">
-                    <ion-icon name="videocam-outline"></ion-icon>
-                    <span>Platform</span>
-                  </div>
-                </td>
-                <td>Zoom / Google Meet / Teams (whichever works best for you)</td>
+                <td>100% online, 1-on-1 private live instruction via Zoom or Google Meet with interactive digital board</td>
               </tr>
               <tr>
                 <td>
                   <div className="table-label">
                     <ion-icon name="globe-outline"></ion-icon>
-                    <span>Time Zones Served</span>
+                    <span>Time Zone Scheduling</span>
                   </div>
                 </td>
-                <td>EST, CST, and PST</td>
+                <td>Direct accommodation for US time zones — EST, CST, MST, PST — plus flexible slots for international students</td>
               </tr>
               <tr>
                 <td>
                   <div className="table-label">
                     <ion-icon name="calendar-outline"></ion-icon>
-                    <span>Scheduling</span>
+                    <span>Diagnostic &amp; Pace</span>
                   </div>
                 </td>
-                <td>Flexible, based on availability — contact to check current openings</td>
+                <td>Paced to the student's exact school syllabus, unit tests, midterms, and May College Board exam deadlines</td>
               </tr>
               <tr>
                 <td>
                   <div className="table-label">
                     <ion-icon name="stats-chart-outline"></ion-icon>
-                    <span>Progress Updates</span>
+                    <span>Reporting &amp; Feedback</span>
                   </div>
                 </td>
-                <td>Regular updates shared directly with parents</td>
+                <td>Regular post-session briefings, milestone checks, and transparent progress updates shared directly with parents</td>
               </tr>
             </tbody>
           </table>
@@ -185,14 +191,14 @@ function Services({ activePage, setActivePage }) {
           </p>
           <a
             className="hero-cta-btn primary services-cta-btn"
-            href="https://docs.google.com/forms/d/e/1FAIpQLScQ5j02hoEAjPNSjb7SOhjNzGnXARnFZ281JZst6DHF7nOWWA/viewform"
+            href={ENROLL_FORM}
             target="_blank"
             rel="noopener noreferrer"
           >
             <ion-icon name="calendar-outline"></ion-icon>
-            <span>Check Availability</span>
+            <span>Book Diagnostic Consultation</span>
           </a>
-          
+
           <ul className="social-list" style={{ justifyContent: 'center', marginTop: '30px' }}>
             <li className="social-item">
               <a href="https://wa.me/918610933559" className="social-link" style={{ fontSize: '1.5rem' }}>
@@ -214,7 +220,7 @@ function Services({ activePage, setActivePage }) {
       </section>
 
       <footer className="site-footer">
-        <p>© 2026 Kavitha JR — Online Math Tutor. All rights reserved.</p>
+        <p>© 2026 Jivanaut Test Prep — Explorers of Life Science. All rights reserved.</p>
       </footer>
 
     </article>

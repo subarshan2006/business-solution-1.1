@@ -1,18 +1,18 @@
 const experience = [
   {
-    title: 'Self-Employed Online Math Tutor',
-    years: 'March 2026 – Present',
-    text: 'Now offering fully independent, one-on-one online tutoring, continuing to serve both US and Canadian curriculum students.',
+    title: 'Independent Online Science Mentor — Jivanaut Test Prep',
+    years: '2026 – Present',
+    text: 'Leading fully independent, one-on-one online mentoring in AP Biology, AP Environmental Science, AP Psychology, and USABO enrichment for US high school students across EST, CST, MST, and PST.',
   },
   {
-    title: 'US Based Online Tutoring Company',
-    years: '2022 – March 2026',
-    text: 'Taught the US curriculum from 2022 onward — Elementary through Pre-Calculus, Algebra I & II, Geometry I & II, Trigonometry, and AP-level topics — with Canadian curriculum added from 2024.',
+    title: 'Online Science Tutoring (US Curriculum)',
+    years: '2022 – 2026',
+    text: 'Delivered rigorous life science instruction to US high school students — AP Biology, APES, and AP Psychology — building conceptual autonomy and FRQ examination technique.',
   },
   {
-    title: 'Little Angels English Hr. Sec. School, Karur',
+    title: 'Secondary Science Educator',
     years: '2017 – 2021',
-    text: 'Mathematics teacher for Middle School, High School, and Grades 11–12, following the ICSE and IB curricula.',
+    text: 'Science teacher for middle school through Grades 11–12, following ICSE and IB curricula with an emphasis on biological sciences and exam preparation.',
   },
   {
     title: 'The Indian Public School (TIPS)',
@@ -43,6 +43,15 @@ function TimelineSection({ icon, title, items }) {
   )
 }
 
+const PillIcon = ({ icon }) => (
+  <div
+    className="icon-box"
+    style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'hsla(38, 90%, 45%, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--orange-yellow-crayola)' }}
+  >
+    <ion-icon name={icon} style={{ fontSize: '1.5rem' }}></ion-icon>
+  </div>
+)
+
 function About({ activePage, setActivePage }) {
   return (
     <article className={`about${activePage === 'about' ? ' active' : ''}`} data-page="about">
@@ -52,75 +61,133 @@ function About({ activePage, setActivePage }) {
       </header>
 
       <p className="page-subtitle">
-        11+ years of helping students see math differently.
+        10+ Years of Dedication to Rigorous Science Education and Student Empowerment.
       </p>
 
       {/* My Story */}
       <section className="about-story" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
           <div className="icon-box" style={{ color: 'var(--orange-yellow-crayola)', fontSize: '2rem' }}>
-            <ion-icon name="book-outline"></ion-icon>
+            <ion-icon name="flask-outline"></ion-icon>
           </div>
-          <h3 className="h3" style={{ marginBottom: 0 }}>My Story</h3>
+          <h3 className="h3" style={{ marginBottom: 0 }}>The Vision Behind Jivanaut</h3>
         </div>
-        
+
         <div className="service-item" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <p className="about-text" style={{ fontSize: '1.05rem', lineHeight: '1.7' }}>
-            I've spent over 11 years teaching mathematics — starting in the classroom and later moving into fully online, one-on-one tutoring. Along the way, I've taught students following the US and Canadian curricula, as well as international frameworks, giving me a broad perspective on how math is taught differently around the world — and, more importantly, how students actually learn it.
+            Welcome to Jivanaut Test Prep. My educational journey began with a profound fascination
+            for the living world — a curiosity reflected in our name: Jiva (Life) and Naut
+            (Explorer). With dual post-graduate degrees in the sciences (Double M.Sc.) and
+            professional teacher certification (B.Ed.), I have devoted the past decade to
+            translating complex academic concepts into intuitive, exciting discoveries for
+            students.
+          </p>
+          <p className="about-text" style={{ fontSize: '1.05rem', lineHeight: '1.7' }}>
+            Having taught in both traditional classrooms and intensive one-on-one virtual settings,
+            I recognise the hurdles students face when transitioning from standard school curricula
+            to college-level Advanced Placement (AP) courses. Memorisation alone is insufficient;
+            students must analyse novel experimental data, deduce causal relationships, and
+            articulate findings precisely under timed conditions.
           </p>
           <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', background: 'hsla(0, 0%, 100%, 0.04)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--orange-yellow-crayola)' }}>
             <ion-icon name="bulb-outline" style={{ fontSize: '2.5rem', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
             <p className="about-text" style={{ fontSize: '1rem', fontStyle: 'italic', color: 'var(--white-2)' }}>
-              What hasn't changed over the years is my belief that every student can succeed in math when the explanation finally clicks. My job isn't to rush through topics — it's to slow down wherever needed until real understanding takes hold.
+              My mission is to serve as an academic co-pilot: creating an encouraging, academically
+              rigorous space where students transform confusion into confidence, conquer their
+              school exams, and secure premier results on official AP test days.
             </p>
           </div>
         </div>
       </section>
 
-      {/* My Teaching Philosophy */}
+      {/* Three Pillars of Instruction */}
       <section className="about-philosophy" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
           <div className="icon-box" style={{ color: 'var(--orange-yellow-crayola)', fontSize: '2rem' }}>
             <ion-icon name="extension-puzzle-outline"></ion-icon>
           </div>
-          <h3 className="h3" style={{ marginBottom: 0 }}>My Teaching Philosophy</h3>
+          <h3 className="h3" style={{ marginBottom: 0 }}>Three Pillars of Instruction</h3>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-          
+
           <div className="service-item" style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div className="icon-box" style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'hsla(38, 90%, 45%, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--orange-yellow-crayola)' }}>
-              <ion-icon name="help-buoy-outline" style={{ fontSize: '1.5rem' }}></ion-icon>
-            </div>
+            <PillIcon icon="search-outline" />
+            <h4 className="h4">1. Guided Discovery</h4>
             <p className="about-text">
-              My approach is a little different — I rarely give students the answer directly. Instead, I ask guiding questions and offer small clues, letting them work their way to the answer themselves. It takes a bit more patience, but the payoff is real: students build genuine confidence, because they know the understanding is theirs, not something handed to them.
+              Moving away from passive lecturing. By framing targeted questions, I train students
+              to deduce biochemical and ecological mechanisms independently, locking in long-term
+              retention.
             </p>
           </div>
 
           <div className="service-item" style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div className="icon-box" style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'hsla(38, 90%, 45%, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--orange-yellow-crayola)' }}>
-              <ion-icon name="leaf-outline" style={{ fontSize: '1.5rem' }}></ion-icon>
-            </div>
+            <PillIcon icon="ribbon-outline" />
+            <h4 className="h4">2. Rubric Precision</h4>
             <p className="about-text">
-              I also put a lot of care into creating a relaxed, pressure-free environment from the very first session. Students feel comfortable asking questions and making mistakes without hesitation — this comfort is often what unlocks real progress, especially for students who have felt discouraged by math in the past.
+              Subject knowledge must translate into points. Students practise deconstructing College
+              Board scoring guidelines, learning the exact terminology required to score full marks
+              on FRQs.
             </p>
           </div>
 
           <div className="service-item" style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div className="icon-box" style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'hsla(38, 90%, 45%, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--orange-yellow-crayola)' }}>
-              <ion-icon name="rocket-outline" style={{ fontSize: '1.5rem' }}></ion-icon>
-            </div>
+            <PillIcon icon="leaf-outline" />
+            <h4 className="h4">3. Supportive Environment</h4>
             <p className="about-text">
-              I want every student to walk away believing that math is simple and manageable — not something to fear, and not something their past grades have to define. Combined with consistent practice and a good amount of patience, this approach is what helps students stay motivated and genuinely engaged with their work, rather than dreading it.
+              Challenging courses create anxiety. Our 1-on-1 setting is a pressure-free laboratory
+              where mistakes are treated as diagnostic tools, empowering students to take
+              intellectual initiative.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      {/* Why 1-on-1 Works */}
+      <section className="about-philosophy" style={{ marginBottom: '60px' }}>
+        <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
+          <div className="icon-box" style={{ color: 'var(--orange-yellow-crayola)', fontSize: '2rem' }}>
+            <ion-icon name="rocket-outline"></ion-icon>
+          </div>
+          <h3 className="h3" style={{ marginBottom: 0 }}>Why 1-on-1 Virtual Tutoring Works</h3>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+
+          <div className="service-item" style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <PillIcon icon="speedometer-outline" />
+            <h4 className="h4">Individualized Pace</h4>
+            <p className="about-text">
+              Topics are never rushed to match a class bell. We linger on tricky units like Cellular
+              Energetics or Gene Regulation until total mastery is achieved.
             </p>
           </div>
 
           <div className="service-item" style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div className="icon-box" style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'hsla(38, 90%, 45%, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--orange-yellow-crayola)' }}>
-              <ion-icon name="chatbubbles-outline" style={{ fontSize: '1.5rem' }}></ion-icon>
-            </div>
+            <PillIcon icon="tablet-landscape-outline" />
+            <h4 className="h4">Active Digital Whiteboarding</h4>
             <p className="about-text">
-              When students understand the "why" behind a method, they're able to handle new problems confidently — not just repeat what they've memorized. I also stay in regular contact with parents, so progress is always visible and there are no surprises.
+              Live annotation of cellular diagrams, experimental variables, and biochemical pathways
+              ensures dynamic, visual engagement throughout every session.
+            </p>
+          </div>
+
+          <div className="service-item" style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <PillIcon icon="document-text-outline" />
+            <h4 className="h4">Transparent Reporting</h4>
+            <p className="about-text">
+              Regular post-session briefings, milestone checks, and transparent progress updates
+              shared directly with parents throughout all diagnostic details.
+            </p>
+          </div>
+
+          <div className="service-item" style={{ padding: '25px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <PillIcon icon="globe-outline" />
+            <h4 className="h4">Global Scheduling</h4>
+            <p className="about-text">
+              Direct accommodation for US time zones — EST, CST, MST, and PST — plus flexible slots
+              for international students.
             </p>
           </div>
 
@@ -147,7 +214,7 @@ function About({ activePage, setActivePage }) {
             <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
             <span>Get in Touch</span>
           </button>
-          
+
           <ul className="social-list" style={{ justifyContent: 'center', marginTop: '30px' }}>
             <li className="social-item">
               <a href="https://wa.me/918610933559" className="social-link" style={{ fontSize: '1.5rem' }}>
@@ -169,7 +236,7 @@ function About({ activePage, setActivePage }) {
       </section>
 
       <footer className="site-footer">
-        <p>© 2026 Kavitha JR — Online Math Tutor. All rights reserved.</p>
+        <p>© 2026 Jivanaut Test Prep — Explorers of Life Science. All rights reserved.</p>
       </footer>
 
     </article>

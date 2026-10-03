@@ -2,34 +2,41 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 
 const feedbacks = [
   {
-    text: "Kavitha has been teaching my daughter for the past 2 years. She is one of the best teachers I have seen. She is highly knowledgeable in her subjects and teaches kids as per the students level of understanding with lots of patience and kindness. My daughter improves a lot in Maths and now it has become her favorite subject due to Kavitha mam's teaching and guidance. She is a punctual person who values time and keeps the students very attentive in her class. We highly recommend her if you need the best Math Tutor for kids.",
-    author: "— Maha (Ontario)"
+    text: "My daughter went from dreading biology to explaining gene regulation to our family. The 1-on-1 attention made an enormous difference — she stopped memorising and started actually reasoning through the questions. The FRQ rubric drills alone were worth it.",
+    author: "— Parent, California (PST)"
   },
   {
-    text: "Mrs Kavitha has been teaching my 2 children for 3 years.We experienced great improvement in their Mathematics.Their scores improved significantly and they were able to be the top in their class ,especially Mathematics.Kavitha follows the same syllabus they have in their school.She is so helpful,patient,and always available when we needed help.Kavitha always make sure the topic is completely understood by the kids.My kids also love her and feel so comfortable with Kavitha.I highly recommend Kavitha for everyone who is looking for excellent Math teachers.Thank You.",
-    author: "Jeen Philip(Texas)"
+    text: "What stood out was the diagnostic approach. We came in believing the problem was content gaps; it turned out to be exam technique. Working through past College Board papers changed how she reads a stimulus question entirely.",
+    author: "— Parent, New Jersey (EST)"
   },
   {
-    text: "Thank you for making math fun and enjoyable! We've seen so much growth in our child's confidence and love for learning. We truly appreciate your patience, kindness, and dedication. Highly recommended!.",
-    author: "Joshna (Ontario)"
+    text: "The patience is remarkable. Challenging AP coursework creates real anxiety, and my son never once felt stupid for asking a basic question. His AP Biology grade moved up two full letter grades in one year.",
+    author: "— Parent, Texas (CST)"
   },
   {
-    text: "I highly recommend Mrs. Kavitha! She really helped my daughter to get better at math and feel more confident in the subject. Her way of teaching is very engaging and proactive. She doesn't just help students catch up when they fall behind. Works ahead to make sure they really understand each concept before quizzes and tests.Mrs. Kavitha is very patient and encouraging. She always checks if my daughter is on track and well-prepared which has made a difference in how she understands and performs in math. We are really thankful, for her work and dedication. We highly recommend her to any parent looking for a math tutor!.",
-    author: "Chitra menon (Maryland)"
+    text: "The active digital whiteboard is what sells it for us. Pathways and diagrams get annotated live, so he can see exactly where an argument breaks down. That kind of clarity is hard to get anywhere else.",
+    author: "— Parent, Washington (PST)"
   },
   {
-    text: "Kavitha is an excellent Math teacher. She is patient, professional, and very knowledgeable. She makes sure my son understands every concept clearly by giving regular homework and revision exercises. Her teaching method has helped improve his confidence and interest in Math. My son always looks forward to her classes. I highly recommend Kavitha to anyone looking for a dedicated and caring Math tutor.",
-    author: "Mahe (Ontario)"
-}
+    text: "Scheduling across our time zone was handled without any friction, and we always knew where he stood thanks to regular post-session briefings. Genuinely one of the more organised tutoring experiences we have had.",
+    author: "— Parent, Illinois (CST)"
+  }
 ]
 
-const TYPEWRITER_TEXT = "WELCOME TO NXT STEP TUTORING"
+const TYPEWRITER_TEXT = "JIVANAUT TEST PREP"
 const TYPING_SPEED = 100
 const DELETING_SPEED = 60
 const PAUSE_AFTER_TYPING = 2000
 const PAUSE_AFTER_DELETING = 800
 
-function Home({ activePage, setActivePage }) {
+const ENROLL_FORM =
+  'https://docs.google.com/forms/d/e/1FAIpQLScQ5j02hoEAjPNSjb7SOhjNzGnXARnFZ281JZst6DHF7nOWWA/viewform'
+
+const SectionDivider = () => (
+  <hr style={{ border: 'none', borderTop: '1px solid var(--jet)', margin: '50px 0' }} />
+)
+
+function Home({ activePage }) {
   const [expanded, setExpanded] = useState({})
   const [overflow, setOverflow] = useState({})
   const marqueeRef = useRef(null)
@@ -106,160 +113,209 @@ function Home({ activePage, setActivePage }) {
       {/* Hero Section */}
       <section className="hero-section">
         <h1 className="brand-title typewriter-text">
-          {displayedText.length <= 11
+          {displayedText.length <= 7
             ? <>{renderLetters(displayedText)}<span className="typewriter-cursor">|</span></>
-            : <>{renderLetters(displayedText.slice(0, 11))}<br className="mobile-break" />{renderLetters(displayedText.slice(11), 11)}<span className="typewriter-cursor">|</span></>
+            : <>{renderLetters(displayedText.slice(0, 7))}<br className="mobile-break" />{renderLetters(displayedText.slice(7), 7)}<span className="typewriter-cursor">|</span></>
           }
         </h1>
 
         <div className="hero-badge">
           <ion-icon name="school-outline"></ion-icon>
-          <span>Online Math Tutor · US &amp; Canada Curriculum | Available Globally</span>
+          <span>Global 1:1 Online Mentorship | US Curricula (EST · CST · PST) &amp; Global</span>
         </div>
 
         <div className="curriculum-flags">
-          <div className="curriculum-flag" title="US Curriculum">
+          <div className="curriculum-flag" title="US Time Zones">
             <span className="flag-emoji">🇺🇸</span>
           </div>
-          <div className="curriculum-flag" title="UK Curriculum">
-            <span className="flag-emoji">🇬🇧</span>
+          <div className="curriculum-flag" title="AP Biology">
+            <span className="flag-emoji">🧬</span>
           </div>
-          <div className="curriculum-flag" title="Canadian Curriculum">
-            <span className="flag-emoji">🇨🇦</span>
+          <div className="curriculum-flag" title="AP Environmental Science">
+            <span className="flag-emoji">🌍</span>
           </div>
-          <div className="curriculum-flag" title="International Baccalaureate">
-            <span className="flag-emoji">🌐</span>
+          <div className="curriculum-flag" title="AP Psychology">
+            <span className="flag-emoji">🧠</span>
+          </div>
+          <div className="curriculum-flag" title="USABO">
+            <span className="flag-emoji">🥇</span>
           </div>
         </div>
 
         <h3 className="hero-title">
-          Building confidence,<br />
-          <span className="hero-highlight">one concept at a time.</span>
+          Empowering the Next Generation of<br />
+          <span className="hero-highlight">Life Science Explorers.</span>
         </h3>
 
         <p className="hero-text">
-          One-on-one online math tutoring with 11+ years of teaching experience — helping students truly understand math, not just memorize it. Serving students across EST, CST, and PST time zones.
+          Master complex biological mechanisms, environmental systems, and advanced scientific
+          inquiry through tailored, one-on-one digital mentoring. Guided by an educator with a
+          Double M.Sc., B.Ed., and over a decade of proven academic outcomes.
         </p>
 
         <div className="hero-cta-wrapper">
           <a
             className="hero-cta-btn primary"
-            href="https://docs.google.com/forms/d/e/1FAIpQLScQ5j02hoEAjPNSjb7SOhjNzGnXARnFZ281JZst6DHF7nOWWA/viewform"
+            href={ENROLL_FORM}
             target="_blank"
             rel="noopener noreferrer"
           >
             <ion-icon name="calendar-outline"></ion-icon>
-            <span>Enroll now</span>
+            <span>Schedule 1:1 Consultation</span>
           </a>
           <button
             className="hero-cta-btn secondary"
             onClick={() => {
-              document.getElementById('about-me')?.scrollIntoView({ behavior: 'smooth' });
+              document.getElementById('courses')?.scrollIntoView({ behavior: 'smooth' });
             }}
           >
             <ion-icon name="arrow-down-outline"></ion-icon>
-            <span>Learn More</span>
+            <span>Explore Academic Courses</span>
           </button>
         </div>
       </section>
 
-      {/* Divider */}
-      <hr style={{ border: 'none', borderTop: '1px solid var(--jet)', margin: '50px 0' }} />
+      <SectionDivider />
 
-      {/* About Me Section */}
-      <section id="about-me">
+      {/* Methodology Section */}
+      <section id="methodology">
         <header>
-          <h3 className="h3">About Me</h3>
+          <h3 className="h3">The Jivanaut Methodology</h3>
+          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Jiva (Life) + Naut (Explorer)</p>
         </header>
         <p className="about-text" style={{ marginTop: '15px' }}>
-          I am a dedicated online math tutor with 11+ years of experience, specializing in the US and Canadian curricula. I focus on building strong conceptual foundations rather than rote memorization. My tailored one-on-one approach ensures every student learns at their own pace, helping them gain real confidence, problem-solving skills, and measurable improvements in their grades.
+          Science is never about rote memorization — it is about systematic inquiry. At Jivanaut
+          Test Prep, we demystify multi-layered scientific pathways, train students to decode
+          rigorous College Board Free Response Questions (FRQs), and build lasting conceptual
+          autonomy for high school and university tracks.
         </p>
 
         <ul className="stats-list" style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           <li className="stat-card">
-            <h4 className="stat-number">11+</h4>
-            <p className="stat-text">Years Teaching Experience</p>
+            <h4 className="stat-number">10+</h4>
+            <p className="stat-text">Years Experience</p>
           </li>
           <li className="stat-card">
-            <h4 className="stat-number">4+</h4>
-            <p className="stat-text">Years — US &amp; Canada Curriculum</p>
+            <h4 className="stat-number" style={{ fontSize: '1.4rem' }}>Double M.Sc.</h4>
+            <p className="stat-text">&amp; B.Ed. Credentials</p>
           </li>
           <li className="stat-card">
-            <h4 className="stat-number">1:1</h4>
-            <p className="stat-text">Fully Online, Personalized Sessions</p>
+            <h4 className="stat-number">1-on-1</h4>
+            <p className="stat-text">Personalized Focus</p>
           </li>
           <li className="stat-card">
-            <h4 className="stat-number" style={{ fontSize: '1.8rem' }}>EST · CST · PST</h4>
-            <p className="stat-text">Time Zones Served</p>
+            <h4 className="stat-number" style={{ fontSize: '1.3rem' }}>Global</h4>
+            <p className="stat-text">US (EST–PST) &amp; World</p>
           </li>
         </ul>
       </section>
 
-      {/* Divider */}
-      <hr style={{ border: 'none', borderTop: '1px solid var(--jet)', margin: '50px 0' }} />
+      <SectionDivider />
 
-      {/* Services Section */}
-      <section>
+      {/* Courses Section */}
+      <section id="courses">
         <header>
-          <h3 className="h3">Services</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>How I can help</p>
+          <h3 className="h3">Courses &amp; Programs</h3>
+          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Structured curricula &amp; instructional offerings</p>
         </header>
 
         <ul className="services-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '25px' }}>
           <li className="service-item">
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">US Curriculum</h4>
-              <p className="service-item-text">Personalized math tutoring aligned with US grade-level standards, from foundational arithmetic through algebra and beyond.</p>
+              <h4 className="h4 service-item-title">AP Biology <span style={{ color: 'var(--orange-yellow-crayola)', fontSize: 'var(--fs-8)' }}>Signature Program</span></h4>
+              <p className="service-item-text">Full College Board Units 1–8: biochemistry, energetics, heredity, gene regulation, and ecology — with stimulus-based MCQs, experimental design, chi-square analysis, and dedicated FRQ rubric drills.</p>
             </div>
           </li>
           <li className="service-item">
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">Canadian Curriculum</h4>
-              <p className="service-item-text">Support tailored to provincial math curricula, helping students stay confident and on track with their coursework.</p>
+              <h4 className="h4 service-item-title">AP Environmental Science</h4>
+              <p className="service-item-text">Earth systems, population biology, renewable and non-renewable resource management, pollution, and global climatic trends — integrating interdisciplinary science with quantitative calculation and policy critique.</p>
             </div>
           </li>
           <li className="service-item">
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">One-on-One Sessions</h4>
-              <p className="service-item-text">Fully personalized attention — lessons move at your child's pace, with regular check-ins on progress.</p>
+              <h4 className="h4 service-item-title">AP Psychology</h4>
+              <p className="service-item-text">Biological bases of behavior, cognition, developmental milestones, clinical psychology, and social interactions — with emphasis on research methodology and ethical testing principles.</p>
             </div>
           </li>
           <li className="service-item">
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">Fully Online</h4>
-              <p className="service-item-text">Convenient, flexible scheduling from anywhere — all you need is a stable internet connection.</p>
+              <h4 className="h4 service-item-title">Honors Biology &amp; General Science</h4>
+              <p className="service-item-text">Middle and early high school life sciences and physical sciences — building rigorous scientific vocabulary and deductive reasoning ahead of the AP pathway.</p>
             </div>
           </li>
-          <li className="service-item no-advance-payment-card">
+          <li className="service-item">
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">No Advanced Payment</h4>
-              <p className="service-item-text" style={{ fontStyle: 'italic', marginBottom: '10px' }}>
-                "Trust is gained when actions meet words." — Chris Butler
-              </p>
-              <p className="service-item-text" style={{ marginBottom: '14px' }}>
-                Our no-advance payment policy bestows priority on classes rather than payments. Make the payment at the end of the month just for the sessions attended.
-              </p>
+              <h4 className="h4 service-item-title">USA Biology Olympiad (USABO)</h4>
+              <p className="service-item-text">Competitive enrichment for ambitious students — advanced biological systems and Campbell Biology topics, building the data interpretation and problem solving Olympiad demands.</p>
             </div>
           </li>
         </ul>
       </section>
 
-      {/* Divider */}
-      <hr style={{ border: 'none', borderTop: '1px solid var(--jet)', margin: '50px 0' }} />
+      <SectionDivider />
 
-      {/* Track Record Section */}
+      {/* Why 1-on-1 Section */}
       <section>
         <header>
-          <h3 className="h3">Track Record</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Consistent, real improvement</p>
+          <h3 className="h3">Why 1-on-1 Virtual Tutoring Works</h3>
+          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>A private laboratory for discovery</p>
         </header>
-        <p className="about-text" style={{ marginTop: '15px' }}>
-          Parents consistently describe the support here as proactive and attentive — regular check-ins, careful attention to each child's specific gaps, and steady communication along the way. The result: every student who has worked with me has shown measurable improvement, whether that's stronger grades, better test scores, or simply more confidence sitting down to do math homework.
+
+        <ul className="services-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '25px' }}>
+          <li className="service-item">
+            <div className="service-content-box">
+              <h4 className="h4 service-item-title">Individualized Pace</h4>
+              <p className="service-item-text">Topics are never rushed to match a class bell. We linger on tricky units like Cellular Energetics or Gene Regulation until total mastery is achieved.</p>
+            </div>
+          </li>
+          <li className="service-item">
+            <div className="service-content-box">
+              <h4 className="h4 service-item-title">Active Digital Whiteboarding</h4>
+              <p className="service-item-text">Live annotation of cellular diagrams, experimental variables, and biochemical pathways ensures dynamic, visual engagement every single session.</p>
+            </div>
+          </li>
+          <li className="service-item">
+            <div className="service-content-box">
+              <h4 className="h4 service-item-title">Transparent Reporting</h4>
+              <p className="service-item-text">Regular post-session briefings, milestone checks, and honest progress updates shared directly with parents — no surprises, ever.</p>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <SectionDivider />
+
+      {/* Proven Results Section */}
+      <section>
+        <header>
+          <h3 className="h3">Demonstrated Academic Outcomes</h3>
+          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Our students do not just survive AP science — they excel.</p>
+        </header>
+
+        <ul className="stats-list" style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+          <li className="stat-card">
+            <h4 className="stat-number" style={{ fontSize: '1.6rem' }}>Scores of 4 &amp; 5</h4>
+            <p className="stat-text">AP Biology Outcomes</p>
+          </li>
+          <li className="stat-card">
+            <h4 className="stat-number">+1 to 2</h4>
+            <p className="stat-text">Grades — School GPA Improvement</p>
+          </li>
+          <li className="stat-card">
+            <h4 className="stat-number" style={{ fontSize: '1.6rem' }}>100% Custom</h4>
+            <p className="stat-text">Targeted FRQ Prep</p>
+          </li>
+        </ul>
+
+        <p className="about-text" style={{ marginTop: '25px' }}>
+          Through disciplined review of past College Board papers and deliberate practice with
+          multi-step analytical prompts, students gain the confidence needed to walk into exam day
+          fully prepared.
         </p>
       </section>
 
-      {/* Divider */}
-      <hr style={{ border: 'none', borderTop: '1px solid var(--jet)', margin: '50px 0' }} />
+      <SectionDivider />
 
       {/* Auto Moving Feedbacks */}
       <section style={{ overflow: 'hidden' }}>
@@ -267,7 +323,7 @@ function Home({ activePage, setActivePage }) {
           <h3 className="h3">What Parents &amp; Students Say</h3>
           <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Real feedback</p>
         </header>
-        
+
         <div className="marquee-wrapper" style={{ display: 'flex', overflow: 'hidden', marginTop: '25px', paddingBottom: '10px' }}>
           <div className="marquee-content" ref={marqueeRef} style={{ display: 'flex', gap: '20px', animation: 'marquee 40s linear infinite', width: 'max-content' }}>
             {[...feedbacks, ...feedbacks].map((fb, i) => (
@@ -291,18 +347,18 @@ function Home({ activePage, setActivePage }) {
         </div>
       </section>
 
-      {/* Divider */}
-      <hr style={{ border: 'none', borderTop: '1px solid var(--jet)', margin: '50px 0' }} />
+      <SectionDivider />
 
       {/* Get In Touch */}
       <section className="contact-section" style={{ background: 'var(--border-gradient-onyx)', padding: '30px', borderRadius: '14px', position: 'relative', zIndex: 1 }}>
         <div style={{ content: '""', position: 'absolute', inset: '1px', background: 'var(--bg-gradient-jet)', borderRadius: 'inherit', zIndex: -1 }}></div>
         <header>
           <h3 className="h3">Get in Touch</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Let's help your child build confidence in math.</p>
+          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Let's take the next step in life sciences.</p>
         </header>
         <p className="about-text" style={{ marginTop: '15px' }}>
-          Reach out to schedule a free trial session, ask about pricing, or check current availability for your time zone.
+          Reach out to schedule a diagnostic consultation, ask about pricing, or check current
+          availability for your time zone.
         </p>
         <div style={{ display: 'flex', gap: '15px', marginTop: '25px', flexWrap: 'wrap' }}>
           <a href="mailto:kavitha.nextsteptutoring@gmail.com" className="hero-cta-btn primary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -314,7 +370,7 @@ function Home({ activePage, setActivePage }) {
             <span>WhatsApp Me</span>
           </a>
         </div>
-        
+
         <ul className="social-list" style={{ justifyContent: 'center', marginTop: '30px' }}>
           <li className="social-item">
             <a href="https://wa.me/918610933559" className="social-link" style={{ fontSize: '1.5rem' }}>
@@ -335,7 +391,7 @@ function Home({ activePage, setActivePage }) {
       </section>
 
       <footer style={{ marginTop: '60px', textAlign: 'center', color: 'var(--light-gray)', fontSize: 'var(--fs-8)', paddingBottom: '30px' }}>
-        © 2026 Kavitha JR — Online Math Tutor. All rights reserved.
+        © 2026 Jivanaut Test Prep — Explorers of Life Science. All rights reserved.
       </footer>
 
     </article>
