@@ -343,7 +343,7 @@ article.active {
 \*-----------------------------------*/
 
 main {
-  margin: 0;
+  margin: 15px 12px;
   margin-bottom: 75px;
   min-width: 259px;
 }
@@ -2075,8 +2075,7 @@ textarea.form-input::-webkit-resizer { display: none; }
    */
 
   main {
-    max-width: none;
-    margin-inline: 0;
+    margin: 15px 12px;
     display: flex;
     justify-content: center;
     align-items: stretch;
