@@ -1,9 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
-const pages = ['Home', 'About', 'Services', 'Contact']
+const pages = [
+  { label: 'Home', key: 'home' },
+  { label: 'About Me', key: 'about' },
+  { label: 'Courses', key: 'services' },
+  { label: 'Contact', key: 'contact' },
+]
 
-function Navbar({ activePage, setActivePage }) {
+function Navbar({ activePage }) {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
@@ -33,22 +38,24 @@ function Navbar({ activePage, setActivePage }) {
     setMenuOpen(false)
   }, [activePage])
 
+  const go = (key) => {
+    navigate('/', { state: { activePage: key } })
+    window.scrollTo(0, 0)
+  }
+
   return (
     <>
-      {/* ===== DESKTOP NAVBAR (unchanged) ===== */}
+      {/* ===== DESKTOP NAVBAR ===== */}
       <nav className="navbar navbar-desktop">
         <ul className="navbar-list">
           {pages.map((page) => (
-            <li className="navbar-item" key={page}>
+            <li className="navbar-item" key={page.key}>
               <button
-                className={`navbar-link${activePage === page.toLowerCase() ? ' active' : ''}`}
+                className={`navbar-link${activePage === page.key ? ' active' : ''}`}
                 data-nav-link
-                onClick={() => {
-                  navigate('/', { state: { activePage: page.toLowerCase() } })
-                  window.scrollTo(0, 0)
-                }}
+                onClick={() => go(page.key)}
               >
-                {page}
+                {page.label}
               </button>
             </li>
           ))}
@@ -79,16 +86,15 @@ function Navbar({ activePage, setActivePage }) {
       <div ref={menuRef} className={`mobile-menu-popup${menuOpen ? ' open' : ''}`}>
         <ul className="mobile-menu-list">
           {pages.map((page) => (
-            <li key={page}>
+            <li key={page.key}>
               <button
-                className={`mobile-menu-link${activePage === page.toLowerCase() ? ' active' : ''}`}
+                className={`mobile-menu-link${activePage === page.key ? ' active' : ''}`}
                 onClick={() => {
-                  navigate('/', { state: { activePage: page.toLowerCase() } })
-                  window.scrollTo(0, 0)
+                  go(page.key)
                   setMenuOpen(false)
                 }}
               >
-                {page}
+                {page.label}
               </button>
             </li>
           ))}
