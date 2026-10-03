@@ -197,24 +197,7 @@ input, textarea {
 html { font-family: var(--ff-poppins); }
 
 body {
-  background:
-    radial-gradient(
-      1100px 620px at 12% -8%,
-      hsla(0, 90%, 62%, 0.10) 0%,
-      hsla(0, 90%, 62%, 0) 62%
-    ),
-    radial-gradient(
-      900px 560px at 92% 4%,
-      hsla(198, 76%, 59%, 0.10) 0%,
-      hsla(198, 76%, 59%, 0) 60%
-    ),
-    radial-gradient(
-      760px 520px at 50% 108%,
-      hsla(161, 45%, 64%, 0.09) 0%,
-      hsla(161, 45%, 64%, 0) 58%
-    ),
-    var(--smoky-black);
-  background-attachment: fixed;
+  background: var(--smoky-black);
 }
 
 
@@ -3035,24 +3018,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 
 
 [data-theme='light'] body {
-  background:
-    radial-gradient(
-      1100px 620px at 12% -8%,
-      hsla(0, 90%, 62%, 0.16) 0%,
-      hsla(0, 90%, 62%, 0) 62%
-    ),
-    radial-gradient(
-      900px 560px at 92% 4%,
-      hsla(198, 76%, 59%, 0.14) 0%,
-      hsla(198, 76%, 59%, 0) 60%
-    ),
-    radial-gradient(
-      760px 520px at 50% 108%,
-      hsla(161, 45%, 64%, 0.13) 0%,
-      hsla(161, 45%, 64%, 0) 58%
-    ),
-    var(--color-background);
-  background-attachment: fixed;
+  background: #ffffff;
 }
 
 /* ── Sidebar & articles ────────────────────────────────────────────────────────── */
