@@ -397,7 +397,9 @@ main {
 }
 
 .avatar-box {
-  background: #ffffff;
+  background: hsla(0, 0%, 100%, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: 20px;
 }
 
