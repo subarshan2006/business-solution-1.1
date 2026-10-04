@@ -18,7 +18,7 @@ function Services({ activePage }) {
         <h3 className="h3 service-title">Academic Programs</h3>
 
         <p className="section-intro-text">
-          Every session is 100% online, one-on-one private live instruction delivered via Zoom or
+          Every session is 100% online, one-on-one private live instruction delivered via
           Google Meet with an interactive digital board. Each programme is paced to your student's
           exact school syllabus, unit tests, midterms, and May College Board exam deadlines.
         </p>
@@ -141,7 +141,7 @@ function Services({ activePage }) {
                     <span>Session Format</span>
                   </div>
                 </td>
-                <td>100% online, 1-on-1 private live instruction via Zoom or Google Meet with interactive digital board</td>
+                <td>100% online, 1-on-1 private live instruction via Google Meet with interactive digital board</td>
               </tr>
               <tr>
                 <td>
@@ -201,7 +201,7 @@ function Services({ activePage }) {
 
           <ul className="social-list" style={{ justifyContent: 'center', marginTop: '30px' }}>
             <li className="social-item">
-              <a href="https://wa.me/918610933559" className="social-link" style={{ fontSize: '1.5rem' }}>
+              <a href="https://wa.me/919995800949" className="social-link" style={{ fontSize: '1.5rem' }}>
                 <ion-icon name="logo-whatsapp"></ion-icon>
               </a>
             </li>

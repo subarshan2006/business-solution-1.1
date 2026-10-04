@@ -2,7 +2,7 @@ function WhatsAppFab() {
   return (
     <a
       className="whatsapp-fab"
-      href="https://wa.me/918610933559"
+      href="https://wa.me/919995800949"
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"

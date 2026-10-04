@@ -146,7 +146,7 @@ function Home({ activePage }) {
         <p className="hero-text">
           Master complex biological mechanisms, environmental systems, and advanced scientific
           inquiry through tailored, one-on-one digital mentoring. Guided by an educator with a
-          Double M.Sc., B.Ed., and over a decade of proven academic outcomes.
+          MSc Zoology, MSc Environmental Science, B.Ed. and Diploma in Psychology &amp; Counseling, with 11+ years of proven academic outcomes.
         </p>
 
         <div className="hero-cta-wrapper">
@@ -188,12 +188,12 @@ function Home({ activePage }) {
 
         <ul className="stats-list" style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           <li className="stat-card">
-            <h4 className="stat-number">10+</h4>
+            <h4 className="stat-number">11+</h4>
             <p className="stat-text">Years Experience</p>
           </li>
           <li className="stat-card">
-            <h4 className="stat-number" style={{ fontSize: '1.4rem' }}>Double M.Sc.</h4>
-            <p className="stat-text">&amp; B.Ed. Credentials</p>
+            <h4 className="stat-number" style={{ fontSize: '1.4rem' }}>MSc Zoology</h4>
+            <p className="stat-text">&amp; MSc Environmental Science, B.Ed.</p>
           </li>
           <li className="stat-card">
             <h4 className="stat-number">1-on-1</h4>
@@ -357,11 +357,11 @@ function Home({ activePage }) {
           availability for your time zone.
         </p>
         <div style={{ display: 'flex', gap: '15px', marginTop: '25px', flexWrap: 'wrap' }}>
-          <a href="mailto:kavitha.nextsteptutoring@gmail.com" className="hero-cta-btn primary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <a href="mailto:jivanautprep@gmail.com" className="hero-cta-btn primary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ion-icon name="mail-outline"></ion-icon>
             <span>Email Me</span>
           </a>
-          <a href="https://wa.me/918610933559" className="hero-cta-btn secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <a href="https://wa.me/919995800949" className="hero-cta-btn secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ion-icon name="logo-whatsapp"></ion-icon>
             <span>WhatsApp Me</span>
           </a>
@@ -369,7 +369,7 @@ function Home({ activePage }) {
 
         <ul className="social-list" style={{ justifyContent: 'center', marginTop: '30px' }}>
           <li className="social-item">
-            <a href="https://wa.me/918610933559" className="social-link" style={{ fontSize: '1.5rem' }}>
+            <a href="https://wa.me/919995800949" className="social-link" style={{ fontSize: '1.5rem' }}>
               <ion-icon name="logo-whatsapp"></ion-icon>
             </a>
           </li>

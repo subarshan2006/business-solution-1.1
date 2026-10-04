@@ -34,21 +34,21 @@ function Contact({ activePage }) {
       <section className="contact-cta-section">
         <ul className="contact-cta-grid">
           <li>
-            <a href="mailto:kavitha.nextsteptutoring@gmail.com" className="contact-cta-card">
+            <a href="mailto:jivanautprep@gmail.com" className="contact-cta-card">
               <div className="contact-cta-icon">
                 <ion-icon name="mail-outline"></ion-icon>
               </div>
               <h4 className="h4 contact-cta-title">Email Me</h4>
-              <p className="contact-cta-text">kavitha.nextsteptutoring@gmail.com</p>
+              <p className="contact-cta-text">jivanautprep@gmail.com</p>
             </a>
           </li>
           <li>
-            <a href="https://wa.me/918610933559" className="contact-cta-card" target="_blank" rel="noopener noreferrer">
+            <a href="https://wa.me/919995800949" className="contact-cta-card" target="_blank" rel="noopener noreferrer">
               <div className="contact-cta-icon">
                 <ion-icon name="logo-whatsapp"></ion-icon>
               </div>
               <h4 className="h4 contact-cta-title">WhatsApp Me</h4>
-              <p className="contact-cta-text">+91 86109 33559</p>
+              <p className="contact-cta-text">+91 99958 00949</p>
             </a>
           </li>
           <li>
@@ -102,7 +102,7 @@ function Contact({ activePage }) {
               <span>Open Intake Form</span>
             </a>
             <a
-              href="https://wa.me/918610933559"
+              href="https://wa.me/919995800949"
               className="hero-cta-btn secondary"
               target="_blank"
               rel="noopener noreferrer"
@@ -144,7 +144,7 @@ function Contact({ activePage }) {
               </div>
               <div>
                 <h5 className="h5">100% Online</h5>
-                <p className="availability-text">Zoom or Google Meet with an interactive digital board</p>
+                <p className="availability-text">Google Meet with an interactive digital board</p>
               </div>
             </li>
             <li className="availability-item">
@@ -160,7 +160,7 @@ function Contact({ activePage }) {
 
           <ul className="social-list" style={{ justifyContent: 'center', marginTop: '30px' }}>
             <li className="social-item">
-              <a href="https://wa.me/918610933559" className="social-link" style={{ fontSize: '1.5rem' }}>
+              <a href="https://wa.me/919995800949" className="social-link" style={{ fontSize: '1.5rem' }}>
                 <ion-icon name="logo-whatsapp"></ion-icon>
               </a>
             </li>

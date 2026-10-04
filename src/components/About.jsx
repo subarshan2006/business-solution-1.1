@@ -61,7 +61,7 @@ function About({ activePage, setActivePage }) {
       </header>
 
       <p className="page-subtitle">
-        10+ Years of Dedication to Rigorous Science Education and Student Empowerment.
+        11+ Years of Dedication to Rigorous Science Education and Student Empowerment.
       </p>
 
       {/* My Story */}
@@ -77,8 +77,8 @@ function About({ activePage, setActivePage }) {
           <p className="about-text" style={{ fontSize: '1.05rem', lineHeight: '1.7' }}>
             Welcome to Jivanaut Test Prep. My educational journey began with a profound fascination
             for the living world — a curiosity reflected in our name: Jiva (Life) and Naut
-            (Explorer). With dual post-graduate degrees in the sciences (Double M.Sc.) and
-            professional teacher certification (B.Ed.), I have devoted the past decade to
+            (Explorer). With post-graduate degrees in Zoology and Environmental Science, a B.Ed. and a
+            Diploma in Psychology &amp; Counseling, I have devoted the past 11 years to
             translating complex academic concepts into intuitive, exciting discoveries for
             students.
           </p>
@@ -217,7 +217,7 @@ function About({ activePage, setActivePage }) {
 
           <ul className="social-list" style={{ justifyContent: 'center', marginTop: '30px' }}>
             <li className="social-item">
-              <a href="https://wa.me/918610933559" className="social-link" style={{ fontSize: '1.5rem' }}>
+              <a href="https://wa.me/919995800949" className="social-link" style={{ fontSize: '1.5rem' }}>
                 <ion-icon name="logo-whatsapp"></ion-icon>
               </a>
             </li>

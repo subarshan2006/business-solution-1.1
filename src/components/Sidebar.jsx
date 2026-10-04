@@ -42,7 +42,7 @@ function Sidebar() {
             </div>
             <div className="contact-info">
               <p className="contact-title">Email</p>
-              <a href="mailto:kavitha.nextsteptutoring@gmail.com" className="contact-link">kavitha.nextsteptutoring@gmail.com</a>
+              <a href="mailto:jivanautprep@gmail.com" className="contact-link">jivanautprep@gmail.com</a>
             </div>
           </li>
 
@@ -52,7 +52,7 @@ function Sidebar() {
             </div>
             <div className="contact-info">
               <p className="contact-title">WhatsApp</p>
-              <a href="https://wa.me/918610933559" className="contact-link">+91 86109 33559</a>
+              <a href="https://wa.me/919995800949" className="contact-link">+91 99958 00949</a>
             </div>
           </li>
 
@@ -62,7 +62,7 @@ function Sidebar() {
             </div>
             <div className="contact-info">
               <p className="contact-title">Credentials</p>
-              <span className="contact-link" style={{ cursor: 'default' }}>Double M.Sc. &amp; B.Ed.</span>
+              <span className="contact-link" style={{ cursor: 'default' }}>MSc Zoology · MSc Environmental Science · B.Ed · Diploma in Psychology &amp; Counseling</span>
             </div>
           </li>
 
@@ -82,7 +82,7 @@ function Sidebar() {
             </div>
             <div className="contact-info">
               <p className="contact-title">Experience</p>
-              <span className="contact-link" style={{ cursor: 'default' }}>10+ Years Teaching</span>
+              <span className="contact-link" style={{ cursor: 'default' }}>11+ Years Teaching</span>
             </div>
           </li>
 
@@ -102,12 +102,12 @@ function Sidebar() {
 
         <ul className="social-list">
           <li className="social-item">
-            <a href="mailto:kavitha.nextsteptutoring@gmail.com" className="social-link" title="Email">
+            <a href="mailto:jivanautprep@gmail.com" className="social-link" title="Email">
               <ion-icon name="mail-outline"></ion-icon>
             </a>
           </li>
           <li className="social-item">
-            <a href="https://wa.me/918610933559" className="social-link" title="WhatsApp">
+            <a href="https://wa.me/919995800949" className="social-link" title="WhatsApp">
               <ion-icon name="logo-whatsapp"></ion-icon>
             </a>
           </li>

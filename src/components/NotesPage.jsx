@@ -67,7 +67,7 @@ function NotesPage() {
             <input
               type="text"
               className="notes-input"
-              placeholder="e.g. kavitha-001"
+              placeholder="e.g. jivanaut-001"
               value={inputValue}
               onChange={(e) => { setInputValue(e.target.value); setError('') }}
               autoFocus
