@@ -30,7 +30,7 @@ const PAUSE_AFTER_TYPING = 2000
 const PAUSE_AFTER_DELETING = 800
 
 const ENROLL_FORM =
-  'https://docs.google.com/forms/d/e/1FAIpQLScQ5j02hoEAjPNSjb7SOhjNzGnXARnFZ281JZst6DHF7nOWWA/viewform'
+  'https://docs.google.com/forms/d/e/1FAIpQLSc615afQFRpiaWyfpmTKWOBSGzOYmZDcg95rZZ9u3HKvBbT8g/viewform?usp=publish-editor'
 
 const SectionDivider = () => (
   <hr style={{ border: 'none', borderTop: '1px solid var(--jet)', margin: '50px 0' }} />
