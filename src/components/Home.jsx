@@ -2,24 +2,20 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 
 const feedbacks = [
   {
-    text: "My daughter went from dreading biology to explaining gene regulation to our family. The 1-on-1 attention made an enormous difference — she stopped memorising and started actually reasoning through the questions. The FRQ rubric drills alone were worth it.",
-    author: "— Parent, California (PST)"
+    text: "For over 2 years, Mrs. Steena has fueled my daughter's passion for science by sharing fascinating medical insights and personal experiences. She is a deeply supportive mentor who makes mastering AP Biology feel effortless.",
+    author: "— Archana, Texas"
   },
   {
-    text: "What stood out was the diagnostic approach. We came in believing the problem was content gaps; it turned out to be exam technique. Working through past College Board papers changed how she reads a stimulus question entirely.",
-    author: "— Parent, New Jersey (EST)"
+    text: "Based on my kid's AP score of 5, I highly recommend Steena for AP Biology tutoring. Personalized 1:1 tutoring with no upfront fee commitment, and she offers a trial class. Excellent test prep coaching and materials.",
+    author: "— Sudha, Cupertino, California"
   },
   {
-    text: "The patience is remarkable. Challenging AP coursework creates real anxiety, and my son never once felt stupid for asking a basic question. His AP Biology grade moved up two full letter grades in one year.",
-    author: "— Parent, Texas (CST)"
+    text: "Without Ms. Steena's guidance and support, I would not have truly appreciated taking AP Biology as much as I did. She explained the content at a pace that fit my learning and provided examples that gave me a better understanding. She was incredibly patient when it came to practicing and reviewing for in-class quizzes and exams. Each session left me feeling more confident in my abilities, deepening my love for AP Bio and strengthening my interest in pursuing a career in medicine. I will forever be grateful for the love and dedication shown by Ms. Steena during my AP Biology journey and beyond.",
+    author: "— Christina, San Mateo, California"
   },
   {
-    text: "The active digital whiteboard is what sells it for us. Pathways and diagrams get annotated live, so he can see exactly where an argument breaks down. That kind of clarity is hard to get anywhere else.",
-    author: "— Parent, Washington (PST)"
-  },
-  {
-    text: "Scheduling across our time zone was handled without any friction, and we always knew where he stood thanks to regular post-session briefings. Genuinely one of the more organised tutoring experiences we have had.",
-    author: "— Parent, Illinois (CST)"
+    text: "Ms. Steena is a thoughtful, highly experienced educator. She is able to efficiently cover the curriculum and dedicates class time to practice questions in order to reinforce information and identify misunderstandings or gaps in knowledge. I took AP Biology outside of school, and without Ms. Steena as my teacher, I would not have achieved a score of 5. Difficult concepts are explained well and she is quick to catch areas you may be struggling in. 100% recommend!",
+    author: "— Rhythm Ramkumar, Cupertino, California"
   }
 ]
 
