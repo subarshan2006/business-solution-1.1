@@ -196,7 +196,7 @@ function Home({ activePage }) {
             <p className="stat-text">&amp; MSc Environmental Science, B.Ed.</p>
           </li>
           <li className="stat-card">
-            <h4 className="stat-number">1-on-1</h4>
+            <h4 className="stat-number" style={{ fontSize: '1.8rem' }}>1-on-1</h4>
             <p className="stat-text">Personalized Focus</p>
           </li>
           <li className="stat-card">
