@@ -1,24 +1,24 @@
 const experience = [
   {
-    title: 'Independent Online Science Mentor — Jivanaut Test Prep',
+    title: 'Independent Science Mentor — Jivanaut Test Prep',
     years: '2026 – Present',
-    text: 'Leading fully independent, one-on-one online mentoring in AP Biology, AP Environmental Science, AP Psychology, and USABO enrichment for US high school students across EST, CST, MST, and PST.',
+    text: 'Fully independent, one-on-one online mentoring in AP Biology, AP Environmental Science and AP Psychology for students across US and global time zones.',
   },
   {
-    title: 'Online Science Tutoring (US Curriculum)',
-    years: '2022 – 2026',
-    text: 'Delivered rigorous life science instruction to US high school students — AP Biology, APES, and AP Psychology — building conceptual autonomy and FRQ examination technique.',
+    title: 'Online Science Tutoring',
+    years: '2021 – 2026',
+    text: 'Five years of online science tutoring, building strong conceptual understanding and examination technique in the life sciences.',
   },
   {
-    title: 'Secondary Science Educator',
-    years: '2017 – 2021',
-    text: 'Science teacher for middle school through Grades 11–12, following ICSE and IB curricula with an emphasis on biological sciences and exam preparation.',
+    title: 'Asiaville — Middle School',
+    years: '2020',
+    text: 'Middle school science instruction covering both the CBSE and state syllabi.',
   },
   {
-    title: 'The Indian Public School (TIPS)',
-    years: '2015 – 2017',
-    text: 'Homeroom and subject teacher for the IB Primary Years Programme (PYP), Grades 1–5, and the IB Middle Years Programme (MYP).',
-  },
+    title: 'Indian Public School',
+    years: '2015 – 2020',
+    text: 'Five years of science teaching in a public school, laying the foundations of clear, structured scientific instruction.',
+  }
 ]
 
 function TimelineSection({ icon, title, items }) {
