@@ -61,15 +61,6 @@ function Navbar({ activePage }) {
           ))}
           <li className="navbar-item">
             <Link
-              to="/studentrecords"
-              className={`navbar-link${activePage === 'notes' ? ' active' : ''}`}
-              data-nav-link
-            >
-              Student Record
-            </Link>
-          </li>
-          <li className="navbar-item">
-            <Link
               to="/classroom"
               className={`navbar-link${activePage === 'classroom' ? ' active' : ''}`}
               data-nav-link
@@ -107,15 +98,6 @@ function Navbar({ activePage }) {
               </button>
             </li>
           ))}
-          <li>
-            <Link
-              to="/studentrecords"
-              className={`mobile-menu-link${activePage === 'notes' ? ' active' : ''}`}
-              onClick={() => setMenuOpen(false)}
-            >
-              Student Record
-            </Link>
-          </li>
           <li>
             <Link
               to="/classroom"

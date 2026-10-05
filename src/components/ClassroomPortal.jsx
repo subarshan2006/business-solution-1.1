@@ -61,7 +61,7 @@ function ClassroomPortal() {
       try {
         let userRole = role
         if (!userRole) {
-          const roleResult = await determineRole(auth.accessToken)
+          const roleResult = await determineRole(auth.accessToken, auth.user?.email)
           userRole = roleResult.role
           setRole(userRole)
           saveAuth({ ...auth, role: userRole })
@@ -77,7 +77,7 @@ function ClassroomPortal() {
           if (list.length > 0) setSelectedCourse(list[0])
         }
       } catch (err) {
-        console.error('Failed to load courses:', err)
+        console.error('Failed to load courses from Google Classroom:', err)
         setError(err.message || 'Failed to fetch classrooms from Google.')
       } finally {
         setLoading(false)
@@ -108,19 +108,31 @@ function ClassroomPortal() {
     setError('')
     try {
       const authData = await requestGoogleAccessToken()
-      const roleResult = await determineRole(authData.accessToken)
+      const roleResult = await determineRole(authData.accessToken, authData.user?.email)
       const fullAuth = { ...authData, role: roleResult.role }
       setRole(roleResult.role)
       setAuth(fullAuth)
       saveAuth(fullAuth)
     } catch (err) {
       if (err.message === 'MISSING_CLIENT_ID') {
-        setError('OAuth Client ID is missing. Add VITE_GOOGLE_CLIENT_ID in your .env file or try Demo Mode below.')
+        setError('OAuth Client ID is missing. Add VITE_GOOGLE_CLIENT_ID in your .env file.')
       } else {
         setError(err.message || 'Failed to authenticate with Google.')
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSwitchRole = (newRole) => {
+    setRole(newRole)
+    if (auth) {
+      saveAuth({ ...auth, role: newRole })
+    }
+    if (newRole === 'parent') {
+      setActiveTab('parent')
+    } else {
+      setActiveTab('courses')
     }
   }
 
@@ -161,6 +173,7 @@ function ClassroomPortal() {
 
   return (
     <article className="classroom-portal active" data-page="classroom">
+      <br /><br />
       <header>
         <h2 className="h2 article-title">Google Classroom Portal</h2>
       </header>
@@ -228,37 +241,30 @@ function ClassroomPortal() {
             </div>
 
             <div className="connected-controls">
-              {auth.isMock && (
-                <div className="preview-switch-group">
-                  <button
-                    type="button"
-                    className={`role-switch-pill${role === 'teacher' ? ' active' : ''}`}
-                    onClick={() => {
-                      setRole('teacher')
-                      setActiveTab('courses')
-                    }}
-                  >
-                    Teacher Mode
-                  </button>
-                  <button
-                    type="button"
-                    className={`role-switch-pill${role === 'student' && activeTab !== 'parent' ? ' active' : ''}`}
-                    onClick={() => {
-                      setRole('student')
-                      setActiveTab('courses')
-                    }}
-                  >
-                    Student Mode
-                  </button>
-                  <button
-                    type="button"
-                    className={`role-switch-pill${activeTab === 'parent' ? ' active' : ''}`}
-                    onClick={() => setActiveTab('parent')}
-                  >
-                    Parent Mode
-                  </button>
-                </div>
-              )}
+              <div className="preview-switch-group">
+                <button
+                  type="button"
+                  className={`role-switch-pill${role === 'teacher' ? ' active' : ''}`}
+                  onClick={() => handleSwitchRole('teacher')}
+                >
+                  👨‍🏫 Teacher Mode
+                </button>
+                <button
+                  type="button"
+                  className={`role-switch-pill${role === 'student' && activeTab !== 'parent' ? ' active' : ''}`}
+                  onClick={() => handleSwitchRole('student')}
+                >
+                  🧑‍🎓 Student Mode
+                </button>
+                <button
+                  type="button"
+                  className={`role-switch-pill${activeTab === 'parent' ? ' active' : ''}`}
+                  onClick={() => handleSwitchRole('parent')}
+                >
+                  👨‍👩‍👧 Parent Mode
+                </button>
+              </div>
+
               <button
                 type="button"
                 className="disconnect-btn"
@@ -275,6 +281,15 @@ function ClassroomPortal() {
       {/* Main Dashboard Content (Visible when authenticated) */}
       {auth && (
         <section className="classroom-dashboard-container">
+          {error && (
+            <div className="classroom-error-banner" style={{ marginBottom: '20px' }}>
+              <ion-icon name="alert-circle-outline"></ion-icon>
+              <div>
+                <strong>Google Classroom API Note:</strong> {error}
+              </div>
+            </div>
+          )}
+
           {/* Main Tri-Portal Tabs */}
           <div className="dashboard-nav-tabs">
             <button
@@ -365,52 +380,88 @@ function ClassroomPortal() {
                   </div>
 
                   {/* Classrooms Grid (All 20) */}
-                  <div className="classrooms-grid">
-                    {filteredCourses.map((c) => (
-                      <div
-                        key={c.id}
-                        className={`classroom-card${selectedCourse?.id === c.id ? ' selected' : ''}`}
-                        onClick={() => setSelectedCourse(c)}
-                      >
-                        <div className="classroom-card-header">
-                          <span className="classroom-tag">{c.grade || '1-on-1'}</span>
-                          <span className="student-subject-tag">{c.subject || 'AP Science'}</span>
-                        </div>
-
-                        <h4 className="h4 classroom-title">{c.name}</h4>
-                        <p className="classroom-section-text">{c.section || c.descriptionHeading}</p>
-
-                        <div className="classroom-card-actions-row">
-                          <button
-                            type="button"
-                            className="card-action-btn primary"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedCourse(c)
-                              setActiveTab('homework')
-                            }}
-                          >
-                            <ion-icon name="book-outline"></ion-icon>
-                            <span>Homework</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            className="card-action-btn parent-btn"
-                            title="Generate parent progress report"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedCourse(c)
-                              setActiveTab('parent')
-                            }}
-                          >
-                            <ion-icon name="people-outline"></ion-icon>
-                            <span>Parent Report</span>
-                          </button>
-                        </div>
+                  {courses.length === 0 ? (
+                    <div className="empty-state-card" style={{ marginTop: '20px' }}>
+                      <ion-icon name="school-outline"></ion-icon>
+                      <h4 className="h4">No Classrooms Returned for {auth.user?.email}</h4>
+                      <p>
+                        Google Classroom returned 0 active courses for this Google account.
+                      </p>
+                      <p style={{ marginTop: '8px', fontSize: '13px', color: 'var(--light-gray-70, #aaa)' }}>
+                        If your 20 classrooms were created under another Google email or Google Workspace account, disconnect and log in with that account.
+                      </p>
+                      <div style={{ marginTop: '16px', display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <a
+                          href="https://classroom.google.com/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hero-cta-btn primary"
+                        >
+                          <span>Check classroom.google.com</span>
+                          <ion-icon name="open-outline"></ion-icon>
+                        </a>
+                        <button
+                          type="button"
+                          className="hero-cta-btn secondary"
+                          onClick={() => {
+                            setCourses(MOCK_20_CLASSROOMS)
+                            setSelectedCourse(MOCK_20_CLASSROOMS[0])
+                            setCourseWork(MOCK_ASSIGNMENTS)
+                          }}
+                        >
+                          <span>Load Sample 20 Classrooms</span>
+                          <ion-icon name="layers-outline"></ion-icon>
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="classrooms-grid">
+                      {filteredCourses.map((c) => (
+                        <div
+                          key={c.id}
+                          className={`classroom-card${selectedCourse?.id === c.id ? ' selected' : ''}`}
+                          onClick={() => setSelectedCourse(c)}
+                        >
+                          <div className="classroom-card-header">
+                            <span className="classroom-tag">{c.grade || '1-on-1'}</span>
+                            <span className="student-subject-tag">{c.subject || 'AP Science'}</span>
+                          </div>
+
+                          <h4 className="h4 classroom-title">{c.name}</h4>
+                          <p className="classroom-section-text">{c.section || c.descriptionHeading}</p>
+
+                          <div className="classroom-card-actions-row">
+                            <button
+                              type="button"
+                              className="card-action-btn primary"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCourse(c)
+                                setActiveTab('homework')
+                              }}
+                            >
+                              <ion-icon name="book-outline"></ion-icon>
+                              <span>Homework</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="card-action-btn parent-btn"
+                              title="Generate parent progress report"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCourse(c)
+                                setActiveTab('parent')
+                              }}
+                            >
+                              <ion-icon name="people-outline"></ion-icon>
+                              <span>Parent Report</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               ) : (
                 /* Student View (Sprint 4: Only student's enrolled course) */
@@ -419,7 +470,7 @@ function ClassroomPortal() {
                     courses.map((c) => (
                       <div key={c.id} className="student-classroom-container">
                         <div className="student-classroom-hero">
-                          <div className="hero-badge">YOUR 1-ON-1 CLASSROOM</div>
+                          <div className="classroom-hero-badge">YOUR 1-ON-1 CLASSROOM</div>
                           <h3 className="h3 hero-course-title">{c.name}</h3>
                           <p className="hero-course-sub">{c.section || 'Private Tutoring Mentorship'}</p>
 

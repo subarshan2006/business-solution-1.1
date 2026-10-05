@@ -4,7 +4,7 @@ const ENROLL_FORM =
 function Services({ activePage }) {
   return (
     <article className={`services${activePage === 'services' ? ' active' : ''}`} data-page="services">
-
+ <br /><br />
       <header>
         <h2 className="h2 article-title">Courses</h2>
       </header>

@@ -29,29 +29,40 @@ async function apiFetch(endpoint, accessToken) {
   return res.json()
 }
 
+export const KNOWN_TEACHERS = [
+  'steenaantony14@gmail.com',
+  'subarshan195@gmail.com',
+]
+
 /**
  * Sprint 2: Detect whether authenticated user is acting as Teacher or Student
  */
-export async function determineRole(accessToken) {
+export async function determineRole(accessToken, userEmail = '') {
+  const normalizedEmail = (userEmail || '').toLowerCase().trim()
+  if (normalizedEmail && KNOWN_TEACHERS.includes(normalizedEmail)) {
+    return { role: 'teacher', teacherCount: 0 }
+  }
+
   try {
-    // Check if the user teaches any courses
-    const teacherCourses = await apiFetch('/courses?teacherId=me&courseStates=ACTIVE&pageSize=10', accessToken)
-    if (teacherCourses.courses && teacherCourses.courses.length > 0) {
-      return { role: 'teacher', teacherCount: teacherCourses.courses.length }
+    // Fetch all courses user is associated with (broad query without restrictive filters)
+    const allCourses = await apiFetch('/courses?pageSize=50', accessToken)
+    const courses = allCourses.courses || []
+
+    if (courses.length > 0) {
+      const hasTeacherFolder = courses.some((c) => c.teacherFolder != null || c.ownerId === 'me')
+      if (hasTeacherFolder) {
+        return { role: 'teacher', teacherCount: courses.length, courses }
+      }
+      return { role: 'student', studentCount: courses.length, courses }
     }
 
-    // Check if the user is enrolled as a student
-    const studentCourses = await apiFetch('/courses?studentId=me&courseStates=ACTIVE&pageSize=10', accessToken)
-    if (studentCourses.courses && studentCourses.courses.length > 0) {
-      return { role: 'student', studentCount: studentCourses.courses.length }
-    }
-
-    // Default fallback
-    return { role: 'student', studentCount: 0 }
+    return { role: 'teacher', studentCount: 0, courses: [] }
   } catch (err) {
-    console.error('Error determining role:', err)
-    // If permission error or empty, return student as safe default
-    return { role: 'student', error: err.message }
+    console.error('Error determining role from Google Classroom:', err)
+    if (normalizedEmail && KNOWN_TEACHERS.includes(normalizedEmail)) {
+      return { role: 'teacher', teacherCount: 0 }
+    }
+    throw err
   }
 }
 
@@ -64,9 +75,7 @@ export async function listTeacherCourses(accessToken) {
 
   do {
     const query = new URLSearchParams({
-      teacherId: 'me',
-      courseStates: 'ACTIVE',
-      pageSize: '30',
+      pageSize: '50',
     })
     if (pageToken) query.set('pageToken', pageToken)
 
@@ -84,7 +93,7 @@ export async function listTeacherCourses(accessToken) {
  * Sprint 4: Student retrieves their enrolled classroom(s)
  */
 export async function listStudentCourses(accessToken) {
-  const data = await apiFetch('/courses?studentId=me&courseStates=ACTIVE&pageSize=10', accessToken)
+  const data = await apiFetch('/courses?pageSize=50', accessToken)
   return data.courses || []
 }
 

@@ -2335,6 +2335,8 @@ textarea.form-input::-webkit-resizer { display: none; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
+  min-width: 220px;
   background: var(--onyx);
   color: var(--orange-yellow-crayola);
   font-size: var(--fs-8);
@@ -2347,6 +2349,12 @@ textarea.form-input::-webkit-resizer { display: none; }
 
 .hero-badge ion-icon {
   font-size: 14px;
+  flex-shrink: 0;
+}
+
+.hero-badge span {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .hero-title {
@@ -4641,7 +4649,7 @@ main { position: relative; z-index: 1; }
   text-align: center;
 }
 
-.hero-badge {
+.classroom-hero-badge {
   display: inline-block;
   background: rgba(117, 209, 180, 0.15);
   color: #75d1b4;

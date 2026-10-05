@@ -101,7 +101,7 @@ function Home({ activePage }) {
 
   return (
     <article className={`home${activePage === 'home' ? ' active' : ''}`} data-page="home">
-
+      <br /><br />
       <header>
         <h2 className="h2 article-title">Home</h2>
       </header>
