@@ -387,7 +387,7 @@ function Home({ activePage }) {
       </section>
 
       <footer style={{ marginTop: '60px', textAlign: 'center', color: 'var(--light-gray)', fontSize: 'var(--fs-8)', paddingBottom: '30px' }}>
-        © 2026 Jivanaut Test Prep — Explorers of Life Science. All rights reserved.
+        © 2026 Jivanaut Test Prep — Explorer of Life Science. All rights reserved.
       </footer>
 
     </article>
