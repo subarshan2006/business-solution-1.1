@@ -1,0 +1,552 @@
+Absolutely. Since you want to give this to your **coding agent**, the best approach is to create a proper implementation plan with **phases, sprints, requirements, API scopes, security rules, and acceptance criteria**.
+
+Your target architecture is:
+
+```text
+NxtStep Tutoring Website
+        │
+        ├── Teacher Login
+        │       ↓
+        │   Google OAuth
+        │       ↓
+        │   Classroom API
+        │       ↓
+        │   All 20 private classrooms
+        │
+        └── Student Login
+                ↓
+            Google OAuth
+                ↓
+            Classroom API
+                ↓
+        Only student's classroom/data
+```
+
+## Master implementation plan
+
+### Sprint 0 — Requirements & safety
+
+**Goal:** Prepare the Google environment before writing Classroom code.
+
+**Tasks**
+
+* Confirm production domain:
+  `https://www.nxtsteptutoring.com`
+* Confirm frontend framework and deployment.
+* Use **one Google Cloud project**.
+* Enable **Google Classroom API**.
+* Configure OAuth consent screen.
+* Configure OAuth Web Application client.
+* Add authorized JavaScript origins:
+
+  * `https://www.nxtsteptutoring.com`
+  * local development origin, e.g. `http://localhost:5173`
+* Do **not** expose the OAuth client secret in frontend code.
+* Add Google Identity Services to the frontend.
+
+**Acceptance criteria**
+
+* Google Cloud project exists.
+* Classroom API is enabled.
+* OAuth Client ID exists.
+* Production and local origins are configured.
+* No client secret exists in frontend source.
+
+---
+
+# Sprint 1 — Google authentication
+
+**Goal:** Make the website understand who is connecting.
+
+Implement:
+
+```text
+[Connect Google Classroom]
+        ↓
+Google account selection
+        ↓
+Google permission screen
+        ↓
+Access token
+        ↓
+Website receives authenticated user
+```
+
+Initially request only the minimum required Classroom permission.
+
+Start with:
+
+```text
+https://www.googleapis.com/auth/classroom.courses.readonly
+```
+
+Do **not** request every Classroom permission immediately.
+
+### Frontend state
+
+Create an authentication state such as:
+
+```js
+{
+  isAuthenticated: true,
+  accessToken: "...",
+  userEmail: "...",
+  role: "teacher" // or student
+}
+```
+
+Do not persist sensitive tokens unnecessarily.
+
+**Acceptance criteria**
+
+* Teacher can click Connect.
+* Google login opens.
+* Teacher grants permission.
+* Website receives an access token.
+* User can disconnect/sign out.
+* No token/client secret is exposed in GitHub.
+
+---
+
+# Sprint 2 — Detect teacher/student
+
+**Goal:** Determine whether the connected Google account is being used as a teacher or student in the Classroom context.
+
+The important thing is that **your website must not assume that every Google account is a teacher**.
+
+Build a role-resolution flow.
+
+```text
+Google account
+      ↓
+Classroom API
+      ↓
+Determine accessible teacher/student resources
+      ↓
+Website role
+      ↓
+Teacher Dashboard / Student Dashboard
+```
+
+### Teacher
+
+Should eventually see:
+
+```text
+Teacher Dashboard
+
+My Students
+My Classrooms
+Assignments
+Submissions
+Marks
+```
+
+### Student
+
+Should eventually see:
+
+```text
+Student Dashboard
+
+My Classroom
+Homework
+Assignments
+My Submissions
+My Marks
+```
+
+**Acceptance criteria**
+
+* Teacher account reaches teacher UI.
+* Student account reaches student UI.
+* Student cannot access teacher-only UI merely by changing a URL.
+* UI role is based on actual authorization, not just a frontend dropdown.
+
+---
+
+# Sprint 3 — Teacher: retrieve the 20 classrooms
+
+**Goal:** Your teacher account can retrieve your classrooms.
+
+API flow:
+
+```text
+Teacher access token
+       ↓
+Classroom API
+       ↓
+List courses
+       ↓
+Your 20 classrooms
+```
+
+Display:
+
+```text
+Teacher Dashboard
+
+My Students
+
+┌──────────────────────────────┐
+│ Student 01                   │
+│ Grade 10                     │
+│ [Open Classroom]             │
+├──────────────────────────────┤
+│ Student 02                   │
+│ Grade 11                     │
+│ [Open Classroom]             │
+├──────────────────────────────┤
+│ Student 03                   │
+│ Grade 12                     │
+│ [Open Classroom]             │
+└──────────────────────────────┘
+```
+
+Don't manually hard-code the 20 Classroom IDs.
+
+Google Classroom provides the course identifiers.
+
+**Acceptance criteria**
+
+* Teacher can retrieve all accessible classrooms.
+* Classroom name and ID are displayed.
+* Empty/error states work.
+* Pagination is handled.
+* No student can see this teacher list.
+
+---
+
+# Sprint 4 — Student: retrieve their classroom
+
+**Goal:** A student connects and sees their own Classroom.
+
+Flow:
+
+```text
+Student Google account
+        ↓
+Google OAuth
+        ↓
+Classroom API
+        ↓
+Courses available to that student
+        ↓
+Their classroom
+```
+
+Because your model is:
+
+```text
+1 teacher
+   ↓
+20 classrooms
+   ↓
+1 student/classroom
+```
+
+the student should normally see the classroom they have been enrolled in.
+
+**Acceptance criteria**
+
+Student 1:
+
+```text
+Student 1
+    ↓
+Classroom 1
+```
+
+cannot use the website to retrieve:
+
+```text
+Classroom 2
+Classroom 3
+...
+Classroom 20
+```
+
+---
+
+# Sprint 5 — Coursework / homework
+
+Once authentication and courses work, add coursework.
+
+Teacher:
+
+```text
+Classroom
+    ↓
+Assignments
+    ↓
+Create/View coursework
+```
+
+Student:
+
+```text
+Classroom
+    ↓
+Assignments
+    ↓
+View homework
+```
+
+Your UI might be:
+
+```text
+Homework
+
+┌──────────────────────────────┐
+│ Algebra – Chapter 3          │
+│ Due: Oct 10                  │
+│ Status: Not submitted        │
+│                              │
+│ [View Assignment]            │
+└──────────────────────────────┘
+```
+
+Use the appropriate Classroom coursework scopes rather than requesting broad access unnecessarily.
+
+---
+
+# Sprint 6 — Student submissions
+
+**Goal:** Student can see and manage their submission state where the API permissions support it.
+
+Example:
+
+```text
+Assignment
+      ↓
+Student submission
+      ↓
+┌─────────────────────────┐
+│ Status: Submitted       │
+│ Submitted: Oct 8        │
+│ Grade: 18/20            │
+└─────────────────────────┘
+```
+
+Teacher view:
+
+```text
+Student 01
+
+Assignment 1
+Submitted ✓
+
+Assignment 2
+Submitted ✓
+
+Assignment 3
+Not submitted
+```
+
+---
+
+# Sprint 7 — Grades / marks
+
+Add marks after submissions are working.
+
+Teacher:
+
+```text
+Student 01
+────────────────
+
+Assignment 1    18/20
+Assignment 2    17/20
+Assignment 3    20/20
+
+Average         91.6%
+```
+
+Student:
+
+```text
+My Results
+────────────────
+
+Assignment 1    18/20
+Assignment 2    17/20
+Assignment 3    20/20
+```
+
+Be careful about the distinction between **assigned grades, returned grades, and what a particular API resource exposes**. Don't invent or calculate a grade unless the product requirement explicitly calls for it.
+
+---
+
+# Sprint 8 — Your custom tutoring dashboard
+
+Once the Google Classroom integration works, build your actual NxtStep interface.
+
+### Teacher
+
+```text
+Dashboard
+│
+├── Students
+│
+├── Classrooms
+│
+├── Homework
+│
+├── Submissions
+│
+├── Marks
+│
+└── Settings
+```
+
+### Student
+
+```text
+Dashboard
+│
+├── My Classroom
+│
+├── Homework
+│
+├── Assignments
+│
+├── Submissions
+│
+├── Marks
+│
+└── Profile
+```
+
+The user should feel like they are using **NxtStep Tutoring**, not simply looking at Google Classroom.
+
+---
+
+# Sprint 9 — Security & isolation
+
+This is **very important for your 20-student model**.
+
+You need to test:
+
+```text
+Student A
+    ↓
+Can see Classroom A
+    ↓
+❌ Cannot see Classroom B
+❌ Cannot see Classroom C
+❌ Cannot see teacher dashboard
+```
+
+Don't rely only on hiding buttons.
+
+For example, this is **not security**:
+
+```js
+if (role === "student") {
+   hideTeacherButton();
+}
+```
+
+A user could potentially manipulate frontend state.
+
+Instead, every Classroom API request must be made using the user's actual Google authorization, and your UI must only expose resources returned/authorized for that user.
+
+Since you're doing frontend-only, there are limitations compared with a backend-controlled authorization layer. Your agent should explicitly document those limitations rather than pretending the frontend is a secure authorization boundary.
+
+---
+
+# Sprint 10 — Production testing
+
+Test these scenarios:
+
+### Teacher
+
+* Login
+* Logout
+* Connect Classroom
+* See all 20 classrooms
+* Open each classroom
+* View coursework
+* View submissions
+* View grades
+* Token expiration/re-authentication
+* API errors
+
+### Student 1
+
+* Login
+* See Classroom 1
+* View homework
+* View own submission
+* View own marks
+
+### Student 2
+
+* Login
+* See Classroom 2
+* Cannot access Student 1's data
+
+### Cross-account testing
+
+Use at least:
+
+```text
+Teacher Google account
+Student 1 Google account
+Student 2 Google account
+```
+
+Don't test everything with only your teacher account.
+
+---
+
+# Sprint order
+
+I strongly recommend **not asking your agent to build everything at once**.
+
+Use this sequence:
+
+```text
+SPRINT 0
+Google Cloud + OAuth configuration
+        ↓
+SPRINT 1
+Google authentication
+        ↓
+SPRINT 2
+Teacher / Student authorization
+        ↓
+SPRINT 3
+Teacher → 20 Classrooms
+        ↓
+SPRINT 4
+Student → Own Classroom
+        ↓
+SPRINT 5
+Homework / Coursework
+        ↓
+SPRINT 6
+Submissions
+        ↓
+SPRINT 7
+Marks
+        ↓
+SPRINT 8
+Custom dashboards
+        ↓
+SPRINT 9
+Security / isolation
+        ↓
+SPRINT 10
+Production testing
+```
+
+### Most important rule for your agent
+
+Give your agent this instruction:
+
+> **Do not implement the next sprint until the current sprint's acceptance criteria pass. Do not request all Google Classroom OAuth scopes at once. Start with authentication and read-only course access, verify it with the teacher account, and then incrementally add coursework, submissions, and grades. Never put the OAuth client secret in frontend code or commit it to the repository.**
+
+That will prevent the agent from jumping directly into a huge, difficult integration.
+
+Also, because you are using a **frontend-only architecture**, I would have the agent explicitly maintain a `GOOGLE_CLASSROOM.md` document containing the OAuth configuration, requested scopes, API endpoints/resources used, security assumptions, and known limitations. That will make the project much easier to maintain later.

@@ -68,6 +68,15 @@ function Navbar({ activePage }) {
               Student Record
             </Link>
           </li>
+          <li className="navbar-item">
+            <Link
+              to="/classroom"
+              className={`navbar-link${activePage === 'classroom' ? ' active' : ''}`}
+              data-nav-link
+            >
+              Classroom
+            </Link>
+          </li>
         </ul>
       </nav>
 
@@ -105,6 +114,15 @@ function Navbar({ activePage }) {
               onClick={() => setMenuOpen(false)}
             >
               Student Record
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/classroom"
+              className={`mobile-menu-link${activePage === 'classroom' ? ' active' : ''}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Classroom
             </Link>
           </li>
         </ul>

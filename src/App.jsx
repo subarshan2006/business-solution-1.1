@@ -11,6 +11,7 @@ import ThemeToggle from './components/ThemeToggle'
 import BackgroundVideo from './components/BackgroundVideo'
 import WhatsAppFab from './components/WhatsAppFab'
 import NotesPage from './components/NotesPage'
+import ClassroomPortal from './components/ClassroomPortal'
 
 function Layout({ activePage, setActivePage, children }) {
   const [theme, setTheme] = useState(() => {
@@ -44,6 +45,16 @@ function App() {
   return (
     <BrowserRouter basename="/business-solution-1.1">
       <Routes>
+        <Route path="/classroom" element={
+          <Layout activePage="classroom" setActivePage={() => {}}>
+            <ClassroomPortal />
+          </Layout>
+        } />
+        <Route path="/classroom/:courseId" element={
+          <Layout activePage="classroom" setActivePage={() => {}}>
+            <ClassroomPortal />
+          </Layout>
+        } />
         <Route path="/studentrecords/:slug" element={
           <Layout activePage="notes" setActivePage={() => {}}>
             <NotesPage />
