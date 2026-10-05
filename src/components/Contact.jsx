@@ -153,7 +153,7 @@ function Contact({ activePage }) {
               </div>
               <div>
                 <h5 className="h5">Reporting</h5>
-                <p className="availability-text">Mandatory session updates shared via email and Google Classroom, with continuous feedback and active parent communication on WhatsApp</p>
+                <p className="availability-text">Regular post-session briefings for parents on request</p>
               </div>
             </li>
           </ul>

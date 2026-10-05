@@ -168,7 +168,8 @@ function Services({ activePage }) {
                     <span>Reporting &amp; Feedback</span>
                   </div>
                 </td>
-                <td>Regular post-session briefings, milestone checks, and transparent progress updates shared directly with parents</td>
+                <td>Reporting
+Mandatory session updates shared via email and Google Classroom, with continuous feedback and active parent communication on WhatsApp</td>
               </tr>
             </tbody>
           </table>
