@@ -2582,9 +2582,19 @@ textarea.form-input::-webkit-resizer { display: none; }
   font-size: var(--fs-6);
   color: var(--light-gray);
   margin-top: 10px;
+  line-height: 1.55;
 }
 
 .stat-icon-box ion-icon { display: inline-block; }
+
+/* Degrees card — comfortable size, always contained inside the card box */
+#methodology .stat-card:nth-child(2) .stat-text {
+  font-size: 0.72rem;
+  line-height: 1.55;
+  margin-top: 8px;
+  max-width: 100%;
+  text-wrap: balance;
+}
 
 .stat-value {
   color: var(--white-2);

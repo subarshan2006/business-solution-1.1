@@ -193,7 +193,11 @@ function Home({ activePage }) {
           </li>
           <li className="stat-card">
             <h4 className="stat-number" style={{ fontSize: '1.4rem' }}>MSc Zoology</h4>
-            <p className="stat-text">&amp; MSc Environmental Science, B.Ed.</p>
+            <p className="stat-text">
+              MSc Environmental Science<br />
+              B.Ed.<br />
+              Diploma in Psychology &amp; Counseling
+            </p>
           </li>
           <li className="stat-card">
             <h4 className="stat-number" style={{ fontSize: '1.8rem' }}>1-on-1</h4>
