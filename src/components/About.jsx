@@ -2,22 +2,22 @@ const experience = [
   {
     title: 'Independent Science Mentor — Jivanaut Test Prep',
     years: '2026 – Present',
-    text: 'Fully independent, one-on-one online mentoring in AP Biology, AP Environmental Science and AP Psychology for students across US and global time zones.',
+    text: 'Tailored, high-impact 1-on-1 online mentoring in AP Biology, AP Environmental Science, and AP Psychology for high school students across US and international time zones.'
   },
   {
-    title: 'Online Science Tutoring',
+    title: 'Specialized Online Science Educator (US AP Curriculum)',
     years: '2021 – 2026',
-    text: 'Five years of online science tutoring, building strong conceptual understanding and examination technique in the life sciences.',
+    text: 'Five years of dedicated online instruction for US-based students across Advanced Placement (AP) sciences and life sciences, focusing on core conceptual mastery, Free-Response Question (FRQ) scoring frameworks, and consistent top-bracket exam results.'
   },
   {
-    title: 'Asiaville — Middle School',
+    title: 'Middle School Science Educator — Asiaville',
     years: '2020',
-    text: 'Middle school science instruction covering both the CBSE and state syllabi.',
+    text: 'Inquiry-driven science instruction bridging both CBSE and State curricula, developing foundational critical thinking and practical experimental curiosity in middle school learners.'
   },
   {
-    title: 'Indian Public School',
+    title: 'Science Educator — The Indian Public School (IB Curriculum)',
     years: '2015 – 2020',
-    text: 'Five years of science teaching in a public school, laying the foundations of clear, structured scientific instruction.',
+    text: 'Five years of rigorous scientific instruction within the International Baccalaureate (IB) framework, fostering student-led inquiry, hands-on laboratory investigations, and strong conceptual foundations in science.'
   }
 ]
 

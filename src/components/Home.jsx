@@ -109,9 +109,9 @@ function Home({ activePage }) {
       {/* Hero Section */}
       <section className="hero-section">
         <h1 className="brand-title typewriter-text">
-          {displayedText.length <= 7
+          {displayedText.length <= 8
             ? <>{renderLetters(displayedText)}<span className="typewriter-cursor">|</span></>
-            : <>{renderLetters(displayedText.slice(0, 7))}<br className="mobile-break" />{renderLetters(displayedText.slice(7), 7)}<span className="typewriter-cursor">|</span></>
+            : <>{renderLetters(displayedText.slice(0, 8))}<br className="mobile-break" />{renderLetters(displayedText.slice(8), 8)}<span className="typewriter-cursor">|</span></>
           }
         </h1>
 
