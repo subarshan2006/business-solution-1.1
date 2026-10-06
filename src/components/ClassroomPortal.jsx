@@ -53,6 +53,10 @@ function ClassroomPortal() {
   const [activeTab, setActiveTab] = useState('courses') // 'courses', 'homework', 'grades', 'parent'
   const [gradeFilter, setGradeFilter] = useState('all') // 'all', 'Grade 10', 'Grade 11', 'Grade 12'
   const [selectedAssignment, setSelectedAssignment] = useState(null)
+  // Aggregated coursework across ALL enrolled courses (for student view)
+  const [allCourseWork, setAllCourseWork] = useState({}) // { courseId: { courseName, items: [] } }
+  const [allCourseWorkLoading, setAllCourseWorkLoading] = useState(false)
+  const [allCourseWorkError, setAllCourseWorkError] = useState('')
 
   const hasClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -70,9 +74,8 @@ function ClassroomPortal() {
         setSelectedCourse(MOCK_20_CLASSROOMS[0])
         setCourseWork(MOCK_ASSIGNMENTS)
       } else {
-        const studentCourse = MOCK_20_CLASSROOMS[0]
-        setCourses([studentCourse])
-        setSelectedCourse(studentCourse)
+        setCourses(MOCK_20_CLASSROOMS)
+        setSelectedCourse(MOCK_20_CLASSROOMS[0])
         setCourseWork(MOCK_ASSIGNMENTS)
       }
       return
@@ -208,6 +211,64 @@ function ClassroomPortal() {
       isMounted = false
     }
   }, [selectedCourse, auth])
+
+  // Fetch coursework from ALL enrolled courses for student view
+  useEffect(() => {
+    if (!auth || !courses.length) return
+    // Only fetch for student role (not teacher viewing as teacher)
+    if (isTeacher && role === 'teacher') return
+
+    if (auth.isMock) {
+      // Build allCourseWork from mock data for all courses
+      const mockAll = {}
+      courses.forEach((c) => {
+        mockAll[c.id] = { courseName: c.name, alternateLink: c.alternateLink, items: MOCK_ASSIGNMENTS }
+      })
+      setAllCourseWork(mockAll)
+      return
+    }
+
+    let isMounted = true
+    async function loadAllCourseWork() {
+      setAllCourseWorkLoading(true)
+      setAllCourseWorkError('')
+      try {
+        const results = await Promise.allSettled(
+          courses.map(async (c) => {
+            const cw = await fetchCourseWorkWithSubmissions(c.id, auth.accessToken)
+            return { courseId: c.id, courseName: c.name, alternateLink: c.alternateLink, items: cw }
+          })
+        )
+        if (isMounted) {
+          const aggregated = {}
+          results.forEach((r) => {
+            if (r.status === 'fulfilled') {
+              aggregated[r.value.courseId] = {
+                courseName: r.value.courseName,
+                alternateLink: r.value.alternateLink,
+                items: r.value.items,
+              }
+            }
+          })
+          setAllCourseWork(aggregated)
+        }
+      } catch (err) {
+        console.error('Failed to load coursework across all courses:', err)
+        if (isMounted) {
+          setAllCourseWorkError(err.message || 'Failed to load coursework from all classrooms.')
+        }
+      } finally {
+        if (isMounted) {
+          setAllCourseWorkLoading(false)
+        }
+      }
+    }
+
+    loadAllCourseWork()
+    return () => {
+      isMounted = false
+    }
+  }, [courses, auth, isTeacher, role])
 
   const handleConnectLive = async () => {
     setLoading(true)
@@ -732,122 +793,261 @@ function ClassroomPortal() {
           {/* ======================================================= */}
           {activeTab === 'homework' && (
             <div className="tab-pane">
-              <div className="course-context-header">
-                <div>
-                  <h3 className="h3">
-                    {selectedCourse ? selectedCourse.name : 'Coursework & Assignments'}
-                  </h3>
-                  <p className="context-sub">
-                    Direct live coursework and prompts synced from Google Classroom. Click any assignment to inspect instructions.
-                  </p>
-                </div>
-              </div>
-
-              <div className="assignments-list">
-                {loadingCourseWork ? (
-                  <div className="empty-state-card" style={{ padding: '36px' }}>
-                    <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
-                    <h4 className="h4" style={{ marginTop: '12px' }}>Loading Real Coursework...</h4>
-                    <p>Fetching active assignments directly from Google Classroom.</p>
-                  </div>
-                ) : courseWorkError ? (
-                  <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
-                    <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
-                    <h4 className="h4" style={{ color: '#ff6b6b' }}>Google Classroom Permission Required</h4>
-                    <p>{courseWorkError}</p>
-                    <div style={{ marginTop: '16px' }}>
-                      <button
-                        type="button"
-                        className="hero-cta-btn primary"
-                        onClick={handleConnectLive}
-                      >
-                        <span>Grant Classroom Permissions</span>
-                        <ion-icon name="shield-checkmark-outline"></ion-icon>
-                      </button>
+              {isTeacher && role === 'teacher' ? (
+                /* ── Teacher View: single selected course ── */
+                <>
+                  <div className="course-context-header">
+                    <div>
+                      <h3 className="h3">
+                        {selectedCourse ? selectedCourse.name : 'Coursework & Assignments'}
+                      </h3>
+                      <p className="context-sub">
+                        Direct live coursework and prompts synced from Google Classroom. Click any assignment to inspect instructions.
+                      </p>
                     </div>
                   </div>
-                ) : courseWork.length > 0 ? (
-                  courseWork.map((item) => {
-                    const dueStr = item.dueDate
-                      ? `${item.dueDate.month}/${item.dueDate.day}/${item.dueDate.year}`
-                      : 'No due date'
-                    const subState = item.submission?.state || 'ASSIGNED'
-                    return (
-                      <div
-                        key={item.id}
-                        className="assignment-card clickable"
-                        onClick={() => setSelectedAssignment(item)}
-                      >
-                        <div className="assignment-main">
-                          <div className="assignment-title-row">
-                            <h4 className="h4 assignment-title">{item.title}</h4>
-                            <span className={`status-pill ${subState.toLowerCase()}`}>
-                              {subState === 'RETURNED'
-                                ? 'Graded ✓'
-                                : subState === 'TURNED_IN'
-                                ? 'Submitted'
-                                : 'Assigned'}
-                            </span>
-                          </div>
-                          <p className="assignment-desc">
-                            {item.description || 'No additional instructions provided for this coursework item.'}
-                          </p>
-                          <div className="assignment-meta-row">
-                            <span>
-                              <ion-icon name="calendar-outline"></ion-icon> Due: {dueStr}
-                            </span>
-                            <span>
-                              <ion-icon name="ribbon-outline"></ion-icon> Max Points: {item.maxPoints || 100}
-                            </span>
-                            {item.submission?.assignedGrade != null && (
-                              <span className="grade-badge">
-                                Grade: {item.submission.assignedGrade} / {item.maxPoints || 100}
-                              </span>
-                            )}
-                            {item.submissions && item.submissions.length > 1 && (
-                              <span className="grade-badge" style={{ background: 'rgba(92, 149, 240, 0.15)', color: '#5c95f0' }}>
-                                {item.submissions.length} Submissions
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="assignment-action">
+
+                  <div className="assignments-list">
+                    {loadingCourseWork ? (
+                      <div className="empty-state-card" style={{ padding: '36px' }}>
+                        <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                        <h4 className="h4" style={{ marginTop: '12px' }}>Loading Real Coursework...</h4>
+                        <p>Fetching active assignments directly from Google Classroom.</p>
+                      </div>
+                    ) : courseWorkError ? (
+                      <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
+                        <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
+                        <h4 className="h4" style={{ color: '#ff6b6b' }}>Google Classroom Permission Required</h4>
+                        <p>{courseWorkError}</p>
+                        <div style={{ marginTop: '16px' }}>
                           <button
                             type="button"
-                            className="view-assignment-btn"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedAssignment(item)
-                            }}
+                            className="hero-cta-btn primary"
+                            onClick={handleConnectLive}
                           >
-                            <span>Inspect Prompt</span>
-                            <ion-icon name="document-text-outline"></ion-icon>
+                            <span>Grant Classroom Permissions</span>
+                            <ion-icon name="shield-checkmark-outline"></ion-icon>
                           </button>
                         </div>
                       </div>
-                    )
-                  })
-                ) : (
-                  <div className="empty-state-card">
-                    <ion-icon name="document-text-outline"></ion-icon>
-                    <h4 className="h4">No Coursework Found</h4>
-                    <p>No active assignments were returned for {selectedCourse?.name || 'this classroom'}.</p>
-                    {selectedCourse?.alternateLink && (
-                      <div style={{ marginTop: '16px' }}>
-                        <a
-                          href={selectedCourse.alternateLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hero-cta-btn secondary"
-                        >
-                          <span>Open in Google Classroom App</span>
-                          <ion-icon name="open-outline"></ion-icon>
-                        </a>
+                    ) : courseWork.length > 0 ? (
+                      courseWork.map((item) => {
+                        const dueStr = item.dueDate
+                          ? `${item.dueDate.month}/${item.dueDate.day}/${item.dueDate.year}`
+                          : 'No due date'
+                        const subState = item.submission?.state || 'ASSIGNED'
+                        return (
+                          <div
+                            key={item.id}
+                            className="assignment-card clickable"
+                            onClick={() => setSelectedAssignment(item)}
+                          >
+                            <div className="assignment-main">
+                              <div className="assignment-title-row">
+                                <h4 className="h4 assignment-title">{item.title}</h4>
+                                <span className={`status-pill ${subState.toLowerCase()}`}>
+                                  {subState === 'RETURNED'
+                                    ? 'Graded ✓'
+                                    : subState === 'TURNED_IN'
+                                    ? 'Submitted'
+                                    : 'Assigned'}
+                                </span>
+                              </div>
+                              <p className="assignment-desc">
+                                {item.description || 'No additional instructions provided for this coursework item.'}
+                              </p>
+                              <div className="assignment-meta-row">
+                                <span>
+                                  <ion-icon name="calendar-outline"></ion-icon> Due: {dueStr}
+                                </span>
+                                <span>
+                                  <ion-icon name="ribbon-outline"></ion-icon> Max Points: {item.maxPoints || 100}
+                                </span>
+                                {item.submission?.assignedGrade != null && (
+                                  <span className="grade-badge">
+                                    Grade: {item.submission.assignedGrade} / {item.maxPoints || 100}
+                                  </span>
+                                )}
+                                {item.submissions && item.submissions.length > 1 && (
+                                  <span className="grade-badge" style={{ background: 'rgba(92, 149, 240, 0.15)', color: '#5c95f0' }}>
+                                    {item.submissions.length} Submissions
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="assignment-action">
+                              <button
+                                type="button"
+                                className="view-assignment-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedAssignment(item)
+                                }}
+                              >
+                                <span>Inspect Prompt</span>
+                                <ion-icon name="document-text-outline"></ion-icon>
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <div className="empty-state-card">
+                        <ion-icon name="document-text-outline"></ion-icon>
+                        <h4 className="h4">No Coursework Found</h4>
+                        <p>No active assignments were returned for {selectedCourse?.name || 'this classroom'}.</p>
+                        {selectedCourse?.alternateLink && (
+                          <div style={{ marginTop: '16px' }}>
+                            <a
+                              href={selectedCourse.alternateLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hero-cta-btn secondary"
+                            >
+                              <span>Open in Google Classroom App</span>
+                              <ion-icon name="open-outline"></ion-icon>
+                            </a>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                /* ── Student View: ALL enrolled classrooms ── */
+                <>
+                  <div className="course-context-header">
+                    <div>
+                      <h3 className="h3">My Homework & Tasks</h3>
+                      <p className="context-sub">
+                        All assignments across your enrolled classrooms. Click any assignment to inspect instructions.
+                      </p>
+                    </div>
+                  </div>
+
+                  {allCourseWorkLoading ? (
+                    <div className="empty-state-card" style={{ padding: '36px' }}>
+                      <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                      <h4 className="h4" style={{ marginTop: '12px' }}>Loading Coursework from All Classrooms...</h4>
+                      <p>Fetching assignments from {courses.length} enrolled classroom{courses.length !== 1 ? 's' : ''}.</p>
+                    </div>
+                  ) : allCourseWorkError ? (
+                    <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
+                      <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
+                      <h4 className="h4" style={{ color: '#ff6b6b' }}>Failed to Load Coursework</h4>
+                      <p>{allCourseWorkError}</p>
+                    </div>
+                  ) : Object.keys(allCourseWork).length > 0 ? (
+                    Object.entries(allCourseWork).map(([courseId, courseData]) => (
+                      <div key={courseId} className="student-all-course-section" style={{ marginBottom: '28px' }}>
+                        <div className="course-section-header" style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          gap: '12px', flexWrap: 'wrap', marginBottom: '14px',
+                          padding: '10px 16px', borderRadius: '10px',
+                          background: 'var(--border-gradient-onyx)', position: 'relative',
+                        }}>
+                          <div style={{ position: 'absolute', inset: '1px', background: 'var(--bg-gradient-jet)', borderRadius: 'inherit', zIndex: 0 }}></div>
+                          <div style={{ position: 'relative', zIndex: 1 }}>
+                            <h4 className="h4" style={{ color: 'var(--orange-yellow-crayola)', marginBottom: '2px' }}>
+                              <ion-icon name="school-outline" style={{ marginRight: '6px', fontSize: '16px', verticalAlign: '-2px' }}></ion-icon>
+                              {courseData.courseName}
+                            </h4>
+                            <span style={{ fontSize: '11px', color: 'var(--light-gray-70, #aaa)' }}>
+                              {courseData.items.length} assignment{courseData.items.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          {courseData.alternateLink && (
+                            <a
+                              href={courseData.alternateLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                position: 'relative', zIndex: 1,
+                                fontSize: '11px', color: 'var(--light-gray)',
+                                textDecoration: 'none', display: 'inline-flex',
+                                alignItems: 'center', gap: '4px',
+                              }}
+                            >
+                              <ion-icon name="open-outline"></ion-icon> Open in Classroom
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="assignments-list">
+                          {courseData.items.length > 0 ? (
+                            courseData.items.map((item) => {
+                              const dueStr = item.dueDate
+                                ? `${item.dueDate.month}/${item.dueDate.day}/${item.dueDate.year}`
+                                : 'No due date'
+                              const subState = item.submission?.state || 'ASSIGNED'
+                              return (
+                                <div
+                                  key={`${courseId}-${item.id}`}
+                                  className="assignment-card clickable"
+                                  onClick={() => setSelectedAssignment(item)}
+                                >
+                                  <div className="assignment-main">
+                                    <div className="assignment-title-row">
+                                      <h4 className="h4 assignment-title">{item.title}</h4>
+                                      <span className={`status-pill ${subState.toLowerCase()}`}>
+                                        {subState === 'RETURNED'
+                                          ? 'Graded ✓'
+                                          : subState === 'TURNED_IN'
+                                          ? 'Submitted'
+                                          : 'Assigned'}
+                                      </span>
+                                    </div>
+                                    <p className="assignment-desc">
+                                      {item.description || 'No additional instructions provided for this coursework item.'}
+                                    </p>
+                                    <div className="assignment-meta-row">
+                                      <span>
+                                        <ion-icon name="calendar-outline"></ion-icon> Due: {dueStr}
+                                      </span>
+                                      <span>
+                                        <ion-icon name="ribbon-outline"></ion-icon> Max Points: {item.maxPoints || 100}
+                                      </span>
+                                      {item.submission?.assignedGrade != null && (
+                                        <span className="grade-badge">
+                                          Grade: {item.submission.assignedGrade} / {item.maxPoints || 100}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="assignment-action">
+                                    <button
+                                      type="button"
+                                      className="view-assignment-btn"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setSelectedAssignment(item)
+                                      }}
+                                    >
+                                      <span>Inspect Prompt</span>
+                                      <ion-icon name="document-text-outline"></ion-icon>
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          ) : (
+                            <div className="empty-state-card" style={{ padding: '20px' }}>
+                              <ion-icon name="document-text-outline"></ion-icon>
+                              <p style={{ marginTop: '8px' }}>No active assignments for {courseData.courseName}.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="empty-state-card">
+                      <ion-icon name="document-text-outline"></ion-icon>
+                      <h4 className="h4">No Coursework Found</h4>
+                      <p>No active assignments were returned for your enrolled classrooms.</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -856,134 +1056,270 @@ function ClassroomPortal() {
           {/* ======================================================= */}
           {activeTab === 'grades' && (
             <div className="tab-pane">
-              <div className="grades-summary-card">
-                <div className="summary-col">
-                  <span className="summary-label">Course / Classroom</span>
-                  <strong className="summary-value">{selectedCourse?.name || 'Classroom'}</strong>
-                </div>
-                <div className="summary-col">
-                  <span className="summary-label">Completion Rate</span>
-                  <strong className="summary-value">
-                    {courseWork.length > 0
-                      ? `${analytics.completionRate}% (${analytics.completedHomework.length} of ${courseWork.length} Completed)`
-                      : '0% (0 Items)'}
-                  </strong>
-                </div>
-                <div className="summary-col">
-                  <span className="summary-label">Cumulative Average</span>
-                  <strong className="summary-value highlight">
-                    {courseWork.length > 0
-                      ? `${analytics.averagePercentage}% (Grade ${analytics.letterGrade})`
-                      : '—'}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="marks-table-wrapper">
-                {loadingCourseWork ? (
-                  <div className="empty-state-card" style={{ padding: '36px' }}>
-                    <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
-                    <h4 className="h4" style={{ marginTop: '12px' }}>Fetching Real Submissions & Marks...</h4>
-                    <p>Querying student submission records and scores from Google Classroom.</p>
-                  </div>
-                ) : courseWorkError ? (
-                  <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
-                    <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
-                    <h4 className="h4" style={{ color: '#ff6b6b' }}>Google Classroom Permission Required</h4>
-                    <p>{courseWorkError}</p>
-                    <div style={{ marginTop: '16px' }}>
-                      <button
-                        type="button"
-                        className="hero-cta-btn primary"
-                        onClick={handleConnectLive}
-                      >
-                        <span>Grant Classroom Permissions</span>
-                        <ion-icon name="shield-checkmark-outline"></ion-icon>
-                      </button>
+              {isTeacher && role === 'teacher' ? (
+                /* ── Teacher View: single selected course grades ── */
+                <>
+                  <div className="grades-summary-card">
+                    <div className="summary-col">
+                      <span className="summary-label">Course / Classroom</span>
+                      <strong className="summary-value">{selectedCourse?.name || 'Classroom'}</strong>
+                    </div>
+                    <div className="summary-col">
+                      <span className="summary-label">Completion Rate</span>
+                      <strong className="summary-value">
+                        {courseWork.length > 0
+                          ? `${analytics.completionRate}% (${analytics.completedHomework.length} of ${courseWork.length} Completed)`
+                          : '0% (0 Items)'}
+                      </strong>
+                    </div>
+                    <div className="summary-col">
+                      <span className="summary-label">Cumulative Average</span>
+                      <strong className="summary-value highlight">
+                        {courseWork.length > 0
+                          ? `${analytics.averagePercentage}% (Grade ${analytics.letterGrade})`
+                          : '—'}
+                      </strong>
                     </div>
                   </div>
-                ) : courseWork.length === 0 ? (
-                  <div className="empty-state-card">
-                    <ion-icon name="ribbon-outline"></ion-icon>
-                    <h4 className="h4">No Submissions Found</h4>
-                    <p>No coursework submissions or scores have been recorded for {selectedCourse?.name || 'this classroom'} yet.</p>
-                  </div>
-                ) : (
-                  <table className="marks-table">
-                    <thead>
-                      <tr>
-                        <th>Assignment</th>
-                        <th>Status</th>
-                        <th>Turned In</th>
-                        <th>Score</th>
-                        <th>Student / Instructor Notes</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {courseWork.map((item) => {
-                        const sub = item.submission
-                        return (
-                          <tr
-                            key={item.id}
-                            className="clickable-table-row"
-                            onClick={() => setSelectedAssignment(item)}
+
+                  <div className="marks-table-wrapper">
+                    {loadingCourseWork ? (
+                      <div className="empty-state-card" style={{ padding: '36px' }}>
+                        <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                        <h4 className="h4" style={{ marginTop: '12px' }}>Fetching Real Submissions & Marks...</h4>
+                        <p>Querying student submission records and scores from Google Classroom.</p>
+                      </div>
+                    ) : courseWorkError ? (
+                      <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
+                        <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
+                        <h4 className="h4" style={{ color: '#ff6b6b' }}>Google Classroom Permission Required</h4>
+                        <p>{courseWorkError}</p>
+                        <div style={{ marginTop: '16px' }}>
+                          <button
+                            type="button"
+                            className="hero-cta-btn primary"
+                            onClick={handleConnectLive}
                           >
-                            <td>
-                              <strong>{item.title}</strong>
-                              {sub?.studentName && sub.studentName !== 'Enrolled Student' && (
-                                <div style={{ fontSize: '11px', color: 'var(--light-gray-70, #aaa)' }}>
-                                  Student: {sub.studentName}
-                                </div>
-                              )}
-                            </td>
-                            <td>
-                              <span className={`status-pill ${sub?.state?.toLowerCase() || 'assigned'}`}>
-                                {sub?.state === 'RETURNED'
-                                  ? 'Graded ✓'
-                                  : sub?.state === 'TURNED_IN'
-                                  ? 'Submitted'
-                                  : 'Assigned'}
-                              </span>
-                            </td>
-                            <td>{sub?.turnInTime ? new Date(sub.turnInTime).toLocaleDateString() : '—'}</td>
-                            <td>
-                              {sub?.assignedGrade != null ? (
-                                <span className="grade-badge">
-                                  {sub.assignedGrade} / {item.maxPoints || 100}
-                                </span>
-                              ) : (
-                                <span className="text-muted">—</span>
-                              )}
-                            </td>
-                            <td className="feedback-preview-cell">
-                              {sub?.teacherFeedback ? (
-                                <span className="feedback-snippet">{sub.teacherFeedback}</span>
-                              ) : sub?.state === 'TURNED_IN' ? (
-                                <span className="text-muted">Turned In · Pending Grading</span>
-                              ) : (
-                                <span className="text-muted">Assigned</span>
-                              )}
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="table-action-link"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setSelectedAssignment(item)
-                                }}
-                              >
-                                Inspect
-                              </button>
-                            </td>
+                            <span>Grant Classroom Permissions</span>
+                            <ion-icon name="shield-checkmark-outline"></ion-icon>
+                          </button>
+                        </div>
+                      </div>
+                    ) : courseWork.length === 0 ? (
+                      <div className="empty-state-card">
+                        <ion-icon name="ribbon-outline"></ion-icon>
+                        <h4 className="h4">No Submissions Found</h4>
+                        <p>No coursework submissions or scores have been recorded for {selectedCourse?.name || 'this classroom'} yet.</p>
+                      </div>
+                    ) : (
+                      <table className="marks-table">
+                        <thead>
+                          <tr>
+                            <th>Assignment</th>
+                            <th>Status</th>
+                            <th>Turned In</th>
+                            <th>Score</th>
+                            <th>Student / Instructor Notes</th>
+                            <th>Action</th>
                           </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+                        </thead>
+                        <tbody>
+                          {courseWork.map((item) => {
+                            const sub = item.submission
+                            return (
+                              <tr
+                                key={item.id}
+                                className="clickable-table-row"
+                                onClick={() => setSelectedAssignment(item)}
+                              >
+                                <td>
+                                  <strong>{item.title}</strong>
+                                  {sub?.studentName && sub.studentName !== 'Enrolled Student' && (
+                                    <div style={{ fontSize: '11px', color: 'var(--light-gray-70, #aaa)' }}>
+                                      Student: {sub.studentName}
+                                    </div>
+                                  )}
+                                </td>
+                                <td>
+                                  <span className={`status-pill ${sub?.state?.toLowerCase() || 'assigned'}`}>
+                                    {sub?.state === 'RETURNED'
+                                      ? 'Graded ✓'
+                                      : sub?.state === 'TURNED_IN'
+                                      ? 'Submitted'
+                                      : 'Assigned'}
+                                  </span>
+                                </td>
+                                <td>{sub?.turnInTime ? new Date(sub.turnInTime).toLocaleDateString() : '—'}</td>
+                                <td>
+                                  {sub?.assignedGrade != null ? (
+                                    <span className="grade-badge">
+                                      {sub.assignedGrade} / {item.maxPoints || 100}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted">—</span>
+                                  )}
+                                </td>
+                                <td className="feedback-preview-cell">
+                                  {sub?.teacherFeedback ? (
+                                    <span className="feedback-snippet">{sub.teacherFeedback}</span>
+                                  ) : sub?.state === 'TURNED_IN' ? (
+                                    <span className="text-muted">Turned In · Pending Grading</span>
+                                  ) : (
+                                    <span className="text-muted">Assigned</span>
+                                  )}
+                                </td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="table-action-link"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedAssignment(item)
+                                    }}
+                                  >
+                                    Inspect
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* ── Student View: ALL enrolled classrooms grades ── */
+                <>
+                  {allCourseWorkLoading ? (
+                    <div className="empty-state-card" style={{ padding: '36px' }}>
+                      <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                      <h4 className="h4" style={{ marginTop: '12px' }}>Fetching Marks from All Classrooms...</h4>
+                      <p>Querying submission records and scores from {courses.length} enrolled classroom{courses.length !== 1 ? 's' : ''}.</p>
+                    </div>
+                  ) : allCourseWorkError ? (
+                    <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
+                      <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
+                      <h4 className="h4" style={{ color: '#ff6b6b' }}>Failed to Load Grades</h4>
+                      <p>{allCourseWorkError}</p>
+                    </div>
+                  ) : Object.keys(allCourseWork).length > 0 ? (
+                    Object.entries(allCourseWork).map(([courseId, courseData]) => {
+                      const courseAnalytics = calculateStudentAnalytics(courseData.items)
+                      return (
+                        <div key={courseId} style={{ marginBottom: '28px' }}>
+                          <div className="grades-summary-card">
+                            <div className="summary-col">
+                              <span className="summary-label">Course / Classroom</span>
+                              <strong className="summary-value">{courseData.courseName}</strong>
+                            </div>
+                            <div className="summary-col">
+                              <span className="summary-label">Completion Rate</span>
+                              <strong className="summary-value">
+                                {courseData.items.length > 0
+                                  ? `${courseAnalytics.completionRate}% (${courseAnalytics.completedHomework.length} of ${courseData.items.length} Completed)`
+                                  : '0% (0 Items)'}
+                              </strong>
+                            </div>
+                            <div className="summary-col">
+                              <span className="summary-label">Cumulative Average</span>
+                              <strong className="summary-value highlight">
+                                {courseData.items.length > 0
+                                  ? `${courseAnalytics.averagePercentage}% (Grade ${courseAnalytics.letterGrade})`
+                                  : '—'}
+                              </strong>
+                            </div>
+                          </div>
+
+                          <div className="marks-table-wrapper">
+                            {courseData.items.length === 0 ? (
+                              <div className="empty-state-card" style={{ padding: '20px' }}>
+                                <ion-icon name="ribbon-outline"></ion-icon>
+                                <p style={{ marginTop: '8px' }}>No submissions found for {courseData.courseName}.</p>
+                              </div>
+                            ) : (
+                              <table className="marks-table">
+                                <thead>
+                                  <tr>
+                                    <th>Assignment</th>
+                                    <th>Status</th>
+                                    <th>Turned In</th>
+                                    <th>Score</th>
+                                    <th>Student / Instructor Notes</th>
+                                    <th>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {courseData.items.map((item) => {
+                                    const sub = item.submission
+                                    return (
+                                      <tr
+                                        key={`${courseId}-${item.id}`}
+                                        className="clickable-table-row"
+                                        onClick={() => setSelectedAssignment(item)}
+                                      >
+                                        <td>
+                                          <strong>{item.title}</strong>
+                                        </td>
+                                        <td>
+                                          <span className={`status-pill ${sub?.state?.toLowerCase() || 'assigned'}`}>
+                                            {sub?.state === 'RETURNED'
+                                              ? 'Graded ✓'
+                                              : sub?.state === 'TURNED_IN'
+                                              ? 'Submitted'
+                                              : 'Assigned'}
+                                          </span>
+                                        </td>
+                                        <td>{sub?.turnInTime ? new Date(sub.turnInTime).toLocaleDateString() : '—'}</td>
+                                        <td>
+                                          {sub?.assignedGrade != null ? (
+                                            <span className="grade-badge">
+                                              {sub.assignedGrade} / {item.maxPoints || 100}
+                                            </span>
+                                          ) : (
+                                            <span className="text-muted">—</span>
+                                          )}
+                                        </td>
+                                        <td className="feedback-preview-cell">
+                                          {sub?.teacherFeedback ? (
+                                            <span className="feedback-snippet">{sub.teacherFeedback}</span>
+                                          ) : sub?.state === 'TURNED_IN' ? (
+                                            <span className="text-muted">Turned In · Pending Grading</span>
+                                          ) : (
+                                            <span className="text-muted">Assigned</span>
+                                          )}
+                                        </td>
+                                        <td>
+                                          <button
+                                            type="button"
+                                            className="table-action-link"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              setSelectedAssignment(item)
+                                            }}
+                                          >
+                                            Inspect
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="empty-state-card">
+                      <ion-icon name="ribbon-outline"></ion-icon>
+                      <h4 className="h4">No Submissions Found</h4>
+                      <p>No coursework submissions or scores have been recorded for your enrolled classrooms yet.</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
