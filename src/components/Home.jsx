@@ -115,9 +115,21 @@ function Home({ activePage }) {
           }
         </h1>
 
-        <div className="hero-badge">
+        {/* Desktop Hero Badge (Previous Style) */}
+        <div className="hero-badge hero-badge--desktop">
           <ion-icon name="school-outline"></ion-icon>
           <span>Global 1:1 Online Mentorship | US Curricula (EST · CST · PST) &amp; Global</span>
+        </div>
+
+        {/* Mobile Hero Badge (Mobile-optimized Layout) */}
+        <div className="hero-badge hero-badge--mobile">
+          <div className="hero-badge-mobile-main">
+            <ion-icon name="school-outline"></ion-icon>
+            <span>Global 1:1 Online Mentorship</span>
+          </div>
+          <span className="hero-badge-mobile-sub">
+            US Curricula (EST · CST · PST) &amp; Global
+          </span>
         </div>
 
         <div className="curriculum-flags">

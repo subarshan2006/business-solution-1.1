@@ -2357,6 +2357,10 @@ textarea.form-input::-webkit-resizer { display: none; }
   white-space: nowrap;
 }
 
+.hero-badge--mobile {
+  display: none !important;
+}
+
 .hero-title {
   color: var(--white-2);
   font-size: var(--fs-1);
@@ -2405,6 +2409,60 @@ textarea.form-input::-webkit-resizer { display: none; }
 
   .curriculum-flags {
     justify-content: center;
+  }
+
+  .hero-badge--desktop {
+    display: none !important;
+  }
+
+  .hero-badge--mobile {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 20px;
+    width: fit-content;
+    max-width: 100%;
+    min-width: 0;
+    padding: 8px 16px;
+    border-radius: 14px;
+    gap: 4px;
+    white-space: normal;
+  }
+
+  .hero-badge--mobile span {
+    white-space: normal;
+    flex-shrink: 1;
+  }
+
+  .hero-badge-mobile-main {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+    gap: 6px;
+    font-size: var(--fs-8);
+    font-weight: var(--fw-600);
+    color: var(--orange-yellow-crayola);
+  }
+
+  .hero-badge-mobile-main ion-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    color: var(--orange-yellow-crayola);
+  }
+
+  .hero-badge-mobile-sub {
+    font-size: 11px;
+    line-height: 1.35;
+    white-space: normal;
+    text-align: center;
+    color: var(--light-gray);
+    opacity: 0.9;
   }
 
   .home section header {
@@ -6136,7 +6194,7 @@ main { position: relative; z-index: 1; }
 
 .role-switch-pill.active {
   background: var(--white-1, #fff);
-  color: #121212;
+  color: var(--white-1, #fffeff);
   font-weight: 600;
 }
 
@@ -6148,7 +6206,7 @@ main { position: relative; z-index: 1; }
 
 .dashboard-tab.highlight-parent.active {
   background: #75d1b4;
-  color: #121212;
+  color: #f7f0f0;
   font-weight: 600;
 }
 
