@@ -6194,8 +6194,19 @@ main { position: relative; z-index: 1; }
 
 .role-switch-pill.active {
   background: var(--white-1, #fff);
-  color: #e0e0e0;
   font-weight: 600;
+}
+
+.role-switch-pill.active {
+  color: var(--white-1, #fffeff);
+}
+
+[data-theme='light'] .role-switch-pill.active {
+  color: #ffffff
+}
+
+[data-theme='dark'] .role-switch-pill.active {
+  color: #030303;
 }
 
 /* Parent Tab in Main Nav */
