@@ -6,27 +6,22 @@
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
-// Initial minimum scopes
+// Comprehensive scopes for Google Classroom: Courses, Coursework, Submissions, Rosters, and Profile
 export const DEFAULT_SCOPES = [
   'https://www.googleapis.com/auth/classroom.courses.readonly',
+  'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
+  'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
+  'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
+  'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
+  'https://www.googleapis.com/auth/classroom.rosters.readonly',
   'https://www.googleapis.com/auth/classroom.profile.emails',
+  'https://www.googleapis.com/auth/classroom.profile.photos',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
   'openid',
 ].join(' ')
 
-// Full scopes when teacher/student views coursework & submissions
-export const EXTENDED_SCOPES = [
-  'https://www.googleapis.com/auth/classroom.courses.readonly',
-  'https://www.googleapis.com/auth/classroom.profile.emails',
-  'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
-  'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
-  'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
-  'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile',
-  'openid',
-].join(' ')
+export const EXTENDED_SCOPES = DEFAULT_SCOPES
 
 const AUTH_STORAGE_KEY = 'nxtstep_classroom_auth'
 

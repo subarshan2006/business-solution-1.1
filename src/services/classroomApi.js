@@ -142,7 +142,7 @@ export async function listStudentCourses(accessToken) {
  * Sprint 5: Retrieve coursework / assignments for a classroom
  */
 export async function listCourseWork(courseId, accessToken) {
-  const data = await apiFetch(`/courses/${courseId}/courseWork?pageSize=20`, accessToken)
+  const data = await apiFetch(`/courses/${courseId}/courseWork?pageSize=50`, accessToken)
   return data.courseWork || []
 }
 
@@ -155,6 +155,174 @@ export async function listCourseWorkSubmissions(courseId, courseWorkId, accessTo
     accessToken
   )
   return data.studentSubmissions || []
+}
+
+/**
+ * Normalizes Google Classroom materials (Drive files, YouTube, links, forms)
+ */
+export function normalizeClassroomMaterials(materials = []) {
+  if (!Array.isArray(materials)) return []
+  return materials.map((m) => {
+    if (typeof m === 'string') return { title: m, url: null, type: 'file' }
+    if (m.driveFile?.driveFile) {
+      return {
+        title: m.driveFile.driveFile.title || 'Attached Document',
+        url: m.driveFile.driveFile.alternateLink || null,
+        type: 'drive',
+      }
+    }
+    if (m.link) {
+      return {
+        title: m.link.title || m.link.url || 'Web Link',
+        url: m.link.url || null,
+        type: 'link',
+      }
+    }
+    if (m.youtubeVideo) {
+      return {
+        title: m.youtubeVideo.title || 'YouTube Video',
+        url: m.youtubeVideo.alternateLink || null,
+        type: 'youtube',
+      }
+    }
+    if (m.form) {
+      return {
+        title: m.form.title || 'Google Form / Quiz',
+        url: m.form.formUrl || null,
+        type: 'form',
+      }
+    }
+    return { title: 'Lesson Material', url: null, type: 'other' }
+  })
+}
+
+/**
+ * Fetch real CourseWork and seamlessly merge all Student Submissions, Marks, and Attachments
+ */
+export async function fetchCourseWorkWithSubmissions(courseId, accessToken) {
+  if (!courseId || !accessToken) return []
+
+  // 1. Fetch real CourseWork / Assignments
+  const cwData = await apiFetch(`/courses/${courseId}/courseWork?pageSize=50`, accessToken)
+  const courseWorkList = cwData.courseWork || []
+  if (courseWorkList.length === 0) return []
+
+  // 2. Fetch all student submissions for this course
+  let allSubmissions = []
+  try {
+    const subRes = await apiFetch(
+      `/courses/${courseId}/courseWork/-/studentSubmissions?pageSize=100`,
+      accessToken
+    )
+    allSubmissions = subRes.studentSubmissions || []
+  } catch (bulkErr) {
+    console.warn('Bulk submission fetch failed, trying per-coursework lookup:', bulkErr)
+    // Fallback: Query per assignment
+    const promises = courseWorkList.map((cw) =>
+      apiFetch(
+        `/courses/${courseId}/courseWork/${cw.id}/studentSubmissions?pageSize=20`,
+        accessToken
+      )
+        .then((res) => res.studentSubmissions || [])
+        .catch(() => [])
+    )
+    const results = await Promise.allSettled(promises)
+    results.forEach((r) => {
+      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+        allSubmissions.push(...r.value)
+      }
+    })
+  }
+
+  // 3. Fetch Student Roster if available to map user IDs to names
+  const studentMap = {}
+  try {
+    const rosterData = await apiFetch(`/courses/${courseId}/students?pageSize=50`, accessToken)
+    if (rosterData.students) {
+      rosterData.students.forEach((s) => {
+        if (s.userId && s.profile) {
+          studentMap[s.userId] =
+            s.profile.name?.fullName || s.profile.emailAddress || 'Student'
+        }
+      })
+    }
+  } catch (rosterErr) {
+    console.warn('Roster lookup note (non-fatal):', rosterErr)
+  }
+
+  // 4. Merge coursework with submissions and marks
+  return courseWorkList.map((cw) => {
+    const matchingSubs = allSubmissions.filter((s) => s.courseWorkId === cw.id)
+    const primarySub = matchingSubs[0] || null
+
+    let submissionObj = null
+    if (primarySub) {
+      const turnInEvent = primarySub.submissionHistory?.find(
+        (h) => h.stateHistory?.state === 'TURNED_IN'
+      )
+      const turnInTime =
+        turnInEvent?.stateHistory?.stateTimestamp ||
+        primarySub.updateTime ||
+        primarySub.creationTime ||
+        null
+
+      const assignedGrade =
+        primarySub.assignedGrade != null
+          ? primarySub.assignedGrade
+          : primarySub.draftGrade != null
+          ? primarySub.draftGrade
+          : null
+
+      const attachments = (primarySub.assignmentSubmission?.attachments || []).map((att) => {
+        if (att.driveFile) {
+          return {
+            title: att.driveFile.title || 'Student Drive Attachment',
+            url: att.driveFile.alternateLink || null,
+          }
+        }
+        if (att.link) {
+          return {
+            title: att.link.title || att.link.url || 'Submitted Link',
+            url: att.link.url || null,
+          }
+        }
+        return { title: 'Submitted File', url: null }
+      })
+
+      submissionObj = {
+        id: primarySub.id,
+        state: primarySub.state || 'ASSIGNED',
+        assignedGrade,
+        draftGrade: primarySub.draftGrade || null,
+        late: Boolean(primarySub.late),
+        turnInTime,
+        studentId: primarySub.userId,
+        studentName: studentMap[primarySub.userId] || 'Enrolled Student',
+        attachments,
+        alternateLink: primarySub.alternateLink || null,
+        teacherFeedback:
+          assignedGrade != null
+            ? `Graded (${assignedGrade} / ${cw.maxPoints || 100})`
+            : primarySub.state === 'TURNED_IN'
+            ? 'Submitted — Awaiting instructor review'
+            : null,
+      }
+    }
+
+    const normalizedMaterials = normalizeClassroomMaterials(cw.materials || [])
+
+    return {
+      ...cw,
+      maxPoints: cw.maxPoints || 100,
+      materials: normalizedMaterials.map((m) => m.title),
+      materialLinks: normalizedMaterials,
+      submission: submissionObj,
+      submissions: matchingSubs.map((s) => ({
+        ...s,
+        studentName: studentMap[s.userId] || 'Enrolled Student',
+      })),
+    }
+  })
 }
 
 // ==========================================

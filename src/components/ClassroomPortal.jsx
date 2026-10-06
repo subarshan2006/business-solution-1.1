@@ -11,7 +11,8 @@ import {
   isTeacherEmail,
   listTeacherCourses,
   listStudentCourses,
-  listCourseWork,
+  fetchCourseWorkWithSubmissions,
+  calculateStudentAnalytics,
   MOCK_20_CLASSROOMS,
   MOCK_ASSIGNMENTS,
 } from '../services/classroomApi'
@@ -32,6 +33,8 @@ function ClassroomPortal() {
   const [courses, setCourses] = useState([])
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [courseWork, setCourseWork] = useState([])
+  const [loadingCourseWork, setLoadingCourseWork] = useState(false)
+  const [courseWorkError, setCourseWorkError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('courses') // 'courses', 'homework', 'grades', 'parent'
   const [gradeFilter, setGradeFilter] = useState('all') // 'all', 'Grade 10', 'Grade 11', 'Grade 12'
@@ -137,18 +140,46 @@ function ClassroomPortal() {
 
   // Fetch coursework when selectedCourse changes in live mode
   useEffect(() => {
-    if (!selectedCourse || !auth || auth.isMock) return
+    if (!selectedCourse || !auth) return
 
-    async function fetchCourseWork() {
+    if (auth.isMock) {
+      setCourseWork(MOCK_ASSIGNMENTS)
+      return
+    }
+
+    let isMounted = true
+    async function loadCourseWork() {
+      setLoadingCourseWork(true)
+      setCourseWorkError('')
       try {
-        const cw = await listCourseWork(selectedCourse.id, auth.accessToken)
-        setCourseWork(cw)
+        const cw = await fetchCourseWorkWithSubmissions(selectedCourse.id, auth.accessToken)
+        if (isMounted) {
+          setCourseWork(cw)
+        }
       } catch (err) {
-        console.warn('Could not fetch coursework for selected course:', err)
+        console.error('Could not fetch coursework for selected course:', err)
+        if (isMounted) {
+          const isScopeErr =
+            err.message?.toLowerCase().includes('permission') ||
+            err.message?.toLowerCase().includes('scope') ||
+            err.status === 403
+          setCourseWorkError(
+            isScopeErr
+              ? 'Google Classroom permissions for coursework and submissions are required. Please click "Grant Classroom Permissions" below.'
+              : err.message || 'Failed to load coursework from Google Classroom.'
+          )
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingCourseWork(false)
+        }
       }
     }
 
-    fetchCourseWork()
+    loadCourseWork()
+    return () => {
+      isMounted = false
+    }
   }, [selectedCourse, auth])
 
   const handleConnectLive = async () => {
@@ -222,6 +253,7 @@ function ClassroomPortal() {
 
   // Extract student name for the selected course
   const currentStudentName = selectedCourse?.studentName || (role === 'student' ? auth?.user?.name : 'Alex Rivera')
+  const analytics = calculateStudentAnalytics(courseWork)
 
   return (
     <article className="classroom-portal active" data-page="classroom">
@@ -500,6 +532,19 @@ function ClassroomPortal() {
 
                             <button
                               type="button"
+                              className="card-action-btn secondary"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCourse(c)
+                                setActiveTab('grades')
+                              }}
+                            >
+                              <ion-icon name="ribbon-outline"></ion-icon>
+                              <span>Marks</span>
+                            </button>
+
+                            <button
+                              type="button"
                               className="card-action-btn parent-btn"
                               title="Generate parent progress report"
                               onClick={(e) => {
@@ -634,13 +679,35 @@ function ClassroomPortal() {
                     {selectedCourse ? selectedCourse.name : 'Coursework & Assignments'}
                   </h3>
                   <p className="context-sub">
-                    Click any assignment card below to inspect full instructions, worksheets, and rubrics.
+                    Direct live coursework and prompts synced from Google Classroom. Click any assignment to inspect instructions.
                   </p>
                 </div>
               </div>
 
               <div className="assignments-list">
-                {courseWork.length > 0 ? (
+                {loadingCourseWork ? (
+                  <div className="empty-state-card" style={{ padding: '36px' }}>
+                    <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                    <h4 className="h4" style={{ marginTop: '12px' }}>Loading Real Coursework...</h4>
+                    <p>Fetching active assignments directly from Google Classroom.</p>
+                  </div>
+                ) : courseWorkError ? (
+                  <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
+                    <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
+                    <h4 className="h4" style={{ color: '#ff6b6b' }}>Google Classroom Permission Required</h4>
+                    <p>{courseWorkError}</p>
+                    <div style={{ marginTop: '16px' }}>
+                      <button
+                        type="button"
+                        className="hero-cta-btn primary"
+                        onClick={handleConnectLive}
+                      >
+                        <span>Grant Classroom Permissions</span>
+                        <ion-icon name="shield-checkmark-outline"></ion-icon>
+                      </button>
+                    </div>
+                  </div>
+                ) : courseWork.length > 0 ? (
                   courseWork.map((item) => {
                     const dueStr = item.dueDate
                       ? `${item.dueDate.month}/${item.dueDate.day}/${item.dueDate.year}`
@@ -663,17 +730,24 @@ function ClassroomPortal() {
                                 : 'Assigned'}
                             </span>
                           </div>
-                          <p className="assignment-desc">{item.description}</p>
+                          <p className="assignment-desc">
+                            {item.description || 'No additional instructions provided for this coursework item.'}
+                          </p>
                           <div className="assignment-meta-row">
                             <span>
                               <ion-icon name="calendar-outline"></ion-icon> Due: {dueStr}
                             </span>
                             <span>
-                              <ion-icon name="ribbon-outline"></ion-icon> Max Points: {item.maxPoints || 20}
+                              <ion-icon name="ribbon-outline"></ion-icon> Max Points: {item.maxPoints || 100}
                             </span>
                             {item.submission?.assignedGrade != null && (
                               <span className="grade-badge">
-                                Grade: {item.submission.assignedGrade} / {item.maxPoints || 20}
+                                Grade: {item.submission.assignedGrade} / {item.maxPoints || 100}
+                              </span>
+                            )}
+                            {item.submissions && item.submissions.length > 1 && (
+                              <span className="grade-badge" style={{ background: 'rgba(92, 149, 240, 0.15)', color: '#5c95f0' }}>
+                                {item.submissions.length} Submissions
                               </span>
                             )}
                           </div>
@@ -697,8 +771,21 @@ function ClassroomPortal() {
                 ) : (
                   <div className="empty-state-card">
                     <ion-icon name="document-text-outline"></ion-icon>
-                    <h4 className="h4">No assignments found</h4>
-                    <p>No coursework has been posted for this classroom yet.</p>
+                    <h4 className="h4">No Coursework Found</h4>
+                    <p>No active assignments were returned for {selectedCourse?.name || 'this classroom'}.</p>
+                    {selectedCourse?.alternateLink && (
+                      <div style={{ marginTop: '16px' }}>
+                        <a
+                          href={selectedCourse.alternateLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hero-cta-btn secondary"
+                        >
+                          <span>Open in Google Classroom App</span>
+                          <ion-icon name="open-outline"></ion-icon>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -712,86 +799,131 @@ function ClassroomPortal() {
             <div className="tab-pane">
               <div className="grades-summary-card">
                 <div className="summary-col">
-                  <span className="summary-label">Selected Student/Course</span>
+                  <span className="summary-label">Course / Classroom</span>
                   <strong className="summary-value">{selectedCourse?.name || 'Classroom'}</strong>
                 </div>
                 <div className="summary-col">
                   <span className="summary-label">Completion Rate</span>
-                  <strong className="summary-value">67% (2 of 3 Submitted)</strong>
+                  <strong className="summary-value">
+                    {courseWork.length > 0
+                      ? `${analytics.completionRate}% (${analytics.completedHomework.length} of ${courseWork.length} Completed)`
+                      : '0% (0 Items)'}
+                  </strong>
                 </div>
                 <div className="summary-col">
-                  <span className="summary-label">Cumulative GPA</span>
-                  <strong className="summary-value highlight">92.5% (Grade A)</strong>
+                  <span className="summary-label">Cumulative Average</span>
+                  <strong className="summary-value highlight">
+                    {courseWork.length > 0
+                      ? `${analytics.averagePercentage}% (Grade ${analytics.letterGrade})`
+                      : '—'}
+                  </strong>
                 </div>
               </div>
 
               <div className="marks-table-wrapper">
-                <table className="marks-table">
-                  <thead>
-                    <tr>
-                      <th>Assignment</th>
-                      <th>Status</th>
-                      <th>Turned In</th>
-                      <th>Score</th>
-                      <th>Instructor Remarks</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {courseWork.map((item) => {
-                      const sub = item.submission
-                      return (
-                        <tr
-                          key={item.id}
-                          className="clickable-table-row"
-                          onClick={() => setSelectedAssignment(item)}
-                        >
-                          <td>
-                            <strong>{item.title}</strong>
-                          </td>
-                          <td>
-                            <span className={`status-pill ${sub?.state?.toLowerCase() || 'assigned'}`}>
-                              {sub?.state === 'RETURNED'
-                                ? 'Graded ✓'
-                                : sub?.state === 'TURNED_IN'
-                                ? 'Submitted'
-                                : 'Pending'}
-                            </span>
-                          </td>
-                          <td>{sub?.turnInTime ? new Date(sub.turnInTime).toLocaleDateString() : '—'}</td>
-                          <td>
-                            {sub?.assignedGrade != null ? (
-                              <span className="grade-badge">
-                                {sub.assignedGrade} / {item.maxPoints || 20}
+                {loadingCourseWork ? (
+                  <div className="empty-state-card" style={{ padding: '36px' }}>
+                    <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                    <h4 className="h4" style={{ marginTop: '12px' }}>Fetching Real Submissions & Marks...</h4>
+                    <p>Querying student submission records and scores from Google Classroom.</p>
+                  </div>
+                ) : courseWorkError ? (
+                  <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
+                    <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
+                    <h4 className="h4" style={{ color: '#ff6b6b' }}>Google Classroom Permission Required</h4>
+                    <p>{courseWorkError}</p>
+                    <div style={{ marginTop: '16px' }}>
+                      <button
+                        type="button"
+                        className="hero-cta-btn primary"
+                        onClick={handleConnectLive}
+                      >
+                        <span>Grant Classroom Permissions</span>
+                        <ion-icon name="shield-checkmark-outline"></ion-icon>
+                      </button>
+                    </div>
+                  </div>
+                ) : courseWork.length === 0 ? (
+                  <div className="empty-state-card">
+                    <ion-icon name="ribbon-outline"></ion-icon>
+                    <h4 className="h4">No Submissions Found</h4>
+                    <p>No coursework submissions or scores have been recorded for {selectedCourse?.name || 'this classroom'} yet.</p>
+                  </div>
+                ) : (
+                  <table className="marks-table">
+                    <thead>
+                      <tr>
+                        <th>Assignment</th>
+                        <th>Status</th>
+                        <th>Turned In</th>
+                        <th>Score</th>
+                        <th>Student / Instructor Notes</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {courseWork.map((item) => {
+                        const sub = item.submission
+                        return (
+                          <tr
+                            key={item.id}
+                            className="clickable-table-row"
+                            onClick={() => setSelectedAssignment(item)}
+                          >
+                            <td>
+                              <strong>{item.title}</strong>
+                              {sub?.studentName && sub.studentName !== 'Enrolled Student' && (
+                                <div style={{ fontSize: '11px', color: 'var(--light-gray-70, #aaa)' }}>
+                                  Student: {sub.studentName}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span className={`status-pill ${sub?.state?.toLowerCase() || 'assigned'}`}>
+                                {sub?.state === 'RETURNED'
+                                  ? 'Graded ✓'
+                                  : sub?.state === 'TURNED_IN'
+                                  ? 'Submitted'
+                                  : 'Assigned'}
                               </span>
-                            ) : (
-                              <span className="text-muted">—</span>
-                            )}
-                          </td>
-                          <td className="feedback-preview-cell">
-                            {sub?.teacherFeedback ? (
-                              <span className="feedback-snippet">"{sub.teacherFeedback}"</span>
-                            ) : (
-                              <span className="text-muted">Awaiting feedback</span>
-                            )}
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="table-action-link"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedAssignment(item)
-                              }}
-                            >
-                              Inspect
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+                            <td>{sub?.turnInTime ? new Date(sub.turnInTime).toLocaleDateString() : '—'}</td>
+                            <td>
+                              {sub?.assignedGrade != null ? (
+                                <span className="grade-badge">
+                                  {sub.assignedGrade} / {item.maxPoints || 100}
+                                </span>
+                              ) : (
+                                <span className="text-muted">—</span>
+                              )}
+                            </td>
+                            <td className="feedback-preview-cell">
+                              {sub?.teacherFeedback ? (
+                                <span className="feedback-snippet">{sub.teacherFeedback}</span>
+                              ) : sub?.state === 'TURNED_IN' ? (
+                                <span className="text-muted">Turned In · Pending Grading</span>
+                              ) : (
+                                <span className="text-muted">Assigned</span>
+                              )}
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="table-action-link"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedAssignment(item)
+                                }}
+                              >
+                                Inspect
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}

@@ -87,15 +87,72 @@ function AssignmentModal({ assignment, courseName, onClose }) {
           </div>
 
           {/* Attached Materials */}
-          {assignment.materials && assignment.materials.length > 0 && (
+          {assignment.materialLinks && assignment.materialLinks.length > 0 ? (
+            <div className="modal-section">
+              <h4 className="h4 modal-section-title">Lesson Worksheets & Materials</h4>
+              <div className="materials-pills-list">
+                {assignment.materialLinks.map((mat, idx) => (
+                  mat.url ? (
+                    <a
+                      key={idx}
+                      href={mat.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="material-file-item clickable-material-link"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <ion-icon name={mat.type === 'drive' ? 'document-text-outline' : mat.type === 'youtube' ? 'logo-youtube' : mat.type === 'form' ? 'clipboard-outline' : 'link-outline'}></ion-icon>
+                      <span>{mat.title}</span>
+                      <ion-icon name="open-outline" style={{ fontSize: '12px', opacity: 0.7 }}></ion-icon>
+                    </a>
+                  ) : (
+                    <div key={idx} className="material-file-item">
+                      <ion-icon name="document-attach-outline"></ion-icon>
+                      <span>{mat.title}</span>
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+          ) : assignment.materials && assignment.materials.length > 0 ? (
             <div className="modal-section">
               <h4 className="h4 modal-section-title">Lesson Worksheets & Materials</h4>
               <div className="materials-pills-list">
                 {assignment.materials.map((mat, idx) => (
                   <div key={idx} className="material-file-item">
                     <ion-icon name="document-attach-outline"></ion-icon>
-                    <span>{mat}</span>
+                    <span>{typeof mat === 'string' ? mat : mat?.title || 'Attached Document'}</span>
                   </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Student Submitted Files if available */}
+          {sub?.attachments && sub.attachments.length > 0 && (
+            <div className="modal-section">
+              <h4 className="h4 modal-section-title">Turned-In Student Work</h4>
+              <div className="materials-pills-list">
+                {sub.attachments.map((att, idx) => (
+                  att.url ? (
+                    <a
+                      key={idx}
+                      href={att.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="material-file-item"
+                      style={{ textDecoration: 'none', background: 'rgba(117, 209, 180, 0.15)', borderColor: '#75d1b4' }}
+                    >
+                      <ion-icon name="document-attach-outline"></ion-icon>
+                      <span>{att.title}</span>
+                      <ion-icon name="open-outline" style={{ fontSize: '12px', opacity: 0.7 }}></ion-icon>
+                    </a>
+                  ) : (
+                    <div key={idx} className="material-file-item" style={{ background: 'rgba(117, 209, 180, 0.15)' }}>
+                      <ion-icon name="document-attach-outline"></ion-icon>
+                      <span>{att.title}</span>
+                    </div>
+                  )
                 ))}
               </div>
             </div>
