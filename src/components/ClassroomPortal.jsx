@@ -51,7 +51,7 @@ function ClassroomPortal() {
   const [courseWorkError, setCourseWorkError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('courses') // 'courses', 'homework', 'grades', 'parent'
-  const [gradeFilter, setGradeFilter] = useState('all') // 'all', 'Grade 10', 'Grade 11', 'Grade 12'
+  const [gradeFilter] = useState('all')
   const [selectedAssignment, setSelectedAssignment] = useState(null)
   // Aggregated coursework across ALL enrolled courses (for student view)
   const [allCourseWork, setAllCourseWork] = useState({}) // { courseId: { courseName, items: [] } }
@@ -549,27 +549,25 @@ function ClassroomPortal() {
                       <div className="stat-num">93.4%</div>
                       <div className="stat-label">Student Average GPA</div>
                     </div>
-                    <div className="stat-card highlight">
-                      <div className="stat-num">3</div>
+                    <div
+                      className="stat-card highlight clickable"
+                      onClick={() => setActiveTab('grades')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && setActiveTab('grades')}
+                    >
+                      <div className="stat-num">
+                        {courseWork.filter((item) => {
+                          const sub = item.submission
+                          return sub && sub.state === 'TURNED_IN' && sub.assignedGrade == null
+                        }).length}
+                      </div>
                       <div className="stat-label">Pending Teacher Reviews</div>
                     </div>
                   </div>
 
                   {/* Filter Chips & Search Bar */}
                   <div className="filter-and-search-row">
-                    <div className="filter-chips-list">
-                      {['all', 'Grade 10', 'Grade 11', 'Grade 12'].map((lvl) => (
-                        <button
-                          key={lvl}
-                          type="button"
-                          className={`filter-chip${gradeFilter === lvl ? ' active' : ''}`}
-                          onClick={() => setGradeFilter(lvl)}
-                        >
-                          {lvl === 'all' ? 'All Classes (20)' : lvl}
-                        </button>
-                      ))}
-                    </div>
-
                     <div className="search-input-group">
                       <ion-icon name="search-outline"></ion-icon>
                       <input

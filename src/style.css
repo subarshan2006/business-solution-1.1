@@ -4555,6 +4555,28 @@ main { position: relative; z-index: 1; }
   text-align: center;
 }
 
+.stat-card.highlight {
+  border-color: rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.08);
+}
+
+.stat-card.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stat-card.clickable:hover {
+  border-color: rgba(255, 107, 107, 0.7);
+  background: rgba(255, 107, 107, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 107, 107, 0.2);
+}
+
+.stat-card.clickable:focus-visible {
+  outline: 2px solid var(--color-brand-yellow, #ff6b6b);
+  outline-offset: 2px;
+}
+
 .stat-num {
   font-size: 28px;
   font-weight: 700;
