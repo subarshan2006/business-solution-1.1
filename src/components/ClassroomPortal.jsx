@@ -21,12 +21,26 @@ import AssignmentModal from './AssignmentModal'
 
 function ClassroomPortal() {
   const [auth, setAuth] = useState(() => getStoredAuth())
+
+  // True account role: strictly 'teacher' if in KNOWN_TEACHERS or verified by Google Classroom API
+  const isTeacher = Boolean(
+    auth &&
+      (auth.accountRole === 'teacher' ||
+        isTeacherEmail(auth.user?.email))
+  )
+
   const [role, setRole] = useState(() => {
     const stored = getStoredAuth()
-    if (stored?.user?.email && isTeacherEmail(stored.user.email)) {
-      return 'teacher'
+    const isStoredTeacher = Boolean(
+      stored &&
+        (stored.accountRole === 'teacher' ||
+          isTeacherEmail(stored.user?.email))
+    )
+    if (isStoredTeacher) {
+      return stored?.role || 'teacher'
     }
-    return stored?.role || null
+    // Students are strictly locked to student role
+    return 'student'
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -51,7 +65,7 @@ function ClassroomPortal() {
     }
 
     if (auth.isMock) {
-      if (role === 'teacher') {
+      if (isTeacher && role === 'teacher') {
         setCourses(MOCK_20_CLASSROOMS)
         setSelectedCourse(MOCK_20_CLASSROOMS[0])
         setCourseWork(MOCK_ASSIGNMENTS)
@@ -100,32 +114,45 @@ function ClassroomPortal() {
           }
         }
 
-        let userRole = role
-        if (isTeacherEmail(userEmail)) {
-          userRole = 'teacher'
-          if (role !== 'teacher') {
-            setRole('teacher')
+        // Determine whether user is genuinely a teacher
+        let isAuthTeacher = isTeacherEmail(userEmail)
+        if (!isAuthTeacher) {
+          const roleResult = await determineRole(currentAuth.accessToken, userEmail)
+          isAuthTeacher = roleResult.role === 'teacher'
+        }
+
+        let userRole = isAuthTeacher ? (role === 'student' ? 'student' : 'teacher') : 'student'
+
+        if (isAuthTeacher) {
+          if (role !== userRole) {
+            setRole(userRole)
           }
-          if (currentAuth.role !== 'teacher') {
-            const updated = { ...currentAuth, role: 'teacher' }
+          if (currentAuth.accountRole !== 'teacher') {
+            const updated = { ...currentAuth, role: userRole, accountRole: 'teacher' }
             setAuth(updated)
             saveAuth(updated)
           }
-        } else if (!userRole) {
-          const roleResult = await determineRole(currentAuth.accessToken, userEmail)
-          userRole = roleResult.role
-          setRole(userRole)
-          saveAuth({ ...currentAuth, role: userRole })
+        } else {
+          // Strictly lock student accounts to student role
+          userRole = 'student'
+          if (role !== 'student') {
+            setRole('student')
+          }
+          if (currentAuth.accountRole !== 'student' || currentAuth.role !== 'student') {
+            const updated = { ...currentAuth, role: 'student', accountRole: 'student' }
+            setAuth(updated)
+            saveAuth(updated)
+          }
         }
 
         if (userRole === 'teacher') {
           const list = await listTeacherCourses(currentAuth.accessToken)
           setCourses(list)
-          if (list.length > 0) setSelectedCourse(list[0])
+          if (list.length > 0) setSelectedCourse((prev) => prev || list[0])
         } else {
           const list = await listStudentCourses(currentAuth.accessToken)
           setCourses(list)
-          if (list.length > 0) setSelectedCourse(list[0])
+          if (list.length > 0) setSelectedCourse((prev) => prev || list[0])
         }
       } catch (err) {
         console.error('Failed to load courses from Google Classroom:', err)
@@ -136,7 +163,7 @@ function ClassroomPortal() {
     }
 
     fetchRealClassroomData()
-  }, [auth, role])
+  }, [auth, role, isTeacher])
 
   // Fetch coursework when selectedCourse changes in live mode
   useEffect(() => {
@@ -187,12 +214,12 @@ function ClassroomPortal() {
     setError('')
     try {
       const authData = await requestGoogleAccessToken()
-      const isTeacher = isTeacherEmail(authData.user?.email)
-      const roleResult = isTeacher
+      const isTeacherUser = isTeacherEmail(authData.user?.email)
+      const roleResult = isTeacherUser
         ? { role: 'teacher' }
         : await determineRole(authData.accessToken, authData.user?.email)
-      const finalRole = isTeacher ? 'teacher' : roleResult.role
-      const fullAuth = { ...authData, role: finalRole }
+      const finalRole = isTeacherUser || roleResult.role === 'teacher' ? 'teacher' : 'student'
+      const fullAuth = { ...authData, role: finalRole, accountRole: finalRole }
       setRole(finalRole)
       setAuth(fullAuth)
       saveAuth(fullAuth)
@@ -208,6 +235,11 @@ function ClassroomPortal() {
   }
 
   const handleSwitchRole = (newRole) => {
+    // If authenticated user is a student, forbid switching to teacher mode
+    if (newRole === 'teacher' && !isTeacher) {
+      return
+    }
+
     setRole(newRole)
     if (auth) {
       saveAuth({ ...auth, role: newRole })
@@ -317,8 +349,8 @@ function ClassroomPortal() {
               <div>
                 <div className="user-name-row">
                   <h4 className="h4 user-display-name">{auth.user.name}</h4>
-                  <span className={`role-badge ${role}`}>
-                    {role === 'teacher' ? 'TEACHER / LEAD MENTOR' : role?.toUpperCase()}
+                  <span className={`role-badge ${isTeacher && role === 'teacher' ? 'teacher' : 'student'}`}>
+                    {isTeacher && role === 'teacher' ? 'TEACHER / LEAD MENTOR' : 'STUDENT WORKSPACE'}
                   </span>
                   {auth.isMock && <span className="mock-badge">PREVIEW MODE</span>}
                 </div>
@@ -327,29 +359,56 @@ function ClassroomPortal() {
             </div>
 
             <div className="connected-controls">
-              <div className="preview-switch-group">
-                <button
-                  type="button"
-                  className={`role-switch-pill${role === 'teacher' ? ' active' : ''}`}
-                  onClick={() => handleSwitchRole('teacher')}
-                >
-                  👨‍🏫 Teacher Mode
-                </button>
-                <button
-                  type="button"
-                  className={`role-switch-pill${role === 'student' && activeTab !== 'parent' ? ' active' : ''}`}
-                  onClick={() => handleSwitchRole('student')}
-                >
-                  🧑‍🎓 Student Mode
-                </button>
-                <button
-                  type="button"
-                  className={`role-switch-pill${activeTab === 'parent' ? ' active' : ''}`}
-                  onClick={() => handleSwitchRole('parent')}
-                >
-                  👨‍👩‍👧 Parent Mode
-                </button>
-              </div>
+              {isTeacher ? (
+                /* Teacher Controls */
+                <div className="preview-switch-group">
+                  <button
+                    type="button"
+                    className={`role-switch-pill${role === 'teacher' && activeTab !== 'parent' ? ' active' : ''}`}
+                    onClick={() => handleSwitchRole('teacher')}
+                  >
+                    👨‍🏫 Teacher Mode
+                  </button>
+                  <button
+                    type="button"
+                    className={`role-switch-pill${role === 'student' && activeTab !== 'parent' ? ' active' : ''}`}
+                    onClick={() => handleSwitchRole('student')}
+                  >
+                    🧑‍🎓 Student Preview
+                  </button>
+                  <button
+                    type="button"
+                    className={`role-switch-pill${activeTab === 'parent' ? ' active' : ''}`}
+                    onClick={() => handleSwitchRole('parent')}
+                  >
+                    👨‍👩‍👧 Parent Mode
+                  </button>
+                </div>
+              ) : (
+                /* Student Controls: Only Student Workspace and Parent View */
+                <div className="preview-switch-group">
+                  <button
+                    type="button"
+                    className={`role-switch-pill${activeTab !== 'parent' ? ' active' : ''}`}
+                    onClick={() => {
+                      setRole('student')
+                      setActiveTab('courses')
+                    }}
+                  >
+                    🧑‍🎓 My Classroom
+                  </button>
+                  <button
+                    type="button"
+                    className={`role-switch-pill${activeTab === 'parent' ? ' active' : ''}`}
+                    onClick={() => {
+                      setRole('student')
+                      setActiveTab('parent')
+                    }}
+                  >
+                    👨‍👩‍👧 Parent Overview
+                  </button>
+                </div>
+              )}
 
               <button
                 type="button"
@@ -383,28 +442,28 @@ function ClassroomPortal() {
               onClick={() => setActiveTab('courses')}
             >
               <ion-icon name="grid-outline"></ion-icon>
-              <span>{role === 'teacher' ? 'Classrooms (20)' : 'My Classroom'}</span>
+              <span>{isTeacher && role === 'teacher' ? `Classrooms (${courses.length})` : 'My Classroom'}</span>
             </button>
             <button
               className={`dashboard-tab${activeTab === 'homework' ? ' active' : ''}`}
               onClick={() => setActiveTab('homework')}
             >
               <ion-icon name="book-outline"></ion-icon>
-              <span>Homework & Assignments</span>
+              <span>{isTeacher && role === 'teacher' ? 'Homework & Assignments' : 'My Homework & Tasks'}</span>
             </button>
             <button
               className={`dashboard-tab${activeTab === 'grades' ? ' active' : ''}`}
               onClick={() => setActiveTab('grades')}
             >
               <ion-icon name="ribbon-outline"></ion-icon>
-              <span>Submissions & Marks</span>
+              <span>{isTeacher && role === 'teacher' ? 'Submissions & Marks' : 'My Marks & Grades'}</span>
             </button>
             <button
               className={`dashboard-tab highlight-parent${activeTab === 'parent' ? ' active' : ''}`}
               onClick={() => setActiveTab('parent')}
             >
               <ion-icon name="people-outline"></ion-icon>
-              <span>👨‍👩‍👧 Parent Dashboard</span>
+              <span>{isTeacher ? '👨‍👩‍👧 Parent Dashboard' : '👨‍👩‍👧 Parent Overview'}</span>
             </button>
           </div>
 
@@ -413,7 +472,7 @@ function ClassroomPortal() {
           {/* ======================================================= */}
           {activeTab === 'courses' && (
             <div className="tab-pane">
-              {role === 'teacher' ? (
+              {isTeacher && role === 'teacher' ? (
                 <>
                   {/* Teacher Command Overview Stats */}
                   <div className="dashboard-stats-row">
