@@ -6194,7 +6194,7 @@ main { position: relative; z-index: 1; }
 
 .role-switch-pill.active {
   background: var(--white-1, #fff);
-  color: var(--white-1, #fffeff);
+  color: #e0e0e0;
   font-weight: 600;
 }
 
