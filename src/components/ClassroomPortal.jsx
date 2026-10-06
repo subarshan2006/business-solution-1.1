@@ -936,11 +936,14 @@ function ClassroomPortal() {
               <ParentDashboard
                 studentName={currentStudentName}
                 courseName={selectedCourse?.name || '1-on-1 Tutoring Mentorship'}
+                selectedCourse={selectedCourse}
                 courseWork={courseWork}
+                loadingCourseWork={loadingCourseWork}
                 onSelectAssignment={(item) => setSelectedAssignment(item)}
                 allCourses={courses}
                 onSelectCourse={(course) => setSelectedCourse(course)}
                 isTeacherView={role === 'teacher'}
+                teacherName={auth?.user?.name || 'Lead Mentor'}
               />
             </div>
           )}
