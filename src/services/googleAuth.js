@@ -9,6 +9,7 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 // Initial minimum scopes
 export const DEFAULT_SCOPES = [
   'https://www.googleapis.com/auth/classroom.courses.readonly',
+  'https://www.googleapis.com/auth/classroom.profile.emails',
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
   'openid',
@@ -17,6 +18,7 @@ export const DEFAULT_SCOPES = [
 // Full scopes when teacher/student views coursework & submissions
 export const EXTENDED_SCOPES = [
   'https://www.googleapis.com/auth/classroom.courses.readonly',
+  'https://www.googleapis.com/auth/classroom.profile.emails',
   'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
   'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
   'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
@@ -144,6 +146,24 @@ export async function requestGoogleAccessToken({ scopes = DEFAULT_SCOPES } = {})
             }
           } catch (profileErr) {
             console.warn('Profile fetch warning (non-fatal):', profileErr)
+          }
+
+          // Fallback: Query Classroom /userProfiles/me if user email is not yet populated
+          if (!user.email || user.email === 'Google Classroom Account') {
+            try {
+              const cpRes = await fetch('https://classroom.googleapis.com/v1/userProfiles/me', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+              })
+              if (cpRes.ok) {
+                const cp = await cpRes.json()
+                if (cp.emailAddress) user.email = cp.emailAddress
+                if (cp.name?.fullName && user.name === 'Google User') user.name = cp.name.fullName
+                if (cp.photoUrl && !user.picture) user.picture = cp.photoUrl
+                if (cp.id && user.id === 'google-user') user.id = cp.id
+              }
+            } catch (cpErr) {
+              console.warn('Classroom profile fetch warning:', cpErr)
+            }
           }
 
           const authData = {

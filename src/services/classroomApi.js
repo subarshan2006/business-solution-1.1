@@ -31,26 +31,67 @@ async function apiFetch(endpoint, accessToken) {
 
 export const KNOWN_TEACHERS = [
   'steenaantony14@gmail.com',
-  'subarshan195@gmail.com',
+  'businesswithsubar@gmail.com',
 ]
+
+/**
+ * Check if given email belongs to recognized lead teachers
+ */
+export function isTeacherEmail(email) {
+  if (!email) return false
+  const norm = email.toLowerCase().trim()
+  return KNOWN_TEACHERS.some((t) => t.toLowerCase() === norm)
+}
 
 /**
  * Sprint 2: Detect whether authenticated user is acting as Teacher or Student
  */
 export async function determineRole(accessToken, userEmail = '') {
-  const normalizedEmail = (userEmail || '').toLowerCase().trim()
-  if (normalizedEmail && KNOWN_TEACHERS.includes(normalizedEmail)) {
+  let normalizedEmail = (userEmail || '').toLowerCase().trim()
+  if (isTeacherEmail(normalizedEmail)) {
     return { role: 'teacher', teacherCount: 0 }
   }
 
+  // Also query Google Classroom user profile (/userProfiles/me) directly
+  let classroomUserId = ''
   try {
-    // Fetch all courses user is associated with (broad query without restrictive filters)
+    const userProfile = await apiFetch('/userProfiles/me', accessToken)
+    if (userProfile?.emailAddress) {
+      normalizedEmail = userProfile.emailAddress.toLowerCase().trim()
+      if (isTeacherEmail(normalizedEmail)) {
+        return { role: 'teacher', teacherCount: 0, userProfile }
+      }
+    }
+    if (userProfile?.id) {
+      classroomUserId = userProfile.id
+    }
+  } catch (profErr) {
+    console.warn('Could not fetch Classroom user profile in determineRole:', profErr)
+  }
+
+  // Try querying courses taught by the user (/courses?teacherId=me)
+  try {
+    const teacherData = await apiFetch('/courses?teacherId=me&pageSize=50', accessToken)
+    if (teacherData.courses && teacherData.courses.length > 0) {
+      return { role: 'teacher', teacherCount: teacherData.courses.length, courses: teacherData.courses }
+    }
+  } catch (tErr) {
+    console.warn('Query teacherId=me check warning:', tErr)
+  }
+
+  try {
+    // Fetch all courses user is associated with (broad query)
     const allCourses = await apiFetch('/courses?pageSize=50', accessToken)
     const courses = allCourses.courses || []
 
     if (courses.length > 0) {
-      const hasTeacherFolder = courses.some((c) => c.teacherFolder != null || c.ownerId === 'me')
-      if (hasTeacherFolder) {
+      const isTeacherOfAny = courses.some(
+        (c) =>
+          c.teacherFolder != null ||
+          (classroomUserId && c.ownerId === classroomUserId) ||
+          c.ownerId === 'me'
+      )
+      if (isTeacherOfAny) {
         return { role: 'teacher', teacherCount: courses.length, courses }
       }
       return { role: 'student', studentCount: courses.length, courses }
@@ -59,7 +100,7 @@ export async function determineRole(accessToken, userEmail = '') {
     return { role: 'teacher', studentCount: 0, courses: [] }
   } catch (err) {
     console.error('Error determining role from Google Classroom:', err)
-    if (normalizedEmail && KNOWN_TEACHERS.includes(normalizedEmail)) {
+    if (isTeacherEmail(normalizedEmail)) {
       return { role: 'teacher', teacherCount: 0 }
     }
     throw err

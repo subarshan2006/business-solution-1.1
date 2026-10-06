@@ -8,6 +8,7 @@ import {
 } from '../services/googleAuth'
 import {
   determineRole,
+  isTeacherEmail,
   listTeacherCourses,
   listStudentCourses,
   listCourseWork,
@@ -19,7 +20,13 @@ import AssignmentModal from './AssignmentModal'
 
 function ClassroomPortal() {
   const [auth, setAuth] = useState(() => getStoredAuth())
-  const [role, setRole] = useState(auth?.role || null)
+  const [role, setRole] = useState(() => {
+    const stored = getStoredAuth()
+    if (stored?.user?.email && isTeacherEmail(stored.user.email)) {
+      return 'teacher'
+    }
+    return stored?.role || null
+  })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [courses, setCourses] = useState([])
@@ -59,20 +66,61 @@ function ClassroomPortal() {
       setLoading(true)
       setError('')
       try {
+        let currentAuth = auth
+        let userEmail = currentAuth.user?.email || ''
+
+        // Fallback: fetch profile from Classroom if email is missing or generic
+        if (!userEmail || userEmail === 'Google Classroom Account') {
+          try {
+            const upRes = await fetch('https://classroom.googleapis.com/v1/userProfiles/me', {
+              headers: { Authorization: `Bearer ${currentAuth.accessToken}` },
+            })
+            if (upRes.ok) {
+              const up = await upRes.json()
+              if (up.emailAddress) {
+                userEmail = up.emailAddress
+                currentAuth = {
+                  ...currentAuth,
+                  user: {
+                    ...currentAuth.user,
+                    email: up.emailAddress,
+                    name: up.name?.fullName || currentAuth.user?.name,
+                    picture: up.photoUrl || currentAuth.user?.picture,
+                  },
+                }
+                setAuth(currentAuth)
+                saveAuth(currentAuth)
+              }
+            }
+          } catch (pErr) {
+            console.warn('Classroom profile sync note:', pErr)
+          }
+        }
+
         let userRole = role
-        if (!userRole) {
-          const roleResult = await determineRole(auth.accessToken, auth.user?.email)
+        if (isTeacherEmail(userEmail)) {
+          userRole = 'teacher'
+          if (role !== 'teacher') {
+            setRole('teacher')
+          }
+          if (currentAuth.role !== 'teacher') {
+            const updated = { ...currentAuth, role: 'teacher' }
+            setAuth(updated)
+            saveAuth(updated)
+          }
+        } else if (!userRole) {
+          const roleResult = await determineRole(currentAuth.accessToken, userEmail)
           userRole = roleResult.role
           setRole(userRole)
-          saveAuth({ ...auth, role: userRole })
+          saveAuth({ ...currentAuth, role: userRole })
         }
 
         if (userRole === 'teacher') {
-          const list = await listTeacherCourses(auth.accessToken)
+          const list = await listTeacherCourses(currentAuth.accessToken)
           setCourses(list)
           if (list.length > 0) setSelectedCourse(list[0])
         } else {
-          const list = await listStudentCourses(auth.accessToken)
+          const list = await listStudentCourses(currentAuth.accessToken)
           setCourses(list)
           if (list.length > 0) setSelectedCourse(list[0])
         }
@@ -108,9 +156,13 @@ function ClassroomPortal() {
     setError('')
     try {
       const authData = await requestGoogleAccessToken()
-      const roleResult = await determineRole(authData.accessToken, authData.user?.email)
-      const fullAuth = { ...authData, role: roleResult.role }
-      setRole(roleResult.role)
+      const isTeacher = isTeacherEmail(authData.user?.email)
+      const roleResult = isTeacher
+        ? { role: 'teacher' }
+        : await determineRole(authData.accessToken, authData.user?.email)
+      const finalRole = isTeacher ? 'teacher' : roleResult.role
+      const fullAuth = { ...authData, role: finalRole }
+      setRole(finalRole)
       setAuth(fullAuth)
       saveAuth(fullAuth)
     } catch (err) {
@@ -233,7 +285,9 @@ function ClassroomPortal() {
               <div>
                 <div className="user-name-row">
                   <h4 className="h4 user-display-name">{auth.user.name}</h4>
-                  <span className={`role-badge ${role}`}>{role?.toUpperCase()}</span>
+                  <span className={`role-badge ${role}`}>
+                    {role === 'teacher' ? 'TEACHER / LEAD MENTOR' : role?.toUpperCase()}
+                  </span>
                   {auth.isMock && <span className="mock-badge">PREVIEW MODE</span>}
                 </div>
                 <p className="user-email-text">{auth.user.email}</p>
