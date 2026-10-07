@@ -18,6 +18,7 @@ import {
 } from '../services/classroomApi'
 import ParentDashboard from './ParentDashboard'
 import AssignmentModal from './AssignmentModal'
+import SessionAnnouncementGenerator from './SessionAnnouncementGenerator'
 
 function ClassroomPortal() {
   const [auth, setAuth] = useState(() => getStoredAuth())
@@ -526,6 +527,13 @@ function ClassroomPortal() {
               <ion-icon name="people-outline"></ion-icon>
               <span>{isTeacher ? '👨‍👩‍👧 Parent Dashboard' : '👨‍👩‍👧 Parent Overview'}</span>
             </button>
+            <button
+              className={`dashboard-tab highlight-announcement${activeTab === 'announcements' ? ' active' : ''}`}
+              onClick={() => setActiveTab('announcements')}
+            >
+              <ion-icon name="megaphone-outline"></ion-icon>
+              <span>📢 Session Updates</span>
+            </button>
           </div>
 
           {/* ======================================================= */}
@@ -672,7 +680,21 @@ function ClassroomPortal() {
                               }}
                             >
                               <ion-icon name="people-outline"></ion-icon>
-                              <span>Parent Report</span>
+                              <span>Parent</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              className="card-action-btn announcement-btn"
+                              title="Post session announcement"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCourse(c)
+                                setActiveTab('announcements')
+                              }}
+                            >
+                              <ion-icon name="megaphone-outline"></ion-icon>
+                              <span>Update</span>
                             </button>
                           </div>
                         </div>
@@ -1337,6 +1359,20 @@ function ClassroomPortal() {
                 onSelectCourse={(course) => setSelectedCourse(course)}
                 isTeacherView={role === 'teacher'}
                 teacherName={auth?.user?.name || 'Lead Mentor'}
+              />
+            </div>
+          )}
+
+          {/* ======================================================= */}
+          {/* TAB 5: 📢 SESSION ANNOUNCEMENTS                         */}
+          {/* ======================================================= */}
+          {activeTab === 'announcements' && (
+            <div className="tab-pane">
+              <SessionAnnouncementGenerator
+                courses={courses}
+                selectedCourse={selectedCourse}
+                auth={auth}
+                defaultTeacherName={auth?.user?.name || 'Steena'}
               />
             </div>
           )}

@@ -6,9 +6,10 @@
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
-// Comprehensive scopes for Google Classroom: Courses, Coursework, Submissions, Rosters, and Profile
+// Comprehensive scopes for Google Classroom: Courses, Coursework, Submissions, Rosters, Announcements, and Profile
 export const DEFAULT_SCOPES = [
   'https://www.googleapis.com/auth/classroom.courses.readonly',
+  'https://www.googleapis.com/auth/classroom.announcements',
   'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
   'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
   'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',

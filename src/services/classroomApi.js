@@ -684,3 +684,49 @@ export function calculateStudentAnalytics(courseWork = [], courseName = '', lead
   }
 }
 
+/**
+ * Create an announcement in Google Classroom
+ */
+export async function createCourseAnnouncement(courseId, text, accessToken) {
+  if (!courseId || !text) {
+    throw new Error('Course ID and announcement text are required.')
+  }
+
+  const res = await fetch(`${CLASSROOM_BASE}/courses/${courseId}/announcements`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text,
+      state: 'PUBLISHED',
+    }),
+  })
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}))
+    const message = errorData.error?.message || `Google API error ${res.status}: ${res.statusText}`
+    const error = new Error(message)
+    error.status = res.status
+    error.details = errorData.error
+    throw error
+  }
+
+  return res.json()
+}
+
+/**
+ * List announcements for a classroom
+ */
+export async function listCourseAnnouncements(courseId, accessToken) {
+  if (!courseId || !accessToken) return []
+  try {
+    const data = await apiFetch(`/courses/${courseId}/announcements?pageSize=20`, accessToken)
+    return data.announcements || []
+  } catch (err) {
+    console.warn('Failed to fetch announcements:', err)
+    return []
+  }
+}
+
