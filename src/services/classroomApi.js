@@ -32,6 +32,7 @@ async function apiFetch(endpoint, accessToken) {
 export const KNOWN_TEACHERS = [
   'steenaantony14@gmail.com',
   'businesswithsubar@gmail.com',
+  'kavitha.nextsteptutoring@gmail.com',
 ]
 
 /**
