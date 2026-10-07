@@ -9,7 +9,7 @@ function Sidebar() {
       <div className="sidebar-info">
 
         <figure className="avatar-box">
-          <img src={`${import.meta.env.BASE_URL}assets/images/logo-image.png`} alt="Jivanaut Test Prep" width="80" />
+          <img src={`${import.meta.env.BASE_URL}assets/images/logo-image.png`} alt="Jivanaut Test Prep" width="80" style={{ borderRadius: '20px', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)' }} />
         </figure>
 
         <div className="info-content">

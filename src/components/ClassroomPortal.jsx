@@ -527,13 +527,15 @@ function ClassroomPortal() {
               <ion-icon name="people-outline"></ion-icon>
               <span>{isTeacher ? '👨‍👩‍👧 Parent Dashboard' : '👨‍👩‍👧 Parent Overview'}</span>
             </button>
-            <button
-              className={`dashboard-tab highlight-announcement${activeTab === 'announcements' ? ' active' : ''}`}
-              onClick={() => setActiveTab('announcements')}
-            >
-              <ion-icon name="megaphone-outline"></ion-icon>
-              <span>📢 Session Updates</span>
-            </button>
+            {isTeacher && role === 'teacher' && (
+              <button
+                className={`dashboard-tab highlight-announcement${activeTab === 'announcements' ? ' active' : ''}`}
+                onClick={() => setActiveTab('announcements')}
+              >
+                <ion-icon name="megaphone-outline"></ion-icon>
+                <span>📢 Session Updates</span>
+              </button>
+            )}
           </div>
 
           {/* ======================================================= */}
@@ -1364,9 +1366,9 @@ function ClassroomPortal() {
           )}
 
           {/* ======================================================= */}
-          {/* TAB 5: 📢 SESSION ANNOUNCEMENTS                         */}
+          {/* TAB 5: 📢 SESSION ANNOUNCEMENTS (TEACHER ONLY)          */}
           {/* ======================================================= */}
-          {activeTab === 'announcements' && (
+          {activeTab === 'announcements' && isTeacher && role === 'teacher' && (
             <div className="tab-pane">
               <SessionAnnouncementGenerator
                 courses={courses}
