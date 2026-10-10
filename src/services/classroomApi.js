@@ -4,6 +4,11 @@
  * Includes realistic mock data for verification and demo testing.
  */
 
+import {
+  DEFAULT_CLASSROOMS_DIRECTORY,
+  getClassroomDirectoryDetails,
+} from '../data/classroomDirectory.js'
+
 const CLASSROOM_BASE = 'https://classroom.googleapis.com/v1'
 
 /**
@@ -346,24 +351,30 @@ export const MOCK_STUDENT = {
   role: 'student',
 }
 
-// Generate the 20 private 1-on-1 classrooms as defined in architecture
+// Generate the 20 private 1-on-1 classrooms with distinct students and parents
 export const MOCK_20_CLASSROOMS = Array.from({ length: 20 }, (_, i) => {
   const num = String(i + 1).padStart(2, '0')
-  const subjects = ['AP Biology', 'AP Environmental Science', 'AP Psychology', 'USABO Prep', 'Biochemistry']
-  const grades = ['Grade 10', 'Grade 11', 'Grade 12']
-  const subject = subjects[i % subjects.length]
-  const grade = grades[i % grades.length]
-  const studentName = `Student ${num}`
+  const dirEntry = DEFAULT_CLASSROOMS_DIRECTORY[i] || DEFAULT_CLASSROOMS_DIRECTORY[0]
+  const studentName = dirEntry.studentName
+  const parentName = dirEntry.parentName
+  const subject = dirEntry.subject
+  const grade = dirEntry.grade
 
   return {
     id: `course-classroom-${num}`,
     name: `${studentName} — ${subject}`,
     section: `${grade} • 1-on-1 Tutoring`,
     descriptionHeading: `Private Tutoring Classroom for ${studentName}`,
+    description: `Parent: ${parentName} | Student: ${studentName}`,
+    room: `Parent: ${parentName}`,
     alternateLink: `https://classroom.google.com/c/demo-${num}`,
     studentName,
+    parentName,
     grade,
     subject,
+    topics: dirEntry.topics,
+    defaultHw: dirEntry.defaultHw,
+    defaultRemarks: dirEntry.defaultRemarks,
     enrollmentCode: `nxt${num}9x`,
     activeAssignmentsCount: 3,
   }
@@ -674,7 +685,10 @@ export function calculateStudentAnalytics(courseWork = [], courseName = '', lead
     sessionsLogged: completedCount > 0 ? completedCount : 1,
     attendanceRate: 100,
     tutorNote: {
-      educator: leadTeacher || 'Lead Educator',
+      educator:
+        leadTeacher && !leadTeacher.toLowerCase().includes('subarshan') && leadTeacher !== 'Lead Educator'
+          ? leadTeacher
+          : 'Steena Antony',
       date: new Date().toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -728,6 +742,315 @@ export async function listCourseAnnouncements(courseId, accessToken) {
   } catch (err) {
     console.warn('Failed to fetch announcements:', err)
     return []
+  }
+}
+
+/**
+ * List enrolled students in a course
+ */
+export async function listCourseStudents(courseId, accessToken) {
+  if (!courseId || !accessToken) return []
+  try {
+    const data = await apiFetch(`/courses/${courseId}/students?pageSize=50`, accessToken)
+    return data.students || []
+  } catch (err) {
+    console.warn('Failed to fetch enrolled students:', err)
+    return []
+  }
+}
+
+/**
+ * List topics defined in a course
+ */
+export async function listCourseTopics(courseId, accessToken) {
+  if (!courseId || !accessToken) return []
+  try {
+    const data = await apiFetch(`/courses/${courseId}/topics?pageSize=50`, accessToken)
+    return data.topic || []
+  } catch (err) {
+    console.warn('Failed to fetch course topics (non-fatal):', err)
+    return []
+  }
+}
+
+/**
+ * Option A: Auto-extract parent name from announcement text or metadata
+ * Matches patterns like "Hi Ms. Sambhrama," "Dear Mr. Rivera," or "Parent: Ms. Sambhrama"
+ */
+export function parseParentNameFromText(text = '') {
+  if (!text) return ''
+  const hiMatch = text.match(/(?:Hi|Dear|Hello)\s+([^,\n\r]+?)(?:,|\n|$)/i)
+  if (hiMatch && hiMatch[1]) {
+    const clean = hiMatch[1].trim()
+    if (clean.length > 1 && clean.length < 50) return clean
+  }
+  const parentFieldMatch = text.match(/Parent(?:\s*Name)?\s*[:=-]\s*([^|\n\r,]+)/i)
+  if (parentFieldMatch && parentFieldMatch[1]) {
+    const clean = parentFieldMatch[1].trim()
+    if (clean.length > 1 && clean.length < 50) return clean
+  }
+  return ''
+}
+
+/**
+ * Extract session number from announcement text
+ * Matches "AP Biology-session 3 -", "session 4", "Session 5:"
+ */
+export function parseSessionNumberFromText(text = '') {
+  if (!text) return null
+  const match = text.match(/(?:session|-session)\s*(\d+)/i)
+  if (match && match[1]) {
+    const num = parseInt(match[1], 10)
+    if (!isNaN(num) && num > 0) return num
+  }
+  return null
+}
+
+/**
+ * Parse structured fields from past announcement text
+ */
+export function parseAnnouncementFields(text = '') {
+  if (!text) return {}
+  const parentName = parseParentNameFromText(text)
+  const sessionNumber = parseSessionNumberFromText(text)
+
+  const topicsMatch = text.match(/Topics covered:-\s*(.+?)(?=\n\s*(?:HW assigned|HW status|Remarks|$))/is)
+  const hwAssignedMatch = text.match(/HW assigned:-\s*(.+?)(?=\n\s*(?:HW status|Remarks|$))/is)
+  const hwStatusMatch = text.match(/HW status\/score:-\s*(.+?)(?=\n\s*(?:Remarks|$))/is)
+  const remarksMatch = text.match(/Remarks:-\s*(.+?)(?=\n\s*(?:Kindly check|Regards|$))/is)
+
+  return {
+    parentName: parentName || '',
+    sessionNumber: sessionNumber || null,
+    topicsCovered: topicsMatch ? topicsMatch[1].trim() : '',
+    hwAssigned: hwAssignedMatch ? hwAssignedMatch[1].trim() : '',
+    hwStatus: hwStatusMatch ? hwStatusMatch[1].trim() : '',
+    remarks: remarksMatch ? remarksMatch[1].trim() : '',
+  }
+}
+
+/**
+ * Comprehensive classroom session context fetcher
+ * Seamlessly resolves student name, parent name (Option A: from previous announcement),
+ * next session number, latest coursework, submissions, and topics.
+ */
+export async function fetchClassroomSessionContext(courseId, accessToken, courseObj = null) {
+  const dirDetails = getClassroomDirectoryDetails(courseId, courseObj?.name)
+
+  // Determine Subject
+  let subjectTitle = dirDetails.subject || 'AP Biology'
+  if (courseObj?.subject) {
+    subjectTitle = courseObj.subject
+  } else if (courseObj?.name) {
+    const parts = courseObj.name.split('—')
+    if (parts.length > 1) {
+      subjectTitle = parts[parts.length - 1].trim()
+    }
+  }
+
+  // Handle Mock / Preview Mode
+  if (!accessToken || courseId?.startsWith('course-classroom-')) {
+    const dirIdx = dirDetails.index || 1
+    // Simulate previous session number (e.g. 2 for odd classrooms, 3 for even)
+    const simulatedLastSession = (dirIdx % 5) + 1
+    const nextSession = simulatedLastSession + 1
+
+    return {
+      courseId,
+      studentName: courseObj?.studentName || dirDetails.studentName,
+      parentName: courseObj?.parentName || dirDetails.parentName,
+      subjectTitle,
+      sessionNumber: String(nextSession),
+      topicsCovered: dirDetails.topics?.[0] || 'Unit 2 :- Cell organelles',
+      availableTopics: dirDetails.topics || [],
+      hwAssigned: dirDetails.defaultHw || 'Workbook practice set',
+      hwStatus: simulatedLastSession % 2 === 0 ? '19/20' : 'Submitted',
+      remarks: dirDetails.defaultRemarks || 'Reviewed key concepts from the curriculum.',
+      recentCourseWork: [
+        {
+          id: 'cw-mock-1',
+          title: dirDetails.defaultHw,
+          state: 'PUBLISHED',
+          status: 'Graded (19/20)',
+        },
+      ],
+      meta: {
+        isMock: true,
+        parentSource: 'Directory + Announcement Pattern (Option A)',
+        studentSource: 'Classroom Roster',
+        lastSessionFound: simulatedLastSession,
+      },
+    }
+  }
+
+  // Live Google Classroom API Fetch
+  try {
+    const [studentsResult, courseWorkResult, announcementsResult, topicsResult] = await Promise.allSettled([
+      listCourseStudents(courseId, accessToken),
+      fetchCourseWorkWithSubmissions(courseId, accessToken),
+      listCourseAnnouncements(courseId, accessToken),
+      listCourseTopics(courseId, accessToken),
+    ])
+
+    const students = studentsResult.status === 'fulfilled' ? studentsResult.value : []
+    const courseWork = courseWorkResult.status === 'fulfilled' ? courseWorkResult.value : []
+    const announcements = announcementsResult.status === 'fulfilled' ? announcementsResult.value : []
+    const topics = topicsResult.status === 'fulfilled' ? topicsResult.value : []
+
+    // 1. Resolve Student Name
+    let resolvedStudentName = ''
+    if (students.length > 0 && students[0]?.profile?.name?.fullName) {
+      resolvedStudentName = students[0].profile.name.fullName
+    } else if (courseObj?.name) {
+      const parts = courseObj.name.split('—')
+      if (parts.length > 1) {
+        resolvedStudentName = parts[0].trim()
+      }
+    }
+    if (!resolvedStudentName) {
+      resolvedStudentName = dirDetails.studentName || 'Student'
+    }
+
+    // 2. Resolve Parent Name (Option A: Auto-extract from previous announcement!)
+    let resolvedParentName = ''
+    let parentSource = 'default'
+    let lastSessionNumber = null
+
+    // Look for previous announcement starting with "Hi [ParentName],"
+    if (announcements.length > 0) {
+      for (const ann of announcements) {
+        if (!resolvedParentName && ann.text) {
+          const extractedParent = parseParentNameFromText(ann.text)
+          if (extractedParent) {
+            resolvedParentName = extractedParent
+            parentSource = 'Option A (Extracted from Previous Announcement Stream)'
+          }
+        }
+        if (lastSessionNumber == null && ann.text) {
+          const sessNum = parseSessionNumberFromText(ann.text)
+          if (sessNum != null) {
+            lastSessionNumber = sessNum
+          }
+        }
+        if (resolvedParentName && lastSessionNumber != null) break
+      }
+    }
+
+    // Fallback: check course description or room
+    if (!resolvedParentName && courseObj) {
+      const fromDesc = parseParentNameFromText(courseObj.description || courseObj.room || '')
+      if (fromDesc) {
+        resolvedParentName = fromDesc
+        parentSource = 'Classroom Metadata (Description/Room)'
+      }
+    }
+
+    // Fallback: directory / saved local storage
+    if (!resolvedParentName) {
+      resolvedParentName = dirDetails.parentName || 'Parent / Guardian'
+      parentSource = dirDetails.hasCustomOverride ? 'Saved Override' : 'Directory Default'
+    }
+
+    // 3. Resolve Next Session Number
+    const nextSessionNumber = lastSessionNumber != null ? lastSessionNumber + 1 : 1
+
+    // 4. Resolve HW Assigned & HW Status from latest CourseWork
+    let resolvedHwAssigned = dirDetails.defaultHw || ''
+    let resolvedHwStatus = 'Not submitted'
+    const recentCourseWork = []
+
+    if (courseWork.length > 0) {
+      const latestCw = courseWork[0]
+      resolvedHwAssigned = latestCw.title
+
+      if (latestCw.submission) {
+        const sub = latestCw.submission
+        if (sub.assignedGrade != null) {
+          resolvedHwStatus = `${sub.assignedGrade}/${latestCw.maxPoints || 100}`
+        } else if (sub.state === 'TURNED_IN') {
+          resolvedHwStatus = 'Submitted (Awaiting review)'
+        } else if (sub.state === 'RETURNED') {
+          resolvedHwStatus = 'Reviewed'
+        } else if (sub.late) {
+          resolvedHwStatus = 'Not submitted (Late)'
+        }
+      }
+
+      courseWork.slice(0, 5).forEach((cw) => {
+        let statusText = 'Assigned'
+        if (cw.submission?.assignedGrade != null) {
+          statusText = `${cw.submission.assignedGrade}/${cw.maxPoints || 100}`
+        } else if (cw.submission?.state === 'TURNED_IN') {
+          statusText = 'Turned in'
+        }
+        recentCourseWork.push({
+          id: cw.id,
+          title: cw.title,
+          description: cw.description,
+          dueDate: cw.dueDate,
+          status: statusText,
+        })
+      })
+    }
+
+    // 5. Resolve Topics
+    const availableTopics = []
+    if (topics.length > 0) {
+      topics.forEach((t) => {
+        if (t.name) availableTopics.push(t.name)
+      })
+    }
+    if (dirDetails.topics && dirDetails.topics.length > 0) {
+      dirDetails.topics.forEach((dt) => {
+        if (!availableTopics.includes(dt)) availableTopics.push(dt)
+      })
+    }
+
+    const resolvedTopics =
+      availableTopics.length > 0
+        ? availableTopics[0]
+        : dirDetails.topics?.[0] || 'Curriculum unit review and practice problems.'
+
+    return {
+      courseId,
+      studentName: resolvedStudentName,
+      parentName: resolvedParentName,
+      subjectTitle,
+      sessionNumber: String(nextSessionNumber),
+      topicsCovered: resolvedTopics,
+      availableTopics,
+      hwAssigned: resolvedHwAssigned,
+      hwStatus: resolvedHwStatus,
+      remarks: dirDetails.defaultRemarks || 'Reviewed key concepts from the previous class and completed practice exercises.',
+      recentCourseWork,
+      meta: {
+        isMock: false,
+        parentSource,
+        studentSource: 'Google Classroom Roster',
+        lastSessionFound: lastSessionNumber,
+      },
+    }
+  } catch (err) {
+    console.error('Error fetching classroom session context from API:', err)
+    return {
+      courseId,
+      studentName: dirDetails.studentName,
+      parentName: dirDetails.parentName,
+      subjectTitle,
+      sessionNumber: '1',
+      topicsCovered: dirDetails.topics?.[0] || '',
+      availableTopics: dirDetails.topics || [],
+      hwAssigned: dirDetails.defaultHw || '',
+      hwStatus: 'Not submitted',
+      remarks: dirDetails.defaultRemarks || '',
+      recentCourseWork: [],
+      meta: {
+        isMock: false,
+        parentSource: 'Directory Fallback',
+        studentSource: 'Directory Fallback',
+        error: err.message,
+      },
+    }
   }
 }
 

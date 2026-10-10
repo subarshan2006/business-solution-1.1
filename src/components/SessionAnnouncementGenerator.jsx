@@ -1,5 +1,9 @@
-import { useState, useId, useMemo } from 'react'
-import { createCourseAnnouncement } from '../services/classroomApi'
+import { useState, useId, useMemo, useEffect, useCallback } from 'react'
+import {
+  createCourseAnnouncement,
+  fetchClassroomSessionContext,
+} from '../services/classroomApi'
+import { saveClassroomOverride } from '../data/classroomDirectory.js'
 
 /**
  * Helper to get ordinal suffix for date (1st, 2nd, 3rd, 4th...)
@@ -41,27 +45,36 @@ export default function SessionAnnouncementGenerator({
     return d
   }, [])
 
-  // Form State
-  const [courseId, setCourseId] = useState(selectedCourse?.id || courses[0]?.id || '')
-  const [subjectTitle, setSubjectTitle] = useState(
-    selectedCourse?.subject || selectedCourse?.name?.split('—')?.[1]?.trim() || 'AP Biology'
+  // Active target course ID
+  const [courseId, setCourseId] = useState(
+    () => selectedCourse?.id || courses[0]?.id || ''
   )
+
+  // Form State
+  const [subjectTitle, setSubjectTitle] = useState('AP Biology')
   const [sessionNumber, setSessionNumber] = useState('3')
-  const [pstDateStr, setPstDateStr] = useState(formatDateWithOrdinal(today))
-  const [istDateStr, setIstDateStr] = useState(formatDateWithOrdinal(tomorrow))
-  const [parentName, setParentName] = useState('Ms.Sambhrama')
-  const [studentName, setStudentName] = useState(selectedCourse?.studentName || 'Samyuktha')
+  const [pstDateStr, setPstDateStr] = useState(() => formatDateWithOrdinal(today))
+  const [istDateStr, setIstDateStr] = useState(() => formatDateWithOrdinal(tomorrow))
+  const [parentName, setParentName] = useState('Ms. Sambhrama')
+  const [studentName, setStudentName] = useState('Samyuktha')
   const [topicsCovered, setTopicsCovered] = useState(
     'Unit 2 :- Cell organelles - Cytoskeleton, peroxisomes, ECM and cell junctions.'
   )
   const [hwAssigned, setHwAssigned] = useState('Unit 2 workbook page numbers 7 through 20')
   const [hwStatus, setHwStatus] = useState('Not submitted')
   const [remarks, setRemarks] = useState(
-    'Revised the concepts from the last classes and completed the concepts on cell organelles. Did practice MCQ on the same. Samyuktha has to submit the worksheet from the previous class and finish the assigned workbook HW by this weekend.'
+    'Revised the concepts from the last classes and completed the concepts on cell organelles. Did practice MCQ on the same.'
   )
   const [teacherName, setTeacherName] = useState(
     auth?.user?.name && auth.user.name.includes('Steena') ? 'Steena' : defaultTeacherName
   )
+
+  // Dynamic context data loaded from Classroom API
+  const [availableTopics, setAvailableTopics] = useState([])
+  const [recentCourseWork, setRecentCourseWork] = useState([])
+  const [syncMeta, setSyncMeta] = useState(null)
+  const [syncing, setSyncing] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
   // Status & UI State
   const [posting, setPosting] = useState(false)
@@ -76,6 +89,54 @@ export default function SessionAnnouncementGenerator({
       return []
     }
   })
+
+  // Synchronize when selectedCourse prop changes externally (e.g., clicking "Update" from course list)
+  useEffect(() => {
+    if (selectedCourse?.id && selectedCourse.id !== courseId) {
+      setCourseId(selectedCourse.id)
+    }
+  }, [selectedCourse, courseId])
+
+  // Fetch and auto-populate classroom-specific details whenever courseId changes
+  const syncClassroomDetails = useCallback(
+    async (targetId) => {
+      if (!targetId) return
+      setSyncing(true)
+      try {
+        const activeCourse = courses.find((c) => c.id === targetId) || selectedCourse
+        const ctx = await fetchClassroomSessionContext(
+          targetId,
+          auth?.accessToken || null,
+          activeCourse
+        )
+
+        if (ctx) {
+          if (ctx.studentName) setStudentName(ctx.studentName)
+          if (ctx.parentName) setParentName(ctx.parentName)
+          if (ctx.subjectTitle) setSubjectTitle(ctx.subjectTitle)
+          if (ctx.sessionNumber) setSessionNumber(ctx.sessionNumber)
+          if (ctx.topicsCovered) setTopicsCovered(ctx.topicsCovered)
+          if (ctx.hwAssigned) setHwAssigned(ctx.hwAssigned)
+          if (ctx.hwStatus) setHwStatus(ctx.hwStatus)
+          if (ctx.remarks) setRemarks(ctx.remarks)
+          setAvailableTopics(ctx.availableTopics || [])
+          setRecentCourseWork(ctx.recentCourseWork || [])
+          setSyncMeta(ctx.meta || null)
+        }
+      } catch (err) {
+        console.warn('Could not auto-sync classroom context:', err)
+      } finally {
+        setSyncing(false)
+      }
+    },
+    [courses, selectedCourse, auth]
+  )
+
+  useEffect(() => {
+    if (courseId) {
+      syncClassroomDetails(courseId)
+    }
+  }, [courseId, syncClassroomDetails])
 
   // Build the exact announcement text matching requested format
   const announcementText = useMemo(() => {
@@ -115,23 +176,32 @@ Regards and thanks, ${teacherName}`
   const handleCourseChange = (e) => {
     const selectedId = e.target.value
     setCourseId(selectedId)
-    const found = courses.find((c) => c.id === selectedId)
-    if (found) {
-      if (found.subject) {
-        setSubjectTitle(found.subject)
-      } else if (found.name) {
-        const parts = found.name.split('—')
-        setSubjectTitle(parts[parts.length - 1].trim())
-      }
-      if (found.studentName) {
-        setStudentName(found.studentName)
-      }
+  }
+
+  // Handle selecting a recent coursework item
+  const handleSelectRecentHw = (cw) => {
+    if (!cw) return
+    setHwAssigned(cw.title)
+    if (cw.status) {
+      setHwStatus(cw.status)
     }
   }
 
   // Quick Preset Handlers
   const handlePresetHwStatus = (status) => {
     setHwStatus(status)
+  }
+
+  // Save manual overrides for this specific classroom
+  const handleSaveClassroomOverrides = () => {
+    if (!courseId) return
+    saveClassroomOverride(courseId, {
+      studentName,
+      parentName,
+      subject: subjectTitle,
+    })
+    setSaveSuccess(true)
+    setTimeout(() => setSaveSuccess(false), 2800)
   }
 
   // Copy to clipboard
@@ -174,7 +244,7 @@ Regards and thanks, ${teacherName}`
 
     try {
       await createCourseAnnouncement(courseId, announcementText, auth.accessToken)
-      setPostSuccess('✓ Successfully posted announcement to Google Classroom!')
+      setPostSuccess('✓ Successfully posted announcement to Google Classroom stream!')
       saveToHistory()
     } catch (err) {
       console.error('Error posting announcement:', err)
@@ -225,15 +295,32 @@ Regards and thanks, ${teacherName}`
             <div className="announcement-badge-row">
               <span className="announcement-type-pill">SESSION REPORT BUILDER</span>
               <span className="sub-badge">Google Classroom Auto-Post</span>
+              {syncMeta && (
+                <span className="api-sync-badge" title={syncMeta.parentSource}>
+                  <ion-icon name="flash-outline"></ion-icon>
+                  <span>Auto-Synced: {studentName}</span>
+                </span>
+              )}
             </div>
             <h3 className="h3 announcement-title">Class Session Announcement Generator</h3>
             <p className="announcement-subtitle">
-              Draft structured class updates, convert PST/IST dates, and post directly to Google Classroom or share with parents.
+              Draft structured class updates with auto-extracted student, parent, homework, and session details directly from Google Classroom.
             </p>
           </div>
         </div>
 
         <div className="announcement-header-actions">
+          <button
+            type="button"
+            className="announcement-action-btn refresh-sync-btn"
+            onClick={() => syncClassroomDetails(courseId)}
+            disabled={syncing}
+            title="Refresh student, parent, and homework details from Google Classroom"
+          >
+            <ion-icon name={syncing ? 'sync-outline' : 'refresh-outline'} className={syncing ? 'spin-icon' : ''}></ion-icon>
+            <span>{syncing ? 'Syncing...' : 'Sync from Classroom'}</span>
+          </button>
+
           <button
             type="button"
             className={`announcement-action-btn copy-btn${copied ? ' copied' : ''}`}
@@ -256,6 +343,38 @@ Regards and thanks, ${teacherName}`
           </button>
         </div>
       </div>
+
+      {/* Sync Status Banner */}
+      {syncMeta && (
+        <div className="announcement-sync-banner">
+          <div className="sync-banner-content">
+            <div className="sync-banner-icon">
+              <ion-icon name="checkmark-done-circle-outline"></ion-icon>
+            </div>
+            <div className="sync-banner-text">
+              <strong>Classroom Synced:</strong> Enrolled Student: <em>{studentName}</em> • Parent (Option A): <em>{parentName}</em> • Session: <em>#{sessionNumber}</em>
+              {syncMeta.parentSource && (
+                <span className="sync-source-tag">Source: {syncMeta.parentSource}</span>
+              )}
+            </div>
+          </div>
+          {saveSuccess ? (
+            <span className="saved-confirm-pill">
+              <ion-icon name="checkmark-circle"></ion-icon> Saved for this classroom!
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="save-classroom-btn"
+              onClick={handleSaveClassroomOverrides}
+              title="Save current Student and Parent names for this classroom"
+            >
+              <ion-icon name="save-outline"></ion-icon>
+              <span>Remember Details</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Notifications */}
       {postSuccess && (
@@ -283,20 +402,23 @@ Regards and thanks, ${teacherName}`
         {/* LEFT COLUMN: Input Form */}
         <div className="announcement-form-pane">
           <div className="pane-card">
-            <h4 className="h4 pane-title">
-              <ion-icon name="create-outline"></ion-icon>
-              <span>Session Details</span>
-            </h4>
+            <div className="pane-title-row">
+              <h4 className="h4 pane-title">
+                <ion-icon name="create-outline"></ion-icon>
+                <span>Session Details</span>
+              </h4>
+              {syncing && <span className="syncing-indicator">Auto-fetching details...</span>}
+            </div>
 
             {/* Target Classroom */}
             {courses.length > 0 && (
-              <div className="form-group">
+              <div className="form-group highlight-classroom-select">
                 <label htmlFor={`${formId}-course`} className="form-label">
-                  Target Classroom:
+                  Target Classroom (1-on-1 Tutoring):
                 </label>
                 <select
                   id={`${formId}-course`}
-                  className="form-select"
+                  className="form-select classroom-dropdown"
                   value={courseId}
                   onChange={handleCourseChange}
                 >
@@ -306,6 +428,9 @@ Regards and thanks, ${teacherName}`
                     </option>
                   ))}
                 </select>
+                <span className="form-helper-text">
+                  Selecting a classroom automatically loads its enrolled student, parent (Option A), session number, and homework.
+                </span>
               </div>
             )}
 
@@ -393,23 +518,33 @@ Regards and thanks, ${teacherName}`
             {/* Parent & Student Names */}
             <div className="form-row two-col">
               <div className="form-group">
-                <label htmlFor={`${formId}-parent`} className="form-label">
-                  Parent / Guardian Name:
-                </label>
+                <div className="label-with-presets">
+                  <label htmlFor={`${formId}-parent`} className="form-label">
+                    Parent / Guardian Name:
+                  </label>
+                  <span className="field-source-pill" title="Extracted from prior announcement or directory">
+                    Option A Auto-Extracted
+                  </span>
+                </div>
                 <input
                   id={`${formId}-parent`}
                   type="text"
                   className="form-input"
                   value={parentName}
                   onChange={(e) => setParentName(e.target.value)}
-                  placeholder="e.g. Ms.Sambhrama"
+                  placeholder="e.g. Ms. Sambhrama"
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor={`${formId}-student`} className="form-label">
-                  Student Name:
-                </label>
+                <div className="label-with-presets">
+                  <label htmlFor={`${formId}-student`} className="form-label">
+                    Student Name:
+                  </label>
+                  <span className="field-source-pill" title="Synced from Google Classroom roster">
+                    Classroom Roster
+                  </span>
+                </div>
                 <input
                   id={`${formId}-student`}
                   type="text"
@@ -427,32 +562,23 @@ Regards and thanks, ${teacherName}`
                 <label htmlFor={`${formId}-topics`} className="form-label">
                   Topics covered:-
                 </label>
-                <div className="quick-chips">
-                  <span
-                    className="chip-btn"
-                    onClick={() =>
-                      setTopicsCovered('Unit 2 :- Cell organelles - Cytoskeleton, peroxisomes, ECM and cell junctions.')
-                    }
-                  >
-                    Cell Organelles
-                  </span>
-                  <span
-                    className="chip-btn"
-                    onClick={() =>
-                      setTopicsCovered('Unit 3 :- Cellular Energetics - Enzyme kinetics, inhibition and catalytic cycles.')
-                    }
-                  >
-                    Enzymes
-                  </span>
-                  <span
-                    className="chip-btn"
-                    onClick={() =>
-                      setTopicsCovered('Unit 6 :- Gene Expression & Regulation - DNA replication, transcription & translation.')
-                    }
-                  >
-                    Genetics
-                  </span>
-                </div>
+                {availableTopics.length > 0 && (
+                  <div className="quick-chips">
+                    {availableTopics.map((top, idx) => {
+                      const shortLabel = top.split(':-')?.[1]?.trim()?.split('-')?.[0]?.trim() || top.slice(0, 22)
+                      return (
+                        <span
+                          key={idx}
+                          className="chip-btn"
+                          onClick={() => setTopicsCovered(top)}
+                          title={top}
+                        >
+                          {shortLabel}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
               <textarea
                 id={`${formId}-topics`}
@@ -470,20 +596,20 @@ Regards and thanks, ${teacherName}`
                 <label htmlFor={`${formId}-hw-assigned`} className="form-label">
                   HW assigned:-
                 </label>
-                <div className="quick-chips">
-                  <span
-                    className="chip-btn"
-                    onClick={() => setHwAssigned('Unit 2 workbook page numbers 7 through 20')}
-                  >
-                    Workbook 7-20
-                  </span>
-                  <span
-                    className="chip-btn"
-                    onClick={() => setHwAssigned('Practice FRQ Set 3 & MCQ revision worksheet')}
-                  >
-                    FRQ Set 3
-                  </span>
-                </div>
+                {recentCourseWork.length > 0 && (
+                  <div className="quick-chips">
+                    {recentCourseWork.map((cw) => (
+                      <span
+                        key={cw.id}
+                        className="chip-btn"
+                        onClick={() => handleSelectRecentHw(cw)}
+                        title={`Select from Classroom: ${cw.title}`}
+                      >
+                        {cw.title.slice(0, 22)}...
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <input
                 id={`${formId}-hw-assigned`}
@@ -502,7 +628,7 @@ Regards and thanks, ${teacherName}`
                   HW status/score:-
                 </label>
                 <div className="quick-chips">
-                  {['Not submitted', 'Submitted', '18/20', '20/20', 'Awaiting review'].map((st) => (
+                  {['Not submitted', 'Submitted', '18/20', '19/20', '20/20', 'Awaiting review'].map((st) => (
                     <span
                       key={st}
                       className={`chip-btn${hwStatus === st ? ' active' : ''}`}
@@ -531,7 +657,7 @@ Regards and thanks, ${teacherName}`
               <textarea
                 id={`${formId}-remarks`}
                 className="form-textarea"
-                rows="4"
+                rows="3"
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="Revised the concepts from the last classes..."
@@ -603,7 +729,9 @@ Regards and thanks, ${teacherName}`
                 </div>
                 <div className="stream-author-meta">
                   <strong className="author-name">{teacherName || 'Teacher'}</strong>
-                  <span className="post-timestamp">Just now • Google Classroom Announcement</span>
+                  <span className="post-timestamp">
+                    {subjectTitle} • Session {sessionNumber} Updates
+                  </span>
                 </div>
               </div>
 
@@ -637,7 +765,7 @@ Regards and thanks, ${teacherName}`
             <div className="preview-tips-box">
               <ion-icon name="bulb-outline"></ion-icon>
               <div>
-                <strong>Automatic Formatting:</strong> Line breaks, bullet headers, PST/IST timezones, and signature are preserved exactly according to your standard specification.
+                <strong>Automation Active:</strong> Student name is pulled from your Google Classroom roster, parent name is auto-extracted from prior announcements (Option A), and next session number increments automatically.
               </div>
             </div>
 

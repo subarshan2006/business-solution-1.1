@@ -1360,7 +1360,11 @@ function ClassroomPortal() {
                 allCourses={courses}
                 onSelectCourse={(course) => setSelectedCourse(course)}
                 isTeacherView={role === 'teacher'}
-                teacherName={auth?.user?.name || 'Lead Mentor'}
+                teacherName={
+                  auth?.user?.name && !auth.user.name.toLowerCase().includes('subarshan')
+                    ? auth.user.name
+                    : 'Steena Antony'
+                }
               />
             </div>
           )}

@@ -7201,6 +7201,215 @@ main { position: relative; z-index: 1; }
   color: #854d0e;
 }
 
+/* Auto-Sync Badges and Sync Banner */
+.api-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #81c995;
+  background: rgba(52, 168, 83, 0.15);
+  padding: 3px 9px;
+  border-radius: 16px;
+  border: 1px solid rgba(52, 168, 83, 0.35);
+}
+
+.api-sync-badge ion-icon {
+  font-size: 13px;
+  color: #81c995;
+}
+
+.refresh-sync-btn {
+  background: rgba(66, 133, 244, 0.12);
+  color: #8ab4f8;
+  border: 1px solid rgba(66, 133, 244, 0.25);
+}
+
+.refresh-sync-btn:hover {
+  background: rgba(66, 133, 244, 0.25);
+  border-color: #4285f4;
+  color: #ffffff;
+}
+
+.spin-icon {
+  animation: spinSync 1s linear infinite;
+}
+
+@keyframes spinSync {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.announcement-sync-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  background: linear-gradient(90deg, rgba(66, 133, 244, 0.12), rgba(52, 168, 83, 0.12));
+  border: 1px solid rgba(66, 133, 244, 0.25);
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+
+.sync-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.sync-banner-icon {
+  font-size: 22px;
+  color: #81c995;
+  display: flex;
+  align-items: center;
+}
+
+.sync-banner-text {
+  font-size: 13px;
+  color: var(--white-1, #f1f3f4);
+  line-height: 1.4;
+}
+
+.sync-banner-text em {
+  font-style: normal;
+  font-weight: 600;
+  color: #8ab4f8;
+}
+
+.sync-source-tag {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--light-gray-70, #a0a0a5);
+}
+
+.save-classroom-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white-1, #ffffff);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.save-classroom-btn:hover {
+  background: rgba(66, 133, 244, 0.25);
+  border-color: #4285f4;
+  color: #ffffff;
+}
+
+.saved-confirm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #81c995;
+  background: rgba(52, 168, 83, 0.2);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #34a853;
+}
+
+.pane-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pane-title-row .pane-title {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.syncing-indicator {
+  font-size: 12px;
+  color: #8ab4f8;
+  font-style: italic;
+}
+
+.highlight-classroom-select {
+  padding: 14px;
+  background: rgba(66, 133, 244, 0.06);
+  border: 1px solid rgba(66, 133, 244, 0.2);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.classroom-dropdown {
+  font-weight: 600;
+  color: #8ab4f8;
+}
+
+.form-helper-text {
+  display: block;
+  font-size: 11px;
+  color: var(--light-gray-70, #a0a0a5);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.field-source-pill {
+  font-size: 10px;
+  font-weight: 600;
+  color: #8ab4f8;
+  background: rgba(66, 133, 244, 0.15);
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(66, 133, 244, 0.25);
+}
+
+[data-theme='light'] .announcement-sync-banner {
+  background: #e8f0fe;
+  border-color: #c2e7ff;
+}
+
+[data-theme='light'] .sync-banner-text {
+  color: #202124;
+}
+
+[data-theme='light'] .sync-banner-text em {
+  color: #1a73e8;
+}
+
+[data-theme='light'] .sync-source-tag {
+  background: #f1f3f4;
+  color: #5f6368;
+}
+
+[data-theme='light'] .save-classroom-btn {
+  background: #f1f3f4;
+  border-color: #dadce0;
+  color: #202124;
+}
+
+[data-theme='light'] .highlight-classroom-select {
+  background: #f8fafd;
+  border-color: #d2e3fc;
+}
+
+[data-theme='light'] .classroom-dropdown {
+  color: #1a73e8;
+}
+
 /*-----------------------------------*\
   #CLASSROOM PORTAL — MOBILE RESPONSIVE
 \*-----------------------------------*/

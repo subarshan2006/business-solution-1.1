@@ -11,7 +11,7 @@ function ParentDashboard({
   allCourses = [],
   onSelectCourse,
   isTeacherView = false,
-  teacherName = 'Lead Mentor',
+  teacherName = 'Steena Antony',
 }) {
   const [activeParentTab, setActiveParentTab] = useState('progress') // 'progress', 'pending', 'completed', 'upcoming', 'report'
 
@@ -20,7 +20,14 @@ function ParentDashboard({
     selectedCourse?.studentName ||
     (studentName && studentName !== 'Alex Rivera' ? studentName : selectedCourse?.section ? selectedCourse.section : 'Student')
 
-  const analytics = calculateStudentAnalytics(courseWork, activeCourseName, teacherName)
+  const displayTeacherName =
+    teacherName &&
+    !teacherName.toLowerCase().includes('subarshan') &&
+    teacherName !== 'Lead Mentor'
+      ? teacherName
+      : 'Steena Antony'
+
+  const analytics = calculateStudentAnalytics(courseWork, activeCourseName, displayTeacherName)
 
   const handlePrint = () => {
     window.print()
@@ -88,7 +95,7 @@ function ParentDashboard({
               {activeStudentName}'s Academic Dashboard
             </h3>
             <p className="parent-course-sub">
-              {activeCourseName} • Instructor: {teacherName}
+              {activeCourseName} • Instructor: {displayTeacherName}
             </p>
           </div>
         </div>
@@ -477,7 +484,7 @@ function ParentDashboard({
             {/* Letterhead */}
             <div className="report-card-header">
               <div>
-                <span className="report-institution-tag">NXTSTEP TUTORING</span>
+                <span className="report-institution-tag">JIVANAUT TEST PREP</span>
                 <h3 className="h3 report-doc-title">Official Student Progress Report</h3>
                 <p className="report-doc-sub">{activeCourseName}</p>
               </div>
@@ -495,7 +502,7 @@ function ParentDashboard({
               </div>
               <div className="report-meta-col">
                 <span className="meta-key">Lead Tutor:</span>
-                <span className="meta-val">{teacherName}</span>
+                <span className="meta-val">{displayTeacherName}</span>
               </div>
               <div className="report-meta-col">
                 <span className="meta-key">Cumulative Score:</span>
@@ -519,7 +526,7 @@ function ParentDashboard({
               <div className="topics-bars-container">
                 {analytics.topicMastery.length > 0 ? (
                   analytics.topicMastery.map((tm, idx) => (
-                    <div key={idx} className="topic-bar-row">
+                     <div key={idx} className="topic-bar-row">
                       <div className="topic-label-col">
                         <span className="topic-name">{tm.topic}</span>
                         <span className={`topic-status-tag ${tm.status.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
@@ -562,11 +569,11 @@ function ParentDashboard({
             {/* Sign-off */}
             <div className="report-signatures-row">
               <div className="signature-block">
-                <div className="signature-line">{teacherName}</div>
+                <div className="signature-line">{displayTeacherName}</div>
                 <span className="signature-title">Lead Educator & Mentor</span>
               </div>
               <div className="signature-block">
-                <div className="signature-line">NxtStep Tutoring</div>
+                <div className="signature-line">Jivanaut Test Prep</div>
                 <span className="signature-title">Official Verification</span>
               </div>
             </div>
