@@ -1,0 +1,36 @@
+What the report contains (locked design)
+One auto-generated report per student per classroom, matching Monthly Online Tutoring Report Card.pdf:
+Section	Source
+Header: "Monthly Tutoring Progress Report" / "Google Classroom Integrated Tutee Evaluation" / Academic Cycle = month	auto (selected month)
+Meta: Student Name, Subject & Course, Google Classroom ID (Grade/Level removed)	auto
+KPI 1 — Sessions Attended	auto: completedAssignments / totalAssignments
+KPI 2 — Homework Average	auto: calculateStudentAnalytics().avgGrade
+KPI 3 — Summative Score	manual, teacher-only (score/total, default total 100)
+KPI 4 — Punctuality Rate	auto: completedCount / courseWork.length
+Curriculum & Topics table (Date/Week · Topics · Classroom Assignment Ref · Status)	auto from courseWork + announcement topics
+Assessment & Task Performance (Formative & Homework Avg, Monthly Summative Exam)	auto + manual summative
+Instructor Remarks (Academic Engagement, Focus Areas)	auto narrative
+Targeted Support for Next Month (bullets)	auto narrative
+Parent Recommendations (bullets)	auto narrative
+Footer: Tutor = teacherName prop, "Generated via Online Tutoring Portal"	auto
+Locked rules: Summative score+note are manual and visible/editable only when role === 'teacher' (isTeacherView). Tutor falls back to 'Steena Antony'. Export = PDF via browser print only (no download of data files).
+Sessions KPI rules: include TURNED_IN even with no assignedGrade; exclude state === 'ASSIGNED' with no submission; count assignments only.
+4-Phase Plan
+Phase 1 — Report data engine (src/services/classroomApi.js)
+- Month utils: getMonthKey(), getMonthLabel(mk), getRecentMonthKeys(n) (format YYYY-MM).
+- buildMonthlyReport({ courseWork, announcements, courseMeta, monthKey, manual, teacherName }) → returns structured report object (meta, kpis, curriculum rows, assessment, narrative sections).
+- Filter courseWork to the chosen month; compute sessions/homework/punctuality; build curriculum rows and statuses.
+- generateMonthlyNarrative() for engagement remarks, focus areas, targeted support, parent recommendations.
+- Summative persistence helpers: getSummativeRecord(courseId, monthKey) / saveSummativeRecord(courseId, monthKey, record) using localStorage key nxtstep_summative_report_{courseId}_{monthKey}.
+- Fix KPI: sessionsLogged = ${completed} / ${total} (already applied).
+Phase 2 — Report card UI (src/components/ParentDashboard.jsx)
+- Add a "Report Card" tab with month selector (getRecentMonthKeys(12)), "Download PDF" → window.print().
+- Render all sections from buildMonthlyReport(...).
+- Teacher-only summative editor (score/total default 100, note) with Save/Cancel, wired to the summative helpers.
+- Wire teacherName prop and isTeacherView.
+Phase 3 — Styling & print (src/style.css)
+- Screen layout styles for the report card (.mr-*, .monthly-report-card, toolbars, KPI grid, tables, summative editor).
+- @media print / @page A4 rules: hide nav/toolbars, clean black-on-white layout.
+- Mobile responsiveness for the report tab.
+Phase 4 — Verify, integrate, ship
+- Wire ParentDashboard in ClassroomPortal.jsx (pass isTeacherView={role === 'teacher'}, teacherName; pass announcements if available, else []).

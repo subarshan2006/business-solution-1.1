@@ -13,6 +13,7 @@ import {
   listStudentCourses,
   fetchCourseWorkWithSubmissions,
   calculateStudentAnalytics,
+  listCourseAnnouncements,
   MOCK_20_CLASSROOMS,
   MOCK_ASSIGNMENTS,
 } from '../services/classroomApi'
@@ -48,6 +49,7 @@ function ClassroomPortal() {
   const [courses, setCourses] = useState([])
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [courseWork, setCourseWork] = useState([])
+  const [announcements, setAnnouncements] = useState([])
   const [loadingCourseWork, setLoadingCourseWork] = useState(false)
   const [courseWorkError, setCourseWorkError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
@@ -169,12 +171,13 @@ function ClassroomPortal() {
     fetchRealClassroomData()
   }, [auth, role, isTeacher])
 
-  // Fetch coursework when selectedCourse changes in live mode
+  // Fetch coursework and announcements when selectedCourse changes in live mode
   useEffect(() => {
     if (!selectedCourse || !auth) return
 
     if (auth.isMock) {
       setCourseWork(MOCK_ASSIGNMENTS)
+      setAnnouncements([])
       return
     }
 
@@ -183,9 +186,21 @@ function ClassroomPortal() {
       setLoadingCourseWork(true)
       setCourseWorkError('')
       try {
-        const cw = await fetchCourseWorkWithSubmissions(selectedCourse.id, auth.accessToken)
+        const [cwRes, annsRes] = await Promise.allSettled([
+          fetchCourseWorkWithSubmissions(selectedCourse.id, auth.accessToken),
+          listCourseAnnouncements(selectedCourse.id, auth.accessToken),
+        ])
         if (isMounted) {
-          setCourseWork(cw)
+          if (cwRes.status === 'fulfilled') {
+            setCourseWork(cwRes.value)
+          } else {
+            throw cwRes.reason
+          }
+          if (annsRes.status === 'fulfilled') {
+            setAnnouncements(annsRes.value || [])
+          } else {
+            setAnnouncements([])
+          }
         }
       } catch (err) {
         console.error('Could not fetch coursework for selected course:', err)
@@ -1365,6 +1380,7 @@ function ClassroomPortal() {
                     ? auth.user.name
                     : 'Steena Antony'
                 }
+                announcements={announcements || []}
               />
             </div>
           )}

@@ -1,5 +1,13 @@
-import { useState } from 'react'
-import { calculateStudentAnalytics } from '../services/classroomApi'
+import { useState, useMemo, useEffect } from 'react'
+import {
+  calculateStudentAnalytics,
+  buildMonthlyReport,
+  getMonthKey,
+  getMonthLabel,
+  getRecentMonthKeys,
+  getSummativeRecord,
+  saveSummativeRecord,
+} from '../services/classroomApi'
 
 function ParentDashboard({
   studentName = 'Student',
@@ -12,8 +20,14 @@ function ParentDashboard({
   onSelectCourse,
   isTeacherView = false,
   teacherName = 'Steena Antony',
+  announcements = [],
 }) {
   const [activeParentTab, setActiveParentTab] = useState('progress') // 'progress', 'pending', 'completed', 'upcoming', 'report'
+  const [selectedMonthKey, setSelectedMonthKey] = useState(getMonthKey())
+  const [isEditingSummative, setIsEditingSummative] = useState(false)
+  const [summativeRecord, setSummativeRecord] = useState(null)
+  const [summativeForm, setSummativeForm] = useState({ score: '', total: 100, note: '', date: '' })
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState(false)
 
   const activeCourseName = selectedCourse?.name || courseName
   const activeStudentName =
@@ -29,8 +43,76 @@ function ParentDashboard({
 
   const analytics = calculateStudentAnalytics(courseWork, activeCourseName, displayTeacherName)
 
+  // Load summative record when course or month changes
+  useEffect(() => {
+    if (selectedCourse?.id && selectedMonthKey) {
+      const rec = getSummativeRecord(selectedCourse.id, selectedMonthKey)
+      setSummativeRecord(rec)
+      if (rec) {
+        setSummativeForm({
+          score: rec.score != null ? rec.score : '',
+          total: rec.total != null ? rec.total : 100,
+          note: rec.note || '',
+          date: rec.date || '',
+        })
+      } else {
+        setSummativeForm({ score: '', total: 100, note: '', date: '' })
+      }
+    } else {
+      setSummativeRecord(null)
+      setSummativeForm({ score: '', total: 100, note: '', date: '' })
+    }
+    setIsEditingSummative(false)
+  }, [selectedCourse?.id, selectedMonthKey])
+
+  const recentMonthKeys = useMemo(() => getRecentMonthKeys(12), [])
+
+  const monthlyReport = useMemo(() => {
+    return buildMonthlyReport({
+      courseWork,
+      announcements,
+      courseMeta: {
+        id: selectedCourse?.id,
+        enrollmentCode: selectedCourse?.enrollmentCode,
+        name: activeCourseName,
+        studentName: activeStudentName,
+        section: selectedCourse?.section,
+        isMock: selectedCourse?.isMock,
+      },
+      monthKey: selectedMonthKey,
+      manual: summativeRecord,
+      teacherName: displayTeacherName,
+    })
+  }, [
+    courseWork,
+    announcements,
+    selectedCourse,
+    activeCourseName,
+    activeStudentName,
+    selectedMonthKey,
+    summativeRecord,
+    displayTeacherName,
+  ])
+
   const handlePrint = () => {
     window.print()
+  }
+
+  const handleSaveSummative = (e) => {
+    e.preventDefault()
+    if (!selectedCourse?.id) return
+    const saved = saveSummativeRecord(selectedCourse.id, selectedMonthKey, {
+      score: summativeForm.score,
+      total: summativeForm.total,
+      note: summativeForm.note,
+      date:
+        summativeForm.date ||
+        new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    })
+    setSummativeRecord(saved)
+    setIsEditingSummative(false)
+    setSaveSuccessNotice(true)
+    setTimeout(() => setSaveSuccessNotice(false), 3000)
   }
 
   return (
@@ -160,7 +242,7 @@ function ParentDashboard({
           onClick={() => setActiveParentTab('report')}
         >
           <ion-icon name="newspaper-outline"></ion-icon>
-          <span>5. Progress / Reports</span>
+          <span>5. Monthly Report Card</span>
         </button>
       </div>
 
@@ -475,106 +557,313 @@ function ParentDashboard({
       )}
 
       {/* ======================================================== */}
-      {/* SECTION 5: PROGRESS / REPORTS (PRINTABLE REPORT CARD)     */}
+      {/* SECTION 5: MONTHLY PROGRESS REPORT (LOCKED SPECIFICATION) */}
       {/* ======================================================== */}
       {activeParentTab === 'report' && (
-        <div className="parent-tab-content">
-          {/* Printable Report Card Container */}
-          <div className="official-report-card">
-            {/* Letterhead */}
-            <div className="report-card-header">
-              <div>
-                <span className="report-institution-tag">JIVANAUT TEST PREP</span>
-                <h3 className="h3 report-doc-title">Official Student Progress Report</h3>
-                <p className="report-doc-sub">{activeCourseName}</p>
+        <div className="parent-tab-content mr-tab-content">
+          {/* Controls Bar (Screen Only - Hidden in Print) */}
+          <div className="mr-controls-bar">
+            <div className="mr-controls-left">
+              <label htmlFor="mr-month-selector" className="mr-select-label">
+                <ion-icon name="calendar-outline"></ion-icon>
+                <span>Academic Cycle:</span>
+              </label>
+              <select
+                id="mr-month-selector"
+                className="mr-month-select"
+                value={selectedMonthKey}
+                onChange={(e) => setSelectedMonthKey(e.target.value)}
+              >
+                {recentMonthKeys.map((mk) => (
+                  <option key={mk} value={mk}>
+                    {getMonthLabel(mk)}
+                  </option>
+                ))}
+              </select>
+              <span className="mr-sync-pill">
+                <ion-icon name="checkmark-circle"></ion-icon>
+                <span>Google Classroom Integrated</span>
+              </span>
+            </div>
+
+            <div className="mr-controls-right">
+              {isTeacherView && (
+                <button
+                  type="button"
+                  className={`mr-teacher-btn${isEditingSummative ? ' active' : ''}`}
+                  onClick={() => setIsEditingSummative((prev) => !prev)}
+                  title="Teacher only: Edit Summative Exam score and observations"
+                >
+                  <ion-icon name={isEditingSummative ? 'close-outline' : 'create-outline'}></ion-icon>
+                  <span>{isEditingSummative ? 'Close Editor' : 'Edit Summative Score'}</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="mr-download-btn"
+                onClick={handlePrint}
+                title="Download report as PDF via browser print"
+              >
+                <ion-icon name="download-outline"></ion-icon>
+                <span>Download PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {saveSuccessNotice && (
+            <div className="mr-alert-notice success">
+              <ion-icon name="checkmark-circle-outline"></ion-icon>
+              <span>Summative exam evaluation saved successfully to this monthly report card.</span>
+            </div>
+          )}
+
+          {/* Teacher Summative Editor (Screen Only, Teacher View Only) */}
+          {isTeacherView && isEditingSummative && (
+            <form className="mr-summative-editor-card" onSubmit={handleSaveSummative}>
+              <div className="mr-editor-header">
+                <div className="mr-editor-title-row">
+                  <ion-icon name="school-outline"></ion-icon>
+                  <h4 className="h4 mr-editor-title">Instructor Summative Exam Entry ({monthlyReport.academicCycle})</h4>
+                </div>
+                <span className="mr-editor-badge">Teacher-Only Tool</span>
               </div>
-              <div className="report-date-block">
-                <span>Date: {new Date().toLocaleDateString()}</span>
-                <span>Term: Active Academic Term</span>
+              <p className="mr-editor-sub">
+                Manual summative score and note are visible and editable exclusively when in teacher view. Saved values update the official monthly report card instantly.
+              </p>
+
+              <div className="mr-editor-fields-grid">
+                <div className="mr-form-group">
+                  <label htmlFor="mr-score-input">Summative Score:</label>
+                  <input
+                    id="mr-score-input"
+                    type="number"
+                    min="0"
+                    max={summativeForm.total || 100}
+                    placeholder="e.g. 88"
+                    value={summativeForm.score}
+                    onChange={(e) => setSummativeForm({ ...summativeForm, score: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="mr-form-group">
+                  <label htmlFor="mr-total-input">Total Points (Default 100):</label>
+                  <input
+                    id="mr-total-input"
+                    type="number"
+                    min="1"
+                    placeholder="100"
+                    value={summativeForm.total}
+                    onChange={(e) => setSummativeForm({ ...summativeForm, total: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="mr-form-group">
+                  <label htmlFor="mr-date-input">Exam Administered Date:</label>
+                  <input
+                    id="mr-date-input"
+                    type="text"
+                    placeholder="e.g. Oct 27"
+                    value={summativeForm.date}
+                    onChange={(e) => setSummativeForm({ ...summativeForm, date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="mr-form-group full-width">
+                <label htmlFor="mr-notes-input">Instructor Qualitative Observation & Exam Feedback:</label>
+                <textarea
+                  id="mr-notes-input"
+                  rows="3"
+                  placeholder="e.g. Administered Oct 27. Excellent performance on factoring quadratics; minor calculation slips on rational denominators."
+                  value={summativeForm.note}
+                  onChange={(e) => setSummativeForm({ ...summativeForm, note: e.target.value })}
+                ></textarea>
+              </div>
+
+              <div className="mr-editor-actions">
+                <button type="submit" className="mr-save-btn">
+                  <ion-icon name="save-outline"></ion-icon>
+                  <span>Save to Report</span>
+                </button>
+                <button
+                  type="button"
+                  className="mr-cancel-btn"
+                  onClick={() => setIsEditingSummative(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ========================================================== */}
+          {/* THE OFFICIAL REPORT CARD DOCUMENT (Matches PDF 1:1)       */}
+          {/* ========================================================== */}
+          <div className="monthly-report-card">
+            {/* 1. Header */}
+            <div className="mr-doc-header">
+              <div className="mr-doc-header-left">
+                <h2 className="mr-doc-title">Monthly Tutoring Progress Report</h2>
+                <p className="mr-doc-subtitle">Google Classroom Integrated Tutee Evaluation</p>
+              </div>
+              <div className="mr-doc-header-right">
+                <span className="mr-cycle-tag">ACADEMIC CYCLE</span>
+                <span className="mr-cycle-val">{monthlyReport.academicCycle}</span>
               </div>
             </div>
 
-            {/* Student Meta Details */}
-            <div className="report-meta-table">
-              <div className="report-meta-col">
-                <span className="meta-key">Student Name:</span>
-                <span className="meta-val">{activeStudentName}</span>
+            <div className="mr-header-divider"></div>
+
+            {/* 2. Meta Grid (Student Name, Subject & Course, Google Classroom ID - Grade/Level removed) */}
+            <div className="mr-meta-box">
+              <div className="mr-meta-item">
+                <span className="mr-meta-label">STUDENT NAME</span>
+                <span className="mr-meta-value">{monthlyReport.meta.studentName}</span>
               </div>
-              <div className="report-meta-col">
-                <span className="meta-key">Lead Tutor:</span>
-                <span className="meta-val">{displayTeacherName}</span>
+              <div className="mr-meta-item">
+                <span className="mr-meta-label">SUBJECT & COURSE</span>
+                <span className="mr-meta-value">{monthlyReport.meta.subjectCourse}</span>
               </div>
-              <div className="report-meta-col">
-                <span className="meta-key">Cumulative Score:</span>
-                <span className="meta-val highlight">
-                  {analytics.hasGrades
-                    ? `${analytics.averagePercentage}% (${analytics.letterGrade})`
-                    : 'Pending Grades'}
-                </span>
-              </div>
-              <div className="report-meta-col">
-                <span className="meta-key">Submission Reliability:</span>
-                <span className="meta-val">
-                  {analytics.completionRate}% ({analytics.completedCount} of {analytics.totalAssignments} Submitted)
-                </span>
+              <div className="mr-meta-item">
+                <span className="mr-meta-label">GOOGLE CLASSROOM ID</span>
+                <span className="mr-meta-value">{monthlyReport.meta.classroomCode}</span>
               </div>
             </div>
 
-            {/* Real Topic / Assignment Mastery */}
-            <div className="report-section">
-              <h4 className="h4 report-section-heading">Coursework Mastery & Problem Sets</h4>
-              <div className="topics-bars-container">
-                {analytics.topicMastery.length > 0 ? (
-                  analytics.topicMastery.map((tm, idx) => (
-                     <div key={idx} className="topic-bar-row">
-                      <div className="topic-label-col">
-                        <span className="topic-name">{tm.topic}</span>
-                        <span className={`topic-status-tag ${tm.status.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
-                          {tm.assignedGrade != null ? `${tm.assignedGrade} / ${tm.maxPoints}` : tm.status}
-                        </span>
-                      </div>
-                      <div className="topic-progress-track">
-                        <div
-                          className="topic-progress-fill"
-                          style={{ width: `${tm.score}%` }}
-                        ></div>
-                      </div>
-                      <span className="topic-score-num">{tm.score}%</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted">No coursework problem sets recorded for this classroom yet.</p>
-                )}
+            {/* 3. KPI Grid (4 Cards: Sessions Attended, Homework Average, Summative Score, Punctuality Rate) */}
+            <div className="mr-kpi-grid">
+              <div className="mr-kpi-card">
+                <div className="mr-kpi-number">{monthlyReport.kpis.sessionsAttended}</div>
+                <div className="mr-kpi-caption">Sessions Attended</div>
+              </div>
+
+              <div className="mr-kpi-card">
+                <div className="mr-kpi-number">{monthlyReport.kpis.homeworkAverage}</div>
+                <div className="mr-kpi-caption">Homework Average</div>
+              </div>
+
+              <div className="mr-kpi-card">
+                <div className="mr-kpi-number">{monthlyReport.kpis.summativeScore}</div>
+                <div className="mr-kpi-caption">Summative Score</div>
+              </div>
+
+              <div className="mr-kpi-card">
+                <div className="mr-kpi-number">{monthlyReport.kpis.punctualityRate}</div>
+                <div className="mr-kpi-caption">Punctuality Rate</div>
               </div>
             </div>
 
-            {/* Written Assessment */}
-            <div className="report-section">
-              <h4 className="h4 report-section-heading">Qualitative Educator Assessment</h4>
-              <div className="educator-assessment-text">
-                <p>
-                  {activeStudentName} is enrolled in 1-on-1 personalized mentorship for {activeCourseName}. To date, {analytics.completedCount} of {analytics.totalAssignments} assigned coursework items have been completed ({analytics.completionRate}% reliability).
-                  {analytics.hasGrades
-                    ? ` The student maintains a cumulative academic score of ${analytics.averagePercentage}% (Grade ${analytics.letterGrade}).`
-                    : ' Formal numerical grades are currently being recorded as assignments are reviewed.'}
-                </p>
-                {analytics.tutorNote.text && (
-                  <p style={{ marginTop: '8px' }}>
-                    <strong>Instructor Evaluation:</strong> {analytics.tutorNote.text}
+            {/* 4. Curriculum & Topics Covered Table */}
+            <div className="mr-section">
+              <h3 className="mr-section-heading">
+                Curriculum & Topics Covered ({monthlyReport.curriculum.sessionsCount} Sessions)
+              </h3>
+              <div className="mr-table-wrapper">
+                <table className="mr-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '18%' }}>DATE / WEEK</th>
+                      <th style={{ width: '42%' }}>CORE TOPICS COVERED</th>
+                      <th style={{ width: '26%' }}>CLASSROOM ASSIGNMENT REF</th>
+                      <th style={{ width: '14%' }}>STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyReport.curriculum.rows.map((row, idx) => (
+                      <tr key={row.id || idx}>
+                        <td className="mr-cell-date">{row.dateWeek}</td>
+                        <td className="mr-cell-topics">{row.topics}</td>
+                        <td className="mr-cell-ref">{row.assignmentRef}</td>
+                        <td className="mr-cell-status">
+                          <span
+                            className={`mr-status-pill ${row.status.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                          >
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 5. Assessment & Task Performance */}
+            <div className="mr-section">
+              <h3 className="mr-section-heading">Assessment & Task Performance</h3>
+              <div className="mr-assessment-grid">
+                <div className="mr-assessment-card">
+                  <div className="mr-assessment-card-header">
+                    <span className="mr-assessment-title">Formative & Homework Average</span>
+                    <span className="mr-assessment-score">
+                      {monthlyReport.assessment.formative.scoreFormatted}
+                    </span>
+                  </div>
+                  <p className="mr-assessment-note">
+                    {monthlyReport.assessment.formative.note}
                   </p>
-                )}
+                </div>
+
+                <div className="mr-assessment-card">
+                  <div className="mr-assessment-card-header">
+                    <span className="mr-assessment-title">Monthly Summative Exam</span>
+                    <span className="mr-assessment-score">
+                      {monthlyReport.assessment.summative.scoreFormatted}
+                    </span>
+                  </div>
+                  <p className="mr-assessment-note">
+                    {monthlyReport.assessment.summative.note}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Sign-off */}
-            <div className="report-signatures-row">
-              <div className="signature-block">
-                <div className="signature-line">{displayTeacherName}</div>
-                <span className="signature-title">Lead Educator & Mentor</span>
+            {/* 6. Instructor Remarks & Observations */}
+            <div className="mr-section">
+              <h3 className="mr-section-heading">Instructor Remarks & Observations</h3>
+              <div className="mr-remarks-card">
+                <p className="mr-remark-line">
+                  <strong className="mr-remark-bold">Academic Engagement: </strong>
+                  <span>{monthlyReport.narrative.academicEngagement}</span>
+                </p>
+                <p className="mr-remark-line">
+                  <strong className="mr-remark-bold">Focus Areas: </strong>
+                  <span>{monthlyReport.narrative.focusAreas}</span>
+                </p>
               </div>
-              <div className="signature-block">
-                <div className="signature-line">Jivanaut Test Prep</div>
-                <span className="signature-title">Official Verification</span>
+            </div>
+
+            {/* 7 & 8. Targeted Support for Next Month & Parent Recommendations */}
+            <div className="mr-recs-grid">
+              <div className="mr-recs-card">
+                <h4 className="mr-recs-heading">Targeted Support for Next Month</h4>
+                <ul className="mr-recs-list">
+                  {monthlyReport.narrative.targetedSupport.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mr-recs-card">
+                <h4 className="mr-recs-heading">Parent Recommendations</h4>
+                <ul className="mr-recs-list">
+                  {monthlyReport.narrative.parentRecommendations.map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* 9. Footer */}
+            <div className="mr-footer">
+              <div className="mr-footer-left">
+                Tutor: {monthlyReport.footer.tutorName} • Contact: {monthlyReport.footer.contactEmail}
+              </div>
+              <div className="mr-footer-right">
+                {monthlyReport.footer.systemTag}
               </div>
             </div>
           </div>
