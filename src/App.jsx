@@ -13,7 +13,7 @@ import WhatsAppFab from './components/WhatsAppFab'
 import NotesPage from './components/NotesPage'
 import ClassroomPortal from './components/ClassroomPortal'
 
-function Layout({ activePage, setActivePage, children }) {
+function Layout({ activePage, setActivePage, children, showThemeToggle = true, showWhatsAppFab = true }) {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'dark'
   })
@@ -29,9 +29,8 @@ function Layout({ activePage, setActivePage, children }) {
 
   return (
     <main>
-      <BackgroundVideo />
-      <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-      <WhatsAppFab />
+      {showThemeToggle && <ThemeToggle theme={theme} toggleTheme={toggleTheme} />}
+      {showWhatsAppFab && <WhatsAppFab />}
       <Sidebar />
       <div className="main-content">
         <Navbar activePage={activePage} setActivePage={setActivePage} />
@@ -46,12 +45,18 @@ function App() {
     <BrowserRouter basename="/business-solution-1.1">
       <Routes>
         <Route path="/classroom" element={
-          <Layout activePage="classroom" setActivePage={() => {}}>
+          <Layout activePage="classroom" setActivePage={() => {}}
+            showThemeToggle={false}
+            showWhatsAppFab={false}
+          >
             <ClassroomPortal />
           </Layout>
         } />
         <Route path="/classroom/:courseId" element={
-          <Layout activePage="classroom" setActivePage={() => {}}>
+          <Layout activePage="classroom" setActivePage={() => {}}
+            showThemeToggle={false}
+            showWhatsAppFab={false}
+          >
             <ClassroomPortal />
           </Layout>
         } />
