@@ -29,6 +29,7 @@ function Layout({ activePage, setActivePage, children, showThemeToggle = true, s
 
   return (
     <main>
+      <BackgroundVideo />
       {showThemeToggle && <ThemeToggle theme={theme} toggleTheme={toggleTheme} />}
       {showWhatsAppFab && <WhatsAppFab />}
       <Sidebar />
