@@ -268,9 +268,9 @@ export async function fetchCourseWorkWithSubmissions(courseId, accessToken) {
       )
       const turnInTime =
         turnInEvent?.stateHistory?.stateTimestamp ||
-        primarySub.updateTime ||
-        primarySub.creationTime ||
-        null
+        (primarySub.state === 'TURNED_IN' || primarySub.state === 'RETURNED'
+          ? primarySub.updateTime || null
+          : null)
 
       const assignedGrade =
         primarySub.assignedGrade != null
@@ -518,7 +518,14 @@ export function calculateStudentAnalytics(courseWork = [], courseName = '', lead
     const sub = cw.submission
     const isReturned = sub?.state === 'RETURNED'
     const isTurnedIn = sub?.state === 'TURNED_IN'
-    const isCompleted = isReturned || isTurnedIn
+    const hasGrade = sub?.assignedGrade != null
+    const isPendingOrAssigned =
+      !sub ||
+      sub.state === 'ASSIGNED' ||
+      sub.state === 'NEW' ||
+      sub.state === 'CREATED' ||
+      sub.state === 'RECLAIMED_BY_STUDENT'
+    const isCompleted = (isReturned || isTurnedIn || hasGrade) && !isPendingOrAssigned
 
     // Urgency calculation for pending homework
     let urgency = 'normal'
@@ -898,7 +905,8 @@ export function buildMonthlyReport({
   }
 
   // Calculate session completions based on KPI rules:
-  // include TURNED_IN even with no assignedGrade; exclude state === 'ASSIGNED' with no submission
+  // - Completed sessions strictly include submitted (TURNED_IN) and completed (RETURNED or graded);
+  // - Pending and assigned (ASSIGNED, NEW, CREATED, RECLAIMED_BY_STUDENT, or no submission) DO NOT add to completed count.
   let completedCount = 0
   let earnedPoints = 0
   let totalPossiblePoints = 0
@@ -908,12 +916,21 @@ export function buildMonthlyReport({
     const sub = cw.submission
     const isTurnedIn = sub?.state === 'TURNED_IN'
     const isReturned = sub?.state === 'RETURNED'
-    const hasSubmission = isTurnedIn || isReturned || sub?.turnInTime != null
+    const hasAssignedGrade = sub?.assignedGrade != null
+    const isPendingOrAssigned =
+      !sub ||
+      sub.state === 'ASSIGNED' ||
+      sub.state === 'NEW' ||
+      sub.state === 'CREATED' ||
+      sub.state === 'RECLAIMED_BY_STUDENT'
 
-    if (hasSubmission) {
+    // Only submitted (turned in) and completed (returned / graded) count toward completed sessions:
+    const isCompletedSession = (isTurnedIn || isReturned || hasAssignedGrade) && !isPendingOrAssigned
+
+    if (isCompletedSession) {
       completedCount++
       if (!sub?.late) onTimeCount++
-      if (sub?.assignedGrade != null) {
+      if (hasAssignedGrade) {
         earnedPoints += Number(sub.assignedGrade)
         totalPossiblePoints += Number(cw.maxPoints || 100)
       }
@@ -922,8 +939,8 @@ export function buildMonthlyReport({
 
   const totalAssignments = monthlyAssignments.length
 
-  // KPI 1 — Sessions Attended: auto: completedAssignments / totalAssignments
-  // Format matching PDF: "12 / 12"
+  // KPI 1 — Sessions Attended: auto: completedSessions / totalSessions
+  // Format matching specification: "completed / total" (e.g. "1 / 1", "0 / 1", "2 / 3")
   const sessionsAttended = `${completedCount} / ${totalAssignments}`
 
   // KPI 2 — Homework Average: auto: calculateStudentAnalytics().avgGrade
@@ -1010,11 +1027,13 @@ export function buildMonthlyReport({
         const pct = (Number(sub.assignedGrade) / Number(cw.maxPoints || 100)) * 100
         status = pct >= 85 ? 'Mastered' : 'Completed'
       } else if (sub?.state === 'TURNED_IN') {
-        status = 'In Review'
+        status = 'Submitted'
       } else if (sub?.state === 'RETURNED') {
         status = 'Completed'
       } else if (sub?.late) {
         status = 'Overdue'
+      } else if (!sub || sub?.state === 'ASSIGNED' || sub?.state === 'NEW' || sub?.state === 'CREATED' || sub?.state === 'RECLAIMED_BY_STUDENT') {
+        status = 'Assigned'
       }
 
       const dateWeek = formatWeekSpan(cw, idx)
@@ -1065,7 +1084,7 @@ export function buildMonthlyReport({
         dateWeek: 'Oct 16 – Oct 20',
         topics: 'Rational Expressions & Solving Complex Equations',
         assignmentRef: 'GC-HW #11: Rational Functions',
-        status: 'In Review',
+        status: 'Submitted',
       },
       {
         id: 'r4',
@@ -1097,7 +1116,10 @@ export function buildMonthlyReport({
   const formativeEarned = totalPossiblePoints > 0 ? earnedPoints : Math.round(homeworkAvg * 0.5)
   const formativeTotal = totalPossiblePoints > 0 ? totalPossiblePoints : 50
   const formativeScoreFormatted = `${homeworkAvg}% (${formativeEarned} / ${formativeTotal})`
-  const formativeNote = `Synchronized with Google Classroom: ${completedCount > 0 ? completedCount : curriculumRows.length} homework modules submitted on time with consistent procedural clarity.`
+  const formativeNote =
+    completedCount > 0
+      ? `Synchronized with Google Classroom: ${completedCount} homework module${completedCount > 1 ? 's' : ''} submitted on time with consistent procedural clarity.`
+      : `Synchronized with Google Classroom: ${totalAssignments} assignment${totalAssignments !== 1 ? 's' : ''} currently assigned/pending student submission.`
 
   // Summative Assessment block text
   const summativeScoreFormatted =
@@ -1134,7 +1156,8 @@ export function buildMonthlyReport({
       },
     },
     curriculum: {
-      sessionsCount: completedCount > 0 ? completedCount : curriculumRows.length,
+      sessionsCount: totalAssignments > 0 ? totalAssignments : curriculumRows.length,
+      completedSessionsCount: completedCount,
       rows: curriculumRows,
     },
     assessment: {

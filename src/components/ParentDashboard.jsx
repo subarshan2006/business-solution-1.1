@@ -735,9 +735,10 @@ function ParentDashboard({
 
             {/* 3. KPI Grid (4 Cards: Sessions Attended, Homework Average, Summative Score, Punctuality Rate) */}
             <div className="mr-kpi-grid">
-              <div className="mr-kpi-card">
+              <div className="mr-kpi-card" title="Completed Sessions / Total Sessions">
                 <div className="mr-kpi-number">{monthlyReport.kpis.sessionsAttended}</div>
                 <div className="mr-kpi-caption">Sessions Attended</div>
+                <div className="mr-kpi-sub-label">Completed / Total</div>
               </div>
 
               <div className="mr-kpi-card">
