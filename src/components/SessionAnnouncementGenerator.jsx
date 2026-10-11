@@ -1,4 +1,4 @@
-import { useState, useId, useMemo, useEffect, useCallback } from 'react'
+import { useState, useId, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   createCourseAnnouncement,
   fetchClassroomSessionContext,
@@ -34,6 +34,7 @@ function formatDateWithOrdinal(date) {
 export default function SessionAnnouncementGenerator({
   courses = [],
   selectedCourse = null,
+  onSelectCourse = null,
   auth = null,
   defaultTeacherName = 'Steena',
 }) {
@@ -90,25 +91,46 @@ export default function SessionAnnouncementGenerator({
     }
   })
 
-  // Synchronize when selectedCourse prop changes externally (e.g., clicking "Update" from course list)
+  // Track the last externally provided selectedCourse.id to distinguish external prop changes from internal user selection
+  const lastPropCourseIdRef = useRef(selectedCourse?.id)
+  const activeRequestRef = useRef(null)
+
+  // Synchronize ONLY when selectedCourse prop changes externally (e.g., clicking "Update" from course list card)
   useEffect(() => {
-    if (selectedCourse?.id && selectedCourse.id !== courseId) {
-      setCourseId(selectedCourse.id)
+    const externalId = selectedCourse?.id
+    if (externalId && externalId !== lastPropCourseIdRef.current) {
+      lastPropCourseIdRef.current = externalId
+      setCourseId(externalId)
     }
-  }, [selectedCourse, courseId])
+  }, [selectedCourse?.id])
+
+  // Default to first course if courseId is empty and courses become available
+  useEffect(() => {
+    if (!courseId && courses.length > 0) {
+      const fallbackId = selectedCourse?.id || courses[0]?.id || ''
+      if (fallbackId) {
+        lastPropCourseIdRef.current = fallbackId
+        setCourseId(fallbackId)
+      }
+    }
+  }, [courses, selectedCourse?.id, courseId])
 
   // Fetch and auto-populate classroom-specific details whenever courseId changes
   const syncClassroomDetails = useCallback(
     async (targetId) => {
       if (!targetId) return
+      activeRequestRef.current = targetId
       setSyncing(true)
       try {
-        const activeCourse = courses.find((c) => c.id === targetId) || selectedCourse
+        const activeCourse = courses.find((c) => String(c.id) === String(targetId)) || selectedCourse
         const ctx = await fetchClassroomSessionContext(
           targetId,
           auth?.accessToken || null,
           activeCourse
         )
+
+        // Ignore stale async results if the user switched classrooms while loading
+        if (activeRequestRef.current !== targetId) return
 
         if (ctx) {
           if (ctx.studentName) setStudentName(ctx.studentName)
@@ -126,7 +148,9 @@ export default function SessionAnnouncementGenerator({
       } catch (err) {
         console.warn('Could not auto-sync classroom context:', err)
       } finally {
-        setSyncing(false)
+        if (activeRequestRef.current === targetId) {
+          setSyncing(false)
+        }
       }
     },
     [courses, selectedCourse, auth]
@@ -176,6 +200,11 @@ Regards and thanks, ${teacherName}`
   const handleCourseChange = (e) => {
     const selectedId = e.target.value
     setCourseId(selectedId)
+    lastPropCourseIdRef.current = selectedId
+    const foundCourse = courses.find((c) => String(c.id) === String(selectedId))
+    if (foundCourse && onSelectCourse) {
+      onSelectCourse(foundCourse)
+    }
   }
 
   // Handle selecting a recent coursework item

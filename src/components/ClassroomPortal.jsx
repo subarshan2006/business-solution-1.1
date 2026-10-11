@@ -1393,6 +1393,7 @@ function ClassroomPortal() {
               <SessionAnnouncementGenerator
                 courses={courses}
                 selectedCourse={selectedCourse}
+                onSelectCourse={(course) => setSelectedCourse(course)}
                 auth={auth}
                 defaultTeacherName={auth?.user?.name || 'Steena'}
               />
