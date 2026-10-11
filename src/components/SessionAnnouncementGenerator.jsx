@@ -81,7 +81,11 @@ export default function SessionAnnouncementGenerator({
   const [posting, setPosting] = useState(false)
   const [postSuccess, setPostSuccess] = useState('')
   const [postError, setPostError] = useState('')
+  const [emailNotice, setEmailNotice] = useState('')
   const [copied, setCopied] = useState(false)
+  const [showEmailMenu, setShowEmailMenu] = useState(false)
+  const [emailCopied, setEmailCopied] = useState(false)
+  const emailMenuRef = useRef(null)
   const [savedAnnouncements, setSavedAnnouncements] = useState(() => {
     try {
       const saved = localStorage.getItem('nxtstep_saved_announcements')
@@ -90,6 +94,31 @@ export default function SessionAnnouncementGenerator({
       return []
     }
   })
+
+  // Close email dropdown when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!showEmailMenu) return
+
+    const handleClickOutside = (e) => {
+      if (emailMenuRef.current && !emailMenuRef.current.contains(e.target)) {
+        setShowEmailMenu(false)
+      }
+    }
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowEmailMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showEmailMenu])
 
   // Track the last externally provided selectedCourse.id to distinguish external prop changes from internal user selection
   const lastPropCourseIdRef = useRef(selectedCourse?.id)
@@ -304,13 +333,69 @@ Regards and thanks, ${teacherName}`
     }
   }
 
+  // Formatted Email Subject
+  const emailSubject = useMemo(
+    () => `${subjectTitle} - Session ${sessionNumber} Updates`,
+    [subjectTitle, sessionNumber]
+  )
+
   // WhatsApp Share URL
   const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(announcementText)}`
 
-  // Email Share URL
-  const emailUrl = `mailto:?subject=${encodeURIComponent(
-    `${subjectTitle} - Session ${sessionNumber} Updates`
-  )}&body=${encodeURIComponent(announcementText)}`
+  // Multi-Provider Email Handlers
+  const handleGmailWeb = () => {
+    const url = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(
+      emailSubject
+    )}&body=${encodeURIComponent(announcementText)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+    setShowEmailMenu(false)
+  }
+
+  const handleOutlookWeb = () => {
+    const url = `https://outlook.live.com/mail/0/deeplink/compose?subject=${encodeURIComponent(
+      emailSubject
+    )}&body=${encodeURIComponent(announcementText)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+    setShowEmailMenu(false)
+  }
+
+  const handleDesktopMail = async () => {
+    const encodedSubject = encodeURIComponent(emailSubject)
+    const encodedFullBody = encodeURIComponent(announcementText)
+    const fullMailtoUrl = `mailto:?subject=${encodedSubject}&body=${encodedFullBody}`
+
+    // Safe Length Guard for Windows ShellExecute 2,048-char limitation
+    if (fullMailtoUrl.length > 1800) {
+      try {
+        await navigator.clipboard.writeText(announcementText)
+      } catch (err) {
+        console.warn('Could not copy full report to clipboard:', err)
+      }
+      setEmailNotice(
+        'Full session report copied to clipboard! Opening mail app (paste with Ctrl+V / Cmd+V)...'
+      )
+      const fallbackBody = encodeURIComponent(
+        `Hi ${parentName},\n\n[Full session report copied to clipboard — please paste here (Ctrl+V / Cmd+V)]\n\nRegards and thanks,\n${teacherName}`
+      )
+      window.location.href = `mailto:?subject=${encodedSubject}&body=${fallbackBody}`
+    } else {
+      window.location.href = fullMailtoUrl
+    }
+    setShowEmailMenu(false)
+  }
+
+  const handleCopyEmailDetails = async () => {
+    const fullEmailText = `Subject: ${emailSubject}\n\n${announcementText}`
+    try {
+      await navigator.clipboard.writeText(fullEmailText)
+      setEmailCopied(true)
+      setEmailNotice('✓ Email subject and session report copied to clipboard!')
+      setTimeout(() => setEmailCopied(false), 2500)
+      setTimeout(() => setShowEmailMenu(false), 500)
+    } catch (err) {
+      console.error('Failed to copy email details:', err)
+    }
+  }
 
   return (
     <div className="session-announcement-generator">
@@ -421,6 +506,16 @@ Regards and thanks, ${teacherName}`
           <ion-icon name="alert-circle-outline"></ion-icon>
           <span>{postError}</span>
           <button type="button" className="close-alert-btn" onClick={() => setPostError('')}>
+            ✕
+          </button>
+        </div>
+      )}
+
+      {emailNotice && (
+        <div className="announcement-alert info">
+          <ion-icon name="information-circle-outline"></ion-icon>
+          <span>{emailNotice}</span>
+          <button type="button" className="close-alert-btn" onClick={() => setEmailNotice('')}>
             ✕
           </button>
         </div>
@@ -722,14 +817,104 @@ Regards and thanks, ${teacherName}`
                     <ion-icon name="logo-whatsapp"></ion-icon>
                     <span>WhatsApp</span>
                   </a>
-                  <a
-                    href={emailUrl}
-                    className="share-icon-btn email"
-                    title="Send via Email"
-                  >
-                    <ion-icon name="mail-outline"></ion-icon>
-                    <span>Email</span>
-                  </a>
+                  <div className="email-dropdown-wrapper" ref={emailMenuRef}>
+                    <button
+                      type="button"
+                      className={`share-icon-btn email email-trigger-btn${showEmailMenu ? ' active' : ''}`}
+                      onClick={() => setShowEmailMenu((prev) => !prev)}
+                      aria-expanded={showEmailMenu}
+                      aria-haspopup="true"
+                      title="Choose email provider (Gmail, Outlook, Desktop Mail)"
+                    >
+                      <ion-icon name="mail-outline"></ion-icon>
+                      <span>Email</span>
+                      <ion-icon
+                        name={showEmailMenu ? 'chevron-up-outline' : 'chevron-down-outline'}
+                        className="dropdown-caret"
+                      ></ion-icon>
+                    </button>
+
+                    {showEmailMenu && (
+                      <div className="email-options-menu" role="menu" aria-label="Email Providers">
+                        <div className="email-menu-header">
+                          <span>Send Session Report via:</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="email-option-item gmail"
+                          onClick={handleGmailWeb}
+                        >
+                          <div className="email-option-icon">
+                            <ion-icon name="logo-google"></ion-icon>
+                          </div>
+                          <div className="email-option-content">
+                            <div className="email-option-title-row">
+                              <span className="email-option-name">Gmail (Web)</span>
+                              <span className="recommended-pill">Recommended</span>
+                            </div>
+                            <span className="email-option-desc">Opens in browser • Best for Windows</span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="email-option-item outlook"
+                          onClick={handleOutlookWeb}
+                        >
+                          <div className="email-option-icon">
+                            <ion-icon name="mail-outline"></ion-icon>
+                          </div>
+                          <div className="email-option-content">
+                            <div className="email-option-title-row">
+                              <span className="email-option-name">Outlook (Web)</span>
+                            </div>
+                            <span className="email-option-desc">Office 365 & Live compose in new tab</span>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="email-option-item desktop"
+                          onClick={handleDesktopMail}
+                        >
+                          <div className="email-option-icon">
+                            <ion-icon name="desktop-outline"></ion-icon>
+                          </div>
+                          <div className="email-option-content">
+                            <div className="email-option-title-row">
+                              <span className="email-option-name">Desktop Mail App</span>
+                            </div>
+                            <span className="email-option-desc">Apple Mail, Outlook (Safe Length)</span>
+                          </div>
+                        </button>
+
+                        <div className="email-menu-divider" />
+
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="email-option-item copy-email"
+                          onClick={handleCopyEmailDetails}
+                        >
+                          <div className="email-option-icon">
+                            <ion-icon name={emailCopied ? 'checkmark-circle' : 'copy-outline'}></ion-icon>
+                          </div>
+                          <div className="email-option-content">
+                            <div className="email-option-title-row">
+                              <span className="email-option-name">
+                                {emailCopied ? 'Copied to Clipboard!' : 'Copy Subject & Message'}
+                              </span>
+                            </div>
+                            <span className="email-option-desc">Ready to paste into any email client</span>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
