@@ -9100,13 +9100,63 @@ main { position: relative; z-index: 1; }
     gap: 10px;
   }
 
+  /* Curriculum table: stack rows into cards (no horizontal scroll) */
   .mr-table-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
+    border: none;
+    border-radius: 0;
   }
 
   .mr-table {
-    min-width: 520px;
+    min-width: 0;
+    display: block;
+  }
+
+  .mr-table thead {
+    display: none;
+  }
+
+  .mr-table tbody {
+    display: block;
+  }
+
+  .mr-table tbody tr {
+    display: block;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+  }
+
+  .mr-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .mr-table tbody td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    padding: 0 0 10px 0;
+    border: none;
+  }
+
+  .mr-table tbody td:last-child {
+    padding-bottom: 0;
+  }
+
+  .mr-table tbody td::before {
+    content: attr(data-label);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+
+  .mr-cell-date {
+    white-space: normal;
   }
 
   .mr-assessment-grid,

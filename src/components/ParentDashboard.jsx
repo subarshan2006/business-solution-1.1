@@ -906,10 +906,10 @@ function ParentDashboard({
                   <tbody>
                     {monthlyReport.curriculum.rows.map((row, idx) => (
                       <tr key={row.id || idx}>
-                        <td className="mr-cell-date">{row.dateWeek}</td>
-                        <td className="mr-cell-topics">{row.topics}</td>
-                        <td className="mr-cell-ref">{row.assignmentRef}</td>
-                        <td className="mr-cell-status">
+                        <td className="mr-cell-date" data-label="Date / Week">{row.dateWeek}</td>
+                        <td className="mr-cell-topics" data-label="Core Topics Covered">{row.topics}</td>
+                        <td className="mr-cell-ref" data-label="Classroom Assignment Ref">{row.assignmentRef}</td>
+                        <td className="mr-cell-status" data-label="Status">
                           <span
                             className={`mr-status-pill ${row.status.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
                           >
