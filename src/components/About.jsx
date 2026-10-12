@@ -81,8 +81,8 @@ function About({ activePage, setActivePage }) {
           <div
             className="about-logo-wrapper"
             style={{
-              width: '120px',
-              height: '120px',
+              width: '150px',
+              height: '150px',
               borderRadius: '24px',
               overflow: 'hidden',
               boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
@@ -97,8 +97,8 @@ function About({ activePage, setActivePage }) {
             <img
               src={`${import.meta.env.BASE_URL}assets/images/logo-image.png`}
               alt="Jivanaut - The Explorer of Life Science"
-              width="120"
-              height="120"
+              width="150"
+              height="150"
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           </div>
