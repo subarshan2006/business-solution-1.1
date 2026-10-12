@@ -7,6 +7,8 @@ import {
   getRecentMonthKeys,
   getSummativeRecord,
   saveSummativeRecord,
+  saveRemarksRecord,
+  resetRemarksRecord,
 } from '../services/classroomApi'
 
 function ParentDashboard({
@@ -25,9 +27,12 @@ function ParentDashboard({
   const [activeParentTab, setActiveParentTab] = useState('progress') // 'progress', 'pending', 'completed', 'upcoming', 'report'
   const [selectedMonthKey, setSelectedMonthKey] = useState(getMonthKey())
   const [isEditingSummative, setIsEditingSummative] = useState(false)
+  const [isEditingRemarks, setIsEditingRemarks] = useState(false)
   const [summativeRecord, setSummativeRecord] = useState(null)
   const [summativeForm, setSummativeForm] = useState({ score: '', total: 100, note: '', date: '' })
+  const [remarksForm, setRemarksForm] = useState({ academicEngagement: '', focusAreas: '' })
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false)
+  const [remarksSuccessNotice, setRemarksSuccessNotice] = useState(false)
 
   const activeCourseName = selectedCourse?.name || courseName
   const activeStudentName =
@@ -43,7 +48,7 @@ function ParentDashboard({
 
   const analytics = calculateStudentAnalytics(courseWork, activeCourseName, displayTeacherName)
 
-  // Load summative record when course or month changes
+  // Load summative & remarks record when course or month changes
   useEffect(() => {
     if (selectedCourse?.id && selectedMonthKey) {
       const rec = getSummativeRecord(selectedCourse.id, selectedMonthKey)
@@ -55,14 +60,21 @@ function ParentDashboard({
           note: rec.note || '',
           date: rec.date || '',
         })
+        setRemarksForm({
+          academicEngagement: rec.academicEngagement || '',
+          focusAreas: rec.focusAreas || '',
+        })
       } else {
         setSummativeForm({ score: '', total: 100, note: '', date: '' })
+        setRemarksForm({ academicEngagement: '', focusAreas: '' })
       }
     } else {
       setSummativeRecord(null)
       setSummativeForm({ score: '', total: 100, note: '', date: '' })
+      setRemarksForm({ academicEngagement: '', focusAreas: '' })
     }
     setIsEditingSummative(false)
+    setIsEditingRemarks(false)
   }, [selectedCourse?.id, selectedMonthKey])
 
   const recentMonthKeys = useMemo(() => getRecentMonthKeys(12), [])
@@ -113,6 +125,43 @@ function ParentDashboard({
     setIsEditingSummative(false)
     setSaveSuccessNotice(true)
     setTimeout(() => setSaveSuccessNotice(false), 3000)
+  }
+
+  const handleOpenRemarksEditor = () => {
+    setRemarksForm({
+      academicEngagement:
+        summativeRecord?.academicEngagement || monthlyReport.narrative.academicEngagement || '',
+      focusAreas:
+        summativeRecord?.focusAreas || monthlyReport.narrative.focusAreas || '',
+    })
+    setIsEditingRemarks(true)
+    setIsEditingSummative(false)
+  }
+
+  const handleSaveRemarks = (e) => {
+    e.preventDefault()
+    if (!selectedCourse?.id) return
+    const saved = saveRemarksRecord(selectedCourse.id, selectedMonthKey, {
+      academicEngagement: remarksForm.academicEngagement,
+      focusAreas: remarksForm.focusAreas,
+    })
+    setSummativeRecord(saved)
+    setIsEditingRemarks(false)
+    setRemarksSuccessNotice('saved')
+    setTimeout(() => setRemarksSuccessNotice(false), 3000)
+  }
+
+  const handleResetRemarks = () => {
+    if (!selectedCourse?.id) return
+    const saved = resetRemarksRecord(selectedCourse.id, selectedMonthKey)
+    setSummativeRecord(saved)
+    setRemarksForm({
+      academicEngagement: '',
+      focusAreas: '',
+    })
+    setIsEditingRemarks(false)
+    setRemarksSuccessNotice('reset')
+    setTimeout(() => setRemarksSuccessNotice(false), 3000)
   }
 
   return (
@@ -588,15 +637,36 @@ function ParentDashboard({
 
             <div className="mr-controls-right">
               {isTeacherView && (
-                <button
-                  type="button"
-                  className={`mr-teacher-btn${isEditingSummative ? ' active' : ''}`}
-                  onClick={() => setIsEditingSummative((prev) => !prev)}
-                  title="Teacher only: Edit Summative Exam score and observations"
-                >
-                  <ion-icon name={isEditingSummative ? 'close-outline' : 'create-outline'}></ion-icon>
-                  <span>{isEditingSummative ? 'Close Editor' : 'Edit Summative Score'}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={`mr-teacher-btn${isEditingSummative ? ' active' : ''}`}
+                    onClick={() => {
+                      setIsEditingSummative((prev) => !prev)
+                      if (isEditingRemarks) setIsEditingRemarks(false)
+                    }}
+                    title="Teacher only: Edit Summative Exam score and observations"
+                  >
+                    <ion-icon name={isEditingSummative ? 'close-outline' : 'create-outline'}></ion-icon>
+                    <span>{isEditingSummative ? 'Close Editor' : 'Edit Summative Score'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`mr-teacher-btn${isEditingRemarks ? ' active' : ''}`}
+                    onClick={() => {
+                      if (isEditingRemarks) {
+                        setIsEditingRemarks(false)
+                      } else {
+                        handleOpenRemarksEditor()
+                      }
+                    }}
+                    title="Teacher only: Edit Instructor Remarks & Observations"
+                  >
+                    <ion-icon name={isEditingRemarks ? 'close-outline' : 'chatbox-ellipses-outline'}></ion-icon>
+                    <span>{isEditingRemarks ? 'Close Remarks' : 'Edit Remarks'}</span>
+                  </button>
+                </>
               )}
 
               <button
@@ -615,6 +685,17 @@ function ParentDashboard({
             <div className="mr-alert-notice success">
               <ion-icon name="checkmark-circle-outline"></ion-icon>
               <span>Summative exam evaluation saved successfully to this monthly report card.</span>
+            </div>
+          )}
+
+          {remarksSuccessNotice && (
+            <div className="mr-alert-notice success">
+              <ion-icon name="checkmark-circle-outline"></ion-icon>
+              <span>
+                {remarksSuccessNotice === 'reset'
+                  ? 'Instructor remarks reverted to auto-generated narrative successfully.'
+                  : 'Instructor Remarks & Observations saved successfully to this monthly report card.'}
+              </span>
             </div>
           )}
 
@@ -823,18 +904,107 @@ function ParentDashboard({
             </div>
 
             {/* 6. Instructor Remarks & Observations */}
-            <div className="mr-section">
-              <h3 className="mr-section-heading">Instructor Remarks & Observations</h3>
-              <div className="mr-remarks-card">
-                <p className="mr-remark-line">
-                  <strong className="mr-remark-bold">Academic Engagement: </strong>
-                  <span>{monthlyReport.narrative.academicEngagement}</span>
-                </p>
-                <p className="mr-remark-line">
-                  <strong className="mr-remark-bold">Focus Areas: </strong>
-                  <span>{monthlyReport.narrative.focusAreas}</span>
-                </p>
+            <div className="mr-section" id="mr-instructor-remarks-section">
+              <div className="mr-section-heading-row">
+                <h3 className="mr-section-heading">Instructor Remarks & Observations</h3>
+                {isTeacherView && (
+                  <div className="mr-section-teacher-actions">
+                    {monthlyReport.narrative.isCustomRemarks && (
+                      <span className="mr-badge-custom-indicator">Customized by Teacher</span>
+                    )}
+                    <button
+                      type="button"
+                      className="mr-section-edit-btn"
+                      onClick={() => {
+                        if (isEditingRemarks) {
+                          setIsEditingRemarks(false)
+                        } else {
+                          handleOpenRemarksEditor()
+                        }
+                      }}
+                      title="Teacher only: Edit Academic Engagement & Focus Areas"
+                    >
+                      <ion-icon name={isEditingRemarks ? 'close-outline' : 'create-outline'}></ion-icon>
+                      <span>{isEditingRemarks ? 'Cancel' : 'Edit Remarks'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {isTeacherView && isEditingRemarks ? (
+                <form className="mr-remarks-editor-card" onSubmit={handleSaveRemarks}>
+                  <div className="mr-editor-header">
+                    <div className="mr-editor-title-row">
+                      <ion-icon name="chatbox-ellipses-outline"></ion-icon>
+                      <h4 className="h4 mr-editor-title">Edit Remarks & Observations ({monthlyReport.academicCycle})</h4>
+                    </div>
+                    <span className="mr-editor-badge">Teacher-Only Tool</span>
+                  </div>
+                  <p className="mr-editor-sub">
+                    Manual academic engagement and focus area observations update the official monthly report card instantly and are saved for this student and academic cycle.
+                  </p>
+
+                  <div className="mr-form-group full-width">
+                    <label htmlFor="mr-engagement-input">Academic Engagement & Class Participation:</label>
+                    <textarea
+                      id="mr-engagement-input"
+                      rows="3"
+                      placeholder="e.g. Student has displayed high enthusiasm..."
+                      value={remarksForm.academicEngagement}
+                      onChange={(e) => setRemarksForm({ ...remarksForm, academicEngagement: e.target.value })}
+                      required
+                    ></textarea>
+                  </div>
+
+                  <div className="mr-form-group full-width">
+                    <label htmlFor="mr-focus-input">Focus Areas & Recommendations:</label>
+                    <textarea
+                      id="mr-focus-input"
+                      rows="3"
+                      placeholder="e.g. Continued focus is recommended on verifying extraneous roots..."
+                      value={remarksForm.focusAreas}
+                      onChange={(e) => setRemarksForm({ ...remarksForm, focusAreas: e.target.value })}
+                      required
+                    ></textarea>
+                  </div>
+
+                  <div className="mr-editor-actions">
+                    <button type="submit" className="mr-save-btn">
+                      <ion-icon name="save-outline"></ion-icon>
+                      <span>Save Remarks</span>
+                    </button>
+                    {monthlyReport.narrative.isCustomRemarks && (
+                      <button
+                        type="button"
+                        className="mr-reset-btn"
+                        onClick={handleResetRemarks}
+                        title="Revert back to algorithm-generated narrative"
+                      >
+                        <ion-icon name="refresh-outline"></ion-icon>
+                        <span>Reset to Auto-Generated</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="mr-cancel-btn"
+                      onClick={() => setIsEditingRemarks(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="mr-remarks-card">
+                  <p className="mr-remark-line">
+                    <strong className="mr-remark-bold">Academic Engagement: </strong>
+                    <span>{monthlyReport.narrative.academicEngagement}</span>
+                  </p>
+                  <p className="mr-remark-line">
+                    <strong className="mr-remark-bold">Focus Areas: </strong>
+                    <span>{monthlyReport.narrative.focusAreas}</span>
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* 7 & 8. Targeted Support for Next Month & Parent Recommendations */}
@@ -861,7 +1031,7 @@ function ParentDashboard({
             {/* 9. Footer */}
             <div className="mr-footer">
               <div className="mr-footer-left">
-                Tutor: {monthlyReport.footer.tutorName} • Contact: {monthlyReport.footer.contactEmail}
+                Tutor: {monthlyReport.footer.tutorName} • Contact: {monthlyReport.footer?.contactEmail || 'jivanauttestprep@gmail.com'}
               </div>
               <div className="mr-footer-right">
                 {monthlyReport.footer.systemTag}

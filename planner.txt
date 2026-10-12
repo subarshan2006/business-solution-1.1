@@ -9,7 +9,7 @@ KPI 3 — Summative Score	manual, teacher-only (score/total, default total 100)
 KPI 4 — Punctuality Rate	auto: completedCount / courseWork.length
 Curriculum & Topics table (Date/Week · Topics · Classroom Assignment Ref · Status)	auto from courseWork + announcement topics
 Assessment & Task Performance (Formative & Homework Avg, Monthly Summative Exam)	auto + manual summative
-Instructor Remarks (Academic Engagement, Focus Areas)	auto narrative
+Instructor Remarks (Academic Engagement, Focus Areas)	auto narrative + manual teacher edit & persistence
 Targeted Support for Next Month (bullets)	auto narrative
 Parent Recommendations (bullets)	auto narrative
 Footer: Tutor = teacherName prop, "Generated via Online Tutoring Portal"	auto

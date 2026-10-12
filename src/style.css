@@ -6612,6 +6612,57 @@ main { position: relative; z-index: 1; }
   letter-spacing: -0.1px;
 }
 
+.mr-section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+
+.mr-section-heading-row .mr-section-heading {
+  margin: 0;
+}
+
+.mr-section-teacher-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mr-section-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(2, 132, 199, 0.08);
+  border: 1px solid rgba(2, 132, 199, 0.25);
+  color: #0284c7;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mr-section-edit-btn:hover {
+  background: rgba(2, 132, 199, 0.16);
+  border-color: #0284c7;
+}
+
+.mr-badge-custom-indicator {
+  display: inline-block;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
 /* Curriculum Table */
 .mr-table-wrapper {
   border: 1px solid #e2e8f0;
@@ -6764,6 +6815,36 @@ main { position: relative; z-index: 1; }
 .mr-remark-bold {
   font-weight: 700;
   color: #0f172a;
+}
+
+/* Remarks Editor Card (Screen Only) */
+.mr-remarks-editor-card {
+  background: var(--eerie-black-2, #1e1e1f);
+  border: 1px solid rgba(2, 132, 199, 0.35);
+  border-radius: 12px;
+  padding: 20px 22px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.mr-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: #eab308;
+  border: 1px dashed rgba(234, 179, 8, 0.4);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mr-reset-btn:hover {
+  background: rgba(234, 179, 8, 0.1);
+  border-color: #eab308;
 }
 
 /* Recommendations Grid */
@@ -7049,7 +7130,11 @@ main { position: relative; z-index: 1; }
   .assignment-modal-backdrop,
   .mr-controls-bar,
   .mr-alert-notice,
-  .mr-summative-editor-card {
+  .mr-summative-editor-card,
+  .mr-remarks-editor-card,
+  .mr-section-teacher-actions,
+  .mr-section-edit-btn,
+  .mr-badge-custom-indicator {
     display: none !important;
   }
 

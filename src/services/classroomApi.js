@@ -779,7 +779,9 @@ export function saveSummativeRecord(courseId, monthKey, record = {}) {
   if (!courseId || !monthKey) return null
   try {
     const key = `nxtstep_summative_report_${courseId}_${monthKey}`
+    const existing = getSummativeRecord(courseId, monthKey) || {}
     const cleanRecord = {
+      ...existing,
       score: record.score !== '' && record.score != null ? Number(record.score) : null,
       total: record.total !== '' && record.total != null ? Number(record.total) : 100,
       note: record.note != null ? String(record.note).trim() : '',
@@ -792,6 +794,73 @@ export function saveSummativeRecord(courseId, monthKey, record = {}) {
     return cleanRecord
   } catch (err) {
     console.warn('Error saving summative record:', err)
+    return null
+  }
+}
+
+/**
+ * Remarks & Observations persistence helpers (localStorage)
+ * Persisted per classroom (courseId) and monthKey
+ */
+export function saveRemarksRecord(courseId, monthKey, remarks = {}) {
+  if (!courseId || !monthKey) return null
+  try {
+    const key = `nxtstep_summative_report_${courseId}_${monthKey}`
+    const existing = getSummativeRecord(courseId, monthKey) || {}
+    const cleanRecord = {
+      ...existing,
+      academicEngagement:
+        remarks.academicEngagement != null
+          ? String(remarks.academicEngagement).trim()
+          : (existing.academicEngagement || ''),
+      focusAreas:
+        remarks.focusAreas != null
+          ? String(remarks.focusAreas).trim()
+          : (existing.focusAreas || ''),
+      targetedSupport:
+        Array.isArray(remarks.targetedSupport) ? remarks.targetedSupport : existing.targetedSupport,
+      parentRecommendations:
+        Array.isArray(remarks.parentRecommendations)
+          ? remarks.parentRecommendations
+          : existing.parentRecommendations,
+      updatedAt: new Date().toISOString(),
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, JSON.stringify(cleanRecord))
+    }
+    return cleanRecord
+  } catch (err) {
+    console.warn('Error saving remarks record:', err)
+    return null
+  }
+}
+
+export function resetRemarksRecord(courseId, monthKey) {
+  if (!courseId || !monthKey) return null
+  try {
+    const key = `nxtstep_summative_report_${courseId}_${monthKey}`
+    const existing = getSummativeRecord(courseId, monthKey) || {}
+    const {
+      academicEngagement: _academicEngagement,
+      focusAreas: _focusAreas,
+      targetedSupport: _targetedSupport,
+      parentRecommendations: _parentRecommendations,
+      ...rest
+    } = existing
+    const cleanRecord = {
+      ...rest,
+      academicEngagement: null,
+      focusAreas: null,
+      targetedSupport: null,
+      parentRecommendations: null,
+      updatedAt: new Date().toISOString(),
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(key, JSON.stringify(cleanRecord))
+    }
+    return cleanRecord
+  } catch (err) {
+    console.warn('Error resetting remarks record:', err)
     return null
   }
 }
@@ -1112,6 +1181,27 @@ export function buildMonthlyReport({
     topics: extractedTopics,
   })
 
+  // Apply manual remarks overrides if custom teacher remarks exist
+  const customRecord = manual || storedSummative
+  let isCustomRemarks = false
+  if (customRecord?.academicEngagement && customRecord.academicEngagement.trim() !== '') {
+    narrative.academicEngagement = customRecord.academicEngagement.trim()
+    isCustomRemarks = true
+  }
+  if (customRecord?.focusAreas && customRecord.focusAreas.trim() !== '') {
+    narrative.focusAreas = customRecord.focusAreas.trim()
+    isCustomRemarks = true
+  }
+  if (Array.isArray(customRecord?.targetedSupport) && customRecord.targetedSupport.length > 0) {
+    narrative.targetedSupport = customRecord.targetedSupport
+    isCustomRemarks = true
+  }
+  if (Array.isArray(customRecord?.parentRecommendations) && customRecord.parentRecommendations.length > 0) {
+    narrative.parentRecommendations = customRecord.parentRecommendations
+    isCustomRemarks = true
+  }
+  narrative.isCustomRemarks = isCustomRemarks
+
   // Formative & Homework Average Assessment block text
   const formativeEarned = totalPossiblePoints > 0 ? earnedPoints : Math.round(homeworkAvg * 0.5)
   const formativeTotal = totalPossiblePoints > 0 ? totalPossiblePoints : 50
@@ -1178,7 +1268,7 @@ export function buildMonthlyReport({
     narrative,
     footer: {
       tutorName: activeTeacher,
-      contactEmail: 'tutor@tutoringplatform.com',
+      contactEmail: 'jivanauttestprep@gmail.com',
       systemTag: 'Generated via Online Tutoring Portal • Page 1 of 1',
     },
   }
