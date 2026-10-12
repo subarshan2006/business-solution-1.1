@@ -43,7 +43,7 @@ function Layout({ activePage, setActivePage, children, showThemeToggle = true, s
 
 function App() {
   return (
-    <BrowserRouter basename="/business-solution-1.1">
+    <BrowserRouter>
       <Routes>
         <Route path="/classroom" element={
           <Layout activePage="classroom" setActivePage={() => {}}

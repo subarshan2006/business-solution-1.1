@@ -33,12 +33,13 @@ Student or Teacher (Browser)
 ## 2. Google Cloud Console Configuration
 
 ### Production & Local Origins
-- **Production URL**: `https://subarshan.me/business-solution-1.1/`
+- **Production URL**: `https://www.jivanauttestprep.com/`
 - **Authorized JavaScript Origins**:
   - `http://localhost:5173`
   - `http://localhost:5174`
   - `http://localhost:4173`
-  - `https://subarshan.me`
+  - `https://www.jivanauttestprep.com`
+  - `https://jivanauttestprep.com`
 - **OAuth Web Client ID**: Stored in `VITE_GOOGLE_CLIENT_ID` via `.env`.
 - **Client Secret**: **None** (Frontend-only PKCE / implicit OAuth token client does NOT use or expose a client secret).
 
