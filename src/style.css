@@ -8698,6 +8698,24 @@ main { position: relative; z-index: 1; }
 
   .classroom-card {
     padding: 16px;
+    overflow: hidden;
+  }
+
+  .classroom-title,
+  .classroom-section-text {
+    overflow-wrap: anywhere;
+  }
+
+  /* 4-up action row would overflow narrow cards: stack 2x2 */
+  .classroom-card-actions-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .card-action-btn {
+    min-width: 0;
+    padding: 9px 6px;
   }
 
   /* ---- Student hero ---- */
