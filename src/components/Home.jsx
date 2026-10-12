@@ -308,7 +308,7 @@ function Home({ activePage }) {
         <ul className="stats-list" style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           <li className="stat-card">
             <h4 className="stat-number" style={{ fontSize: '1.6rem' }}>Scores of 4 &amp; 5</h4>
-            <p className="stat-text">AP Biology Outcomes</p>
+            <p className="stat-text">AP Exam Outcomes</p>
           </li>
           <li className="stat-card">
             <h4 className="stat-number">+1 to 2</h4>
