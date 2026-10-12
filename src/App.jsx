@@ -12,6 +12,8 @@ import BackgroundVideo from './components/BackgroundVideo'
 import WhatsAppFab from './components/WhatsAppFab'
 import NotesPage from './components/NotesPage'
 import ClassroomPortal from './components/ClassroomPortal'
+import PrivacyPolicy from './components/PrivacyPolicy'
+import TermsOfService from './components/TermsOfService'
 
 function Layout({ activePage, setActivePage, children, showThemeToggle = true, showWhatsAppFab = true }) {
   const [theme, setTheme] = useState(() => {
@@ -69,6 +71,16 @@ function App() {
         <Route path="/studentrecords" element={
           <Layout activePage="notes" setActivePage={() => {}}>
             <NotesPage />
+          </Layout>
+        } />
+        <Route path="/privacy" element={
+          <Layout activePage="privacy" setActivePage={() => {}}>
+            <PrivacyPolicy />
+          </Layout>
+        } />
+        <Route path="/terms" element={
+          <Layout activePage="terms" setActivePage={() => {}}>
+            <TermsOfService />
           </Layout>
         } />
         <Route path="*" element={

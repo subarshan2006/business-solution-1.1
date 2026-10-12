@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 
 const feedbacks = [
   {
@@ -402,8 +403,13 @@ function Home({ activePage }) {
         </ul>
       </section>
 
-      <footer style={{ marginTop: '60px', textAlign: 'center', color: 'var(--light-gray)', fontSize: 'var(--fs-8)', paddingBottom: '30px' }}>
-        © 2026 Jivanaut Test Prep — Explorer of Life Science. All rights reserved.
+      <footer style={{ marginTop: '60px', textAlign: 'center', color: 'var(--light-gray)', fontSize: 'var(--fs-8)', paddingBottom: '30px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+        <div>&copy; 2026 Jivanaut Test Prep &mdash; Explorer of Life Science. All rights reserved.</div>
+        <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'var(--light-gray-70, #aaa)' }}>
+          <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'underline' }}>Privacy Policy</Link>
+          <span>&bull;</span>
+          <Link to="/terms" style={{ color: 'inherit', textDecoration: 'underline' }}>Terms of Service</Link>
+        </div>
       </footer>
 
     </article>

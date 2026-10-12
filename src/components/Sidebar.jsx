@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 function Sidebar() {
   const [isActive, setIsActive] = useState(false)
@@ -117,6 +118,12 @@ function Sidebar() {
             </a>
           </li>
         </ul>
+
+        <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', fontSize: '11px', color: 'var(--light-gray-70, #888)' }}>
+          <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
+          <span>•</span>
+          <Link to="/terms" style={{ color: 'inherit', textDecoration: 'none' }}>Terms of Service</Link>
+        </div>
 
       </div>
 
