@@ -10,8 +10,8 @@ KPI 4 — Punctuality Rate	auto: completedCount / courseWork.length
 Curriculum & Topics table (Date/Week · Topics · Classroom Assignment Ref · Status)	auto from courseWork + announcement topics
 Assessment & Task Performance (Formative & Homework Avg, Monthly Summative Exam)	auto + manual summative
 Instructor Remarks (Academic Engagement, Focus Areas)	auto narrative + manual teacher edit & persistence
-Targeted Support for Next Month (bullets)	auto narrative
-Parent Recommendations (bullets)	auto narrative
+Targeted Support for Next Month (bullets)	auto narrative + manual teacher edit & persistence
+Parent Recommendations (bullets)	auto narrative + manual teacher edit & persistence
 Footer: Tutor = teacherName prop, "Generated via Online Tutoring Portal"	auto
 Locked rules: Summative score+note are manual and visible/editable only when role === 'teacher' (isTeacherView). Tutor falls back to 'Steena Antony'. Export = PDF via browser print only (no download of data files).
 Sessions KPI rules: include TURNED_IN even with no assignedGrade; exclude state === 'ASSIGNED' with no submission; count assignments only.

@@ -1665,8 +1665,8 @@ textarea.form-input::-webkit-resizer { display: none; }
   .info-content .title { padding: 5px 18px; }
 
   .info_more-btn {
-    top: -30px;
-    right: -30px;
+    top: -15px;
+    right: -15px;
     padding: 10px 15px;
   }
 
@@ -6872,6 +6872,27 @@ main { position: relative; z-index: 1; }
   border-color: #eab308;
 }
 
+.mr-editor-recs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 640px) {
+  .mr-editor-recs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mr-field-hint {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--light-gray-70, #94a3b8);
+  margin-top: 2px;
+}
+
 /* Recommendations Grid */
 .mr-recs-grid {
   display: grid;
@@ -6885,6 +6906,37 @@ main { position: relative; z-index: 1; }
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 12px 14px;
+}
+
+.mr-recs-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.mr-recs-card-header .mr-recs-heading {
+  margin: 0;
+}
+
+.mr-recs-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.mr-recs-edit-btn:hover {
+  background: rgba(2, 132, 199, 0.1);
+  color: #0369a1;
 }
 
 .mr-recs-heading {
@@ -7159,6 +7211,7 @@ main { position: relative; z-index: 1; }
   .mr-remarks-editor-card,
   .mr-section-teacher-actions,
   .mr-section-edit-btn,
+  .mr-recs-edit-btn,
   .mr-badge-custom-indicator {
     display: none !important;
   }

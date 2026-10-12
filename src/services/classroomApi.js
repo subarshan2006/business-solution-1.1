@@ -807,6 +807,21 @@ export function saveRemarksRecord(courseId, monthKey, remarks = {}) {
   try {
     const key = `nxtstep_summative_report_${courseId}_${monthKey}`
     const existing = getSummativeRecord(courseId, monthKey) || {}
+
+    const cleanBullets = (val, fallback) => {
+      if (val === undefined) return fallback
+      if (Array.isArray(val)) {
+        return val.map((s) => String(s).trim().replace(/^[-•*]\s*/, '')).filter(Boolean)
+      }
+      if (typeof val === 'string') {
+        return val
+          .split('\n')
+          .map((s) => s.trim().replace(/^[-•*]\s*/, ''))
+          .filter(Boolean)
+      }
+      return fallback
+    }
+
     const cleanRecord = {
       ...existing,
       academicEngagement:
@@ -817,12 +832,8 @@ export function saveRemarksRecord(courseId, monthKey, remarks = {}) {
         remarks.focusAreas != null
           ? String(remarks.focusAreas).trim()
           : (existing.focusAreas || ''),
-      targetedSupport:
-        Array.isArray(remarks.targetedSupport) ? remarks.targetedSupport : existing.targetedSupport,
-      parentRecommendations:
-        Array.isArray(remarks.parentRecommendations)
-          ? remarks.parentRecommendations
-          : existing.parentRecommendations,
+      targetedSupport: cleanBullets(remarks.targetedSupport, existing.targetedSupport),
+      parentRecommendations: cleanBullets(remarks.parentRecommendations, existing.parentRecommendations),
       updatedAt: new Date().toISOString(),
     }
     if (typeof window !== 'undefined') {
@@ -1192,13 +1203,29 @@ export function buildMonthlyReport({
     narrative.focusAreas = customRecord.focusAreas.trim()
     isCustomRemarks = true
   }
-  if (Array.isArray(customRecord?.targetedSupport) && customRecord.targetedSupport.length > 0) {
-    narrative.targetedSupport = customRecord.targetedSupport
-    isCustomRemarks = true
+  if (customRecord?.targetedSupport) {
+    const items = Array.isArray(customRecord.targetedSupport)
+      ? customRecord.targetedSupport.map((s) => String(s).trim().replace(/^[-•*]\s*/, '')).filter(Boolean)
+      : String(customRecord.targetedSupport)
+          .split('\n')
+          .map((s) => s.trim().replace(/^[-•*]\s*/, ''))
+          .filter(Boolean)
+    if (items.length > 0) {
+      narrative.targetedSupport = items
+      isCustomRemarks = true
+    }
   }
-  if (Array.isArray(customRecord?.parentRecommendations) && customRecord.parentRecommendations.length > 0) {
-    narrative.parentRecommendations = customRecord.parentRecommendations
-    isCustomRemarks = true
+  if (customRecord?.parentRecommendations) {
+    const items = Array.isArray(customRecord.parentRecommendations)
+      ? customRecord.parentRecommendations.map((s) => String(s).trim().replace(/^[-•*]\s*/, '')).filter(Boolean)
+      : String(customRecord.parentRecommendations)
+          .split('\n')
+          .map((s) => s.trim().replace(/^[-•*]\s*/, ''))
+          .filter(Boolean)
+    if (items.length > 0) {
+      narrative.parentRecommendations = items
+      isCustomRemarks = true
+    }
   }
   narrative.isCustomRemarks = isCustomRemarks
 
