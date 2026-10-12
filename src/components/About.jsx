@@ -124,7 +124,7 @@ function About({ activePage, setActivePage }) {
                 margin: 0,
               }}
             >
-              The microscope represents discovery and scientific inquiry, while the growing life forms symbolize curiosity, learning, and the wonder of life. Together, they reflect Jivanaut's mission: to guide students beyond memorizing facts and inspire them to explore, understand, and truly experience the science of life.
+              The microscope represents discovery and scientific inquiry, while the growing life forms and book symbolize curiosity, learning, and the wonder of life. Together, they reflect Jivanaut's mission: to guide students beyond memorizing facts and inspire them to explore, understand, and truly experience the science of life.
             </p>
           </div>
         </div>
