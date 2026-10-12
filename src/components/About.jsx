@@ -64,6 +64,72 @@ function About({ activePage, setActivePage }) {
         11+ Years of Dedication to Rigorous Science Education and Student Empowerment.
       </p>
 
+      {/* Jivanaut Brand Identity & Logo Story */}
+      <section className="about-brand-story" style={{ marginBottom: '50px' }}>
+        <div
+          className="service-item about-brand-card"
+          style={{
+            padding: '36px 28px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            textAlign: 'center',
+            gap: '18px',
+            cursor: 'default',
+          }}
+        >
+          <div
+            className="about-logo-wrapper"
+            style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+              border: '2px solid hsla(38, 90%, 50%, 0.4)',
+              background: '#1e1e1f',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src={`${import.meta.env.BASE_URL}assets/images/logo-image.png`}
+              alt="Jivanaut - The Explorer of Life Science"
+              width="120"
+              height="120"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
+          </div>
+
+          <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+            <h3
+              className="h3 about-brand-title"
+              style={{
+                fontSize: '1.45rem',
+                marginBottom: '12px',
+                fontWeight: 700,
+                letterSpacing: '-0.2px',
+              }}
+            >
+              JIVANAUT  <span style={{ color: 'var(--orange-yellow-crayola)' }}>The Explorer of Life Science</span>
+            </h3>
+
+            <p
+              className="about-text"
+              style={{
+                fontSize: '1.05rem',
+                lineHeight: '1.8',
+                margin: 0,
+              }}
+            >
+              The microscope represents discovery and scientific inquiry, while the growing life forms symbolize curiosity, learning, and the wonder of life. Together, they reflect Jivanaut's mission: to guide students beyond memorizing facts and inspire them to explore, understand, and truly experience the science of life.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* My Story */}
       <section className="about-story" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
