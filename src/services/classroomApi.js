@@ -51,6 +51,7 @@ export function isTeacherEmail(email) {
 
 /**
  * Sprint 2: Detect whether authenticated user is acting as Teacher or Student
+ * Strictly enforces KNOWN_TEACHERS allow policy. Non-whitelisted accounts are always students.
  */
 export async function determineRole(accessToken, userEmail = '') {
   let normalizedEmail = (userEmail || '').toLowerCase().trim()
@@ -58,58 +59,29 @@ export async function determineRole(accessToken, userEmail = '') {
     return { role: 'teacher', teacherCount: 0 }
   }
 
-  // Also query Google Classroom user profile (/userProfiles/me) directly
-  let classroomUserId = ''
+  // Also query Google Classroom user profile (/userProfiles/me) directly in case email was missing
+  let userProfile = null
   try {
-    const userProfile = await apiFetch('/userProfiles/me', accessToken)
+    userProfile = await apiFetch('/userProfiles/me', accessToken)
     if (userProfile?.emailAddress) {
       normalizedEmail = userProfile.emailAddress.toLowerCase().trim()
       if (isTeacherEmail(normalizedEmail)) {
         return { role: 'teacher', teacherCount: 0, userProfile }
       }
     }
-    if (userProfile?.id) {
-      classroomUserId = userProfile.id
-    }
   } catch (profErr) {
     console.warn('Could not fetch Classroom user profile in determineRole:', profErr)
   }
 
-  // Try querying courses taught by the user (/courses?teacherId=me)
+  // Strictly enforce known teacher allow policy:
+  // If the user's email is not in KNOWN_TEACHERS, the user is strictly a student.
   try {
-    const teacherData = await apiFetch('/courses?teacherId=me&pageSize=50', accessToken)
-    if (teacherData.courses && teacherData.courses.length > 0) {
-      return { role: 'teacher', teacherCount: teacherData.courses.length, courses: teacherData.courses }
-    }
-  } catch (tErr) {
-    console.warn('Query teacherId=me check warning:', tErr)
-  }
-
-  try {
-    // Fetch all courses user is associated with (broad query)
     const allCourses = await apiFetch('/courses?pageSize=50', accessToken)
     const courses = allCourses.courses || []
-
-    if (courses.length > 0) {
-      const isTeacherOfAny = courses.some(
-        (c) =>
-          c.teacherFolder != null ||
-          (classroomUserId && c.ownerId === classroomUserId) ||
-          c.ownerId === 'me'
-      )
-      if (isTeacherOfAny) {
-        return { role: 'teacher', teacherCount: courses.length, courses }
-      }
-      return { role: 'student', studentCount: courses.length, courses }
-    }
-
-    return { role: 'teacher', studentCount: 0, courses: [] }
+    return { role: 'student', studentCount: courses.length, courses, userProfile }
   } catch (err) {
-    console.error('Error determining role from Google Classroom:', err)
-    if (isTeacherEmail(normalizedEmail)) {
-      return { role: 'teacher', teacherCount: 0 }
-    }
-    throw err
+    console.warn('Query courses note in determineRole:', err)
+    return { role: 'student', studentCount: 0, courses: [], userProfile }
   }
 }
 

@@ -175,7 +175,7 @@ export async function requestGoogleAccessToken({ scopes = DEFAULT_SCOPES } = {})
         },
       })
 
-      tokenClient.requestAccessToken()
+      tokenClient.requestAccessToken({ prompt: 'select_account' })
     } catch (err) {
       reject(err)
     }

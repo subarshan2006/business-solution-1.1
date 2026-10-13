@@ -24,19 +24,17 @@ import SessionAnnouncementGenerator from './SessionAnnouncementGenerator'
 function ClassroomPortal() {
   const [auth, setAuth] = useState(() => getStoredAuth())
 
-  // True account role: strictly 'teacher' if in KNOWN_TEACHERS or verified by Google Classroom API
+  // True account role: strictly 'teacher' ONLY if email is in KNOWN_TEACHERS allow policy
   const isTeacher = Boolean(
     auth &&
-      (auth.accountRole === 'teacher' ||
-        isTeacherEmail(auth.user?.email))
+      (auth.isMock ? auth.accountRole === 'teacher' : isTeacherEmail(auth.user?.email))
   )
 
   const [role, setRole] = useState(() => {
     const stored = getStoredAuth()
     const isStoredTeacher = Boolean(
       stored &&
-        (stored.accountRole === 'teacher' ||
-          isTeacherEmail(stored.user?.email))
+        (stored.isMock ? stored.accountRole === 'teacher' : isTeacherEmail(stored.user?.email))
     )
     if (isStoredTeacher) {
       return stored?.role || 'teacher'
@@ -120,11 +118,17 @@ function ClassroomPortal() {
           }
         }
 
-        // Determine whether user is genuinely a teacher
+        // Determine whether user is genuinely a teacher (strictly KNOWN_TEACHERS)
         let isAuthTeacher = isTeacherEmail(userEmail)
         if (!isAuthTeacher) {
           const roleResult = await determineRole(currentAuth.accessToken, userEmail)
           isAuthTeacher = roleResult.role === 'teacher'
+          if (isAuthTeacher && roleResult.userProfile?.emailAddress) {
+            userEmail = roleResult.userProfile.emailAddress
+          }
+        }
+        if (currentAuth.isMock && currentAuth.accountRole === 'teacher') {
+          isAuthTeacher = true
         }
 
         let userRole = isAuthTeacher ? (role === 'student' ? 'student' : 'teacher') : 'student'
@@ -291,11 +295,27 @@ function ClassroomPortal() {
     setError('')
     try {
       const authData = await requestGoogleAccessToken()
-      const isTeacherUser = isTeacherEmail(authData.user?.email)
-      const roleResult = isTeacherUser
-        ? { role: 'teacher' }
-        : await determineRole(authData.accessToken, authData.user?.email)
-      const finalRole = isTeacherUser || roleResult.role === 'teacher' ? 'teacher' : 'student'
+      let userEmail = authData.user?.email || ''
+      let isTeacherUser = isTeacherEmail(userEmail)
+
+      // Fallback: check profile in Classroom API if email was not in GIS token response
+      if (!isTeacherUser) {
+        const roleResult = await determineRole(authData.accessToken, userEmail)
+        if (roleResult.role === 'teacher') {
+          isTeacherUser = true
+          if (roleResult.userProfile?.emailAddress) {
+            userEmail = roleResult.userProfile.emailAddress
+            authData.user = {
+              ...authData.user,
+              email: userEmail,
+              name: roleResult.userProfile.name?.fullName || authData.user?.name,
+              picture: roleResult.userProfile.photoUrl || authData.user?.picture,
+            }
+          }
+        }
+      }
+
+      const finalRole = isTeacherUser ? 'teacher' : 'student'
       const fullAuth = { ...authData, role: finalRole, accountRole: finalRole }
       setRole(finalRole)
       setAuth(fullAuth)
