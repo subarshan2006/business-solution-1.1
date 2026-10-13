@@ -1149,6 +1149,165 @@ main {
 }
 
 
+/*-----------------------------------*\
+  #EXPERIENCE TIMELINE (About)
+\*-----------------------------------*/
+
+.experience-section { margin-bottom: 30px; }
+
+.experience-heading {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.experience-heading-sub {
+  color: var(--light-gray-70);
+  font-size: var(--fs-7);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.exp-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.exp-item {
+  position: relative;
+  padding-left: 44px;
+}
+
+/* vertical connector line */
+.exp-item:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 26px;
+  bottom: -16px;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    var(--orange-yellow-crayola) 0%,
+    hsla(38, 90%, 50%, 0.08) 100%
+  );
+}
+
+/* node dot */
+.exp-item::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--eerie-black-1);
+  border: 2px solid var(--orange-yellow-crayola);
+  box-shadow: 0 0 0 4px hsla(38, 90%, 50%, 0.12);
+  z-index: 1;
+}
+
+.exp-card {
+  position: relative;
+  background: var(--border-gradient-onyx);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-2);
+  z-index: 1;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.exp-card::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background: var(--bg-gradient-jet);
+  border-radius: inherit;
+  z-index: -1;
+}
+
+.exp-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-3);
+}
+
+.exp-years {
+  display: inline-block;
+  color: var(--orange-yellow-crayola);
+  background: hsla(38, 90%, 50%, 0.12);
+  border: 1px solid hsla(38, 90%, 50%, 0.3);
+  border-radius: 50px;
+  padding: 3px 13px;
+  font-size: var(--fs-7);
+  font-weight: var(--fw-500, 500);
+  letter-spacing: 0.4px;
+  margin-bottom: 12px;
+}
+
+.exp-title {
+  color: var(--white-1);
+  font-size: var(--fs-5);
+  line-height: 1.4;
+  margin: 0 0 8px 0;
+}
+
+.exp-text {
+  color: var(--light-gray);
+  font-size: var(--fs-6);
+  font-weight: var(--fw-300);
+  line-height: 1.65;
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .experience-heading {
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .exp-timeline {
+    gap: 14px;
+  }
+
+  .exp-item {
+    padding-left: 34px;
+  }
+
+  .exp-item::after {
+    left: 1px;
+    top: 6px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .exp-item:not(:last-child)::before {
+    left: 8px;
+    top: 24px;
+    bottom: -14px;
+  }
+
+  .exp-card {
+    padding: 15px 16px;
+    border-radius: 12px;
+  }
+
+  .exp-years {
+    margin-bottom: 10px;
+  }
+
+  .exp-title {
+    font-size: 1rem;
+  }
+}
+
+
 /**
  * skills 
  */

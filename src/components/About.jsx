@@ -23,19 +23,27 @@ const experience = [
 
 function TimelineSection({ icon, title, items }) {
   return (
-    <section className="timeline">
-      <div className="title-wrapper">
-        <div className="icon-box">
+    <section className="experience-section">
+      <div className="experience-heading">
+        <div className="icon-box" style={{ color: 'var(--orange-yellow-crayola)', fontSize: '2rem' }}>
           <ion-icon name={icon}></ion-icon>
         </div>
-        <h3 className="h3">{title}</h3>
+        <div>
+          <h3 className="h3" style={{ marginBottom: '4px' }}>{title}</h3>
+          <p className="experience-heading-sub">
+            11+ years guiding students across IB, CBSE, and US AP science curricula.
+          </p>
+        </div>
       </div>
-      <ol className="timeline-list">
+
+      <ol className="exp-timeline">
         {items.map((item) => (
-          <li className="timeline-item" key={item.title}>
-            <h4 className="h4 timeline-item-title">{item.title}</h4>
-            <span>{item.years}</span>
-            <p className="timeline-text">{item.text}</p>
+          <li className="exp-item" key={item.title}>
+            <div className="exp-card">
+              <span className="exp-years">{item.years}</span>
+              <h4 className="h4 exp-title">{item.title}</h4>
+              <p className="exp-text">{item.text}</p>
+            </div>
           </li>
         ))}
       </ol>
