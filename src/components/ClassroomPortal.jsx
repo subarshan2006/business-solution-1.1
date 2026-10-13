@@ -16,12 +16,8 @@ import {
   calculateStudentAnalytics,
   listCourseAnnouncements,
   verifyParentSecurityPin,
-  DEFAULT_PARENT_PIN,
   MOCK_20_CLASSROOMS,
   MOCK_ASSIGNMENTS,
-  MOCK_TEACHER,
-  MOCK_STUDENT,
-  MOCK_PARENT,
 } from '../services/classroomApi'
 import ParentDashboard from './ParentDashboard'
 import AssignmentModal from './AssignmentModal'
@@ -81,7 +77,6 @@ function ClassroomPortal() {
 
   // Pre-OAuth 4-Digit Parent PIN Verification Modal states
   const [showPinModal, setShowPinModal] = useState(false)
-  const [pinMode, setPinMode] = useState('live') // 'live' or 'preview'
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState('')
 
@@ -373,14 +368,6 @@ function ClassroomPortal() {
   }, [courses, auth, isTeacher, role])
 
   const handleParentConnectClick = () => {
-    setPinMode('live')
-    setPinInput('')
-    setPinError('')
-    setShowPinModal(true)
-  }
-
-  const handleParentPreviewClick = () => {
-    setPinMode('preview')
     setPinInput('')
     setPinError('')
     setShowPinModal(true)
@@ -395,12 +382,7 @@ function ClassroomPortal() {
 
     setShowPinModal(false)
     setPinError('')
-
-    if (pinMode === 'preview') {
-      handlePreviewLogin('parent')
-    } else {
-      await handleConnectLive('parent')
-    }
+    await handleConnectLive('parent')
   }
 
   const handleConnectLive = async (intendedRole = null) => {
@@ -454,40 +436,6 @@ function ClassroomPortal() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handlePreviewLogin = (previewRole) => {
-    let mockUser
-    if (previewRole === 'teacher') {
-      mockUser = MOCK_TEACHER
-    } else if (previewRole === 'parent') {
-      mockUser = MOCK_PARENT
-    } else {
-      mockUser = MOCK_STUDENT
-    }
-
-    const mockAuth = {
-      accessToken: 'mock-token',
-      expiresAt: Date.now() + 3600000,
-      user: mockUser,
-      role: previewRole,
-      accountRole: previewRole,
-      isMock: true,
-    }
-
-    setRole(previewRole)
-    if (previewRole === 'parent') {
-      setActiveTab('parent')
-      setCourses([MOCK_20_CLASSROOMS[1]])
-      setSelectedCourse(MOCK_20_CLASSROOMS[1])
-    } else {
-      setActiveTab('courses')
-      setCourses(MOCK_20_CLASSROOMS)
-      setSelectedCourse(MOCK_20_CLASSROOMS[0])
-    }
-    setCourseWork(MOCK_ASSIGNMENTS)
-    setAuth(mockAuth)
-    saveAuth(mockAuth)
   }
 
   const handleSwitchRole = (newRole) => {
@@ -594,34 +542,6 @@ function ClassroomPortal() {
                 <span>Connect as Parent / Guardian</span>
               </button>
             </div>
-
-            <div className="demo-mode-group" style={{ marginTop: '16px', alignItems: 'center' }}>
-              <span className="demo-hint-text">Instant Preview Modes:</span>
-              <div className="demo-buttons-pill">
-                <button
-                  type="button"
-                  className="demo-pill-btn student"
-                  onClick={() => handlePreviewLogin('student')}
-                >
-                  🧑‍🎓 Preview as Student
-                </button>
-                <button
-                  type="button"
-                  className="demo-pill-btn parent"
-                  onClick={handleParentPreviewClick}
-                >
-                  🔒 Preview as Parent (PIN Required)
-                </button>
-                <button
-                  type="button"
-                  className="demo-pill-btn teacher"
-                  onClick={() => handlePreviewLogin('teacher')}
-                >
-                  👨‍🏫 Preview as Teacher
-                </button>
-              </div>
-            </div>
-
 
             {!hasClientId && (
               <div className="classroom-info-box" style={{ marginTop: '14px' }}>
@@ -1663,7 +1583,7 @@ function ClassroomPortal() {
         />
       )}
 
-      {/* Pre-OAuth / Pre-Preview 4-Digit Parent Security PIN Modal */}
+      {/* Pre-OAuth 4-Digit Parent Security PIN Modal */}
       {showPinModal && (
         <div
           className="parent-pin-modal-backdrop"
@@ -1723,9 +1643,6 @@ function ClassroomPortal() {
                   }}
                   className={`pin-code-input ${pinError ? 'error' : ''}`}
                 />
-                <span className="pin-hint-text">
-                  Default Demo PIN: <strong>{DEFAULT_PARENT_PIN}</strong> (Issued by lead educator)
-                </span>
               </div>
 
               {pinError && (
@@ -1752,9 +1669,7 @@ function ClassroomPortal() {
                   disabled={pinInput.length !== 4}
                 >
                   <ion-icon name="lock-open-outline"></ion-icon>
-                  <span>
-                    {pinMode === 'preview' ? 'Unlock & Preview' : 'Unlock & Connect Google'}
-                  </span>
+                  <span>Unlock &amp; Connect Google</span>
                 </button>
               </div>
             </form>
