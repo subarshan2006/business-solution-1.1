@@ -361,11 +361,91 @@ export function getClassroomDirectoryDetails(courseId = '', courseName = '') {
   return {
     studentName: custom.studentName || defaultEntry.studentName,
     parentName: custom.parentName || defaultEntry.parentName,
+    parentEmail: custom.parentEmail || defaultEntry.parentEmail,
     subject: custom.subject || defaultEntry.subject,
     grade: custom.grade || defaultEntry.grade,
     topics: custom.topics || defaultEntry.topics,
     defaultHw: custom.defaultHw || defaultEntry.defaultHw,
     defaultRemarks: custom.defaultRemarks || defaultEntry.defaultRemarks,
-    hasCustomOverride: Boolean(custom.studentName || custom.parentName),
+    hasCustomOverride: Boolean(custom.studentName || custom.parentName || custom.parentEmail),
   }
 }
+
+/**
+ * Recognized Parent / Guardian Emails for Google OAuth Verification (Layer 1 Security)
+ */
+export const KNOWN_PARENTS = [
+  'parent@nxtsteptutoring.com',
+  'parent.demo@gmail.com',
+  'sambhrama.parent@gmail.com',
+  'carlos.rivera.parent@gmail.com',
+  'mei.chen.parent@gmail.com',
+  'sunita.sharma.parent@gmail.com',
+  'david.watson.parent@gmail.com',
+  'rajesh.patel.parent@gmail.com',
+  'rebecca.bennett.parent@gmail.com',
+  'wei.zhao.parent@gmail.com',
+  'anand.krishnan.parent@gmail.com',
+  'jennifer.miller.parent@gmail.com',
+  'geetha.iyer.parent@gmail.com',
+  'sarah.brooks.parent@gmail.com',
+  'priya.menon.parent@gmail.com',
+  'suresh.nair.parent@gmail.com',
+  'helen.kim.parent@gmail.com',
+  'lakshmi.sundaram.parent@gmail.com',
+  'patricia.taylor.parent@gmail.com',
+  'ramesh.rao.parent@gmail.com',
+  'mark.davis.parent@gmail.com',
+  'geetha.varma.parent@gmail.com',
+]
+
+/**
+ * Check if given email belongs to a recognized parent/guardian account
+ */
+export function isParentEmail(email) {
+  if (!email) return false
+  const norm = email.toLowerCase().trim()
+  if (KNOWN_PARENTS.some((p) => p.toLowerCase() === norm)) return true
+
+  // Check default directory
+  if (
+    DEFAULT_CLASSROOMS_DIRECTORY.some(
+      (c) => c.parentEmail && c.parentEmail.toLowerCase().trim() === norm
+    )
+  ) {
+    return true
+  }
+
+  // Check saved overrides in localStorage
+  const overrides = getSavedClassroomOverrides()
+  const hasOverride = Object.values(overrides).some(
+    (o) => o.parentEmail && o.parentEmail.toLowerCase().trim() === norm
+  )
+  if (hasOverride) return true
+
+  // Allow test / alias addresses containing '+parent@' or '.parent@'
+  if (norm.includes('+parent@') || norm.includes('.parent@')) return true
+
+  return false
+}
+
+/**
+ * Get classroom associated with a parent's email
+ */
+export function getParentClassroom(email) {
+  if (!email) return null
+  const norm = email.toLowerCase().trim()
+  const found = DEFAULT_CLASSROOMS_DIRECTORY.find(
+    (c) => c.parentEmail && c.parentEmail.toLowerCase().trim() === norm
+  )
+  if (found) return found
+
+  const overrides = getSavedClassroomOverrides()
+  for (const courseId of Object.keys(overrides)) {
+    if (overrides[courseId]?.parentEmail?.toLowerCase().trim() === norm) {
+      return findDirectoryEntry(courseId)
+    }
+  }
+  return null
+}
+

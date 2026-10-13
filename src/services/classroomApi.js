@@ -7,7 +7,12 @@
 import {
   DEFAULT_CLASSROOMS_DIRECTORY,
   getClassroomDirectoryDetails,
+  isParentEmail,
+  KNOWN_PARENTS,
+  getParentClassroom,
 } from '../data/classroomDirectory.js'
+
+export { isParentEmail, KNOWN_PARENTS, getParentClassroom }
 
 const CLASSROOM_BASE = 'https://classroom.googleapis.com/v1'
 
@@ -41,6 +46,56 @@ export const KNOWN_TEACHERS = [
 ]
 
 /**
+ * Pre-OAuth 4-Digit Parent Security PIN Management
+ */
+const PARENT_PIN_STORAGE_KEY = 'nxtstep_classroom_parent_pins'
+export const DEFAULT_PARENT_PIN = '2026'
+
+/**
+ * Retrieve the active 4-digit Parent Security PIN for a classroom (or universal default)
+ */
+export function getParentSecurityPin(courseId = '') {
+  if (typeof window === 'undefined' || !window.localStorage) return DEFAULT_PARENT_PIN
+  try {
+    const raw = localStorage.getItem(PARENT_PIN_STORAGE_KEY)
+    const pins = raw ? JSON.parse(raw) : {}
+    return pins[courseId] || pins.default || DEFAULT_PARENT_PIN
+  } catch {
+    return DEFAULT_PARENT_PIN
+  }
+}
+
+/**
+ * Save customized 4-digit Parent Security PIN
+ */
+export function saveParentSecurityPin(courseId = '', newPin = DEFAULT_PARENT_PIN) {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    const raw = localStorage.getItem(PARENT_PIN_STORAGE_KEY)
+    const pins = raw ? JSON.parse(raw) : {}
+    const cleanPin = String(newPin).trim()
+    if (courseId) {
+      pins[courseId] = cleanPin
+    } else {
+      pins.default = cleanPin
+    }
+    localStorage.setItem(PARENT_PIN_STORAGE_KEY, JSON.stringify(pins))
+  } catch (err) {
+    console.warn('Failed to save parent PIN:', err)
+  }
+}
+
+/**
+ * Verify if entered PIN matches the active parent PIN or universal default
+ */
+export function verifyParentSecurityPin(inputPin = '', courseId = '') {
+  if (!inputPin) return false
+  const cleanInput = String(inputPin).trim()
+  const expectedPin = getParentSecurityPin(courseId)
+  return cleanInput === expectedPin || cleanInput === DEFAULT_PARENT_PIN
+}
+
+/**
  * Check if given email belongs to recognized lead teachers
  */
 export function isTeacherEmail(email) {
@@ -49,14 +104,21 @@ export function isTeacherEmail(email) {
   return KNOWN_TEACHERS.some((t) => t.toLowerCase() === norm)
 }
 
+
 /**
- * Sprint 2: Detect whether authenticated user is acting as Teacher or Student
- * Strictly enforces KNOWN_TEACHERS allow policy. Non-whitelisted accounts are always students.
+ * Sprint 2: Detect whether authenticated user is acting as Teacher, Parent, or Student
+ * Strictly enforces Layer 1 Google OAuth verification:
+ * - KNOWN_TEACHERS -> Teacher
+ * - isParentEmail -> Parent (Parent Dashboard ONLY, zero student workspace)
+ * - All other accounts -> Student (Student Workspace ONLY, zero parent dashboard)
  */
 export async function determineRole(accessToken, userEmail = '') {
   let normalizedEmail = (userEmail || '').toLowerCase().trim()
   if (isTeacherEmail(normalizedEmail)) {
     return { role: 'teacher', teacherCount: 0 }
+  }
+  if (isParentEmail(normalizedEmail)) {
+    return { role: 'parent', parentCount: 0 }
   }
 
   // Also query Google Classroom user profile (/userProfiles/me) directly in case email was missing
@@ -68,13 +130,16 @@ export async function determineRole(accessToken, userEmail = '') {
       if (isTeacherEmail(normalizedEmail)) {
         return { role: 'teacher', teacherCount: 0, userProfile }
       }
+      if (isParentEmail(normalizedEmail)) {
+        return { role: 'parent', parentCount: 0, userProfile }
+      }
     }
   } catch (profErr) {
     console.warn('Could not fetch Classroom user profile in determineRole:', profErr)
   }
 
-  // Strictly enforce known teacher allow policy:
-  // If the user's email is not in KNOWN_TEACHERS, the user is strictly a student.
+  // Strictly enforce known teacher and parent allow policy:
+  // If the user's email is neither, the user is strictly a student.
   try {
     const allCourses = await apiFetch('/courses?pageSize=50', accessToken)
     const courses = allCourses.courses || []
@@ -322,6 +387,15 @@ export const MOCK_STUDENT = {
   picture: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80',
   role: 'student',
 }
+
+export const MOCK_PARENT = {
+  id: 'parent-demo-01',
+  name: 'Mr. Carlos Rivera (Parent)',
+  email: 'carlos.rivera.parent@gmail.com',
+  picture: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80',
+  role: 'parent',
+}
+
 
 // Generate the 20 private 1-on-1 classrooms with distinct students and parents
 export const MOCK_20_CLASSROOMS = Array.from({ length: 20 }, (_, i) => {

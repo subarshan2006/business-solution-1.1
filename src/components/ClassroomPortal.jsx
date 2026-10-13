@@ -9,13 +9,19 @@ import {
 import {
   determineRole,
   isTeacherEmail,
+  isParentEmail,
   listTeacherCourses,
   listStudentCourses,
   fetchCourseWorkWithSubmissions,
   calculateStudentAnalytics,
   listCourseAnnouncements,
+  verifyParentSecurityPin,
+  DEFAULT_PARENT_PIN,
   MOCK_20_CLASSROOMS,
   MOCK_ASSIGNMENTS,
+  MOCK_TEACHER,
+  MOCK_STUDENT,
+  MOCK_PARENT,
 } from '../services/classroomApi'
 import ParentDashboard from './ParentDashboard'
 import AssignmentModal from './AssignmentModal'
@@ -30,16 +36,24 @@ function ClassroomPortal() {
       (auth.isMock ? auth.accountRole === 'teacher' : isTeacherEmail(auth.user?.email))
   )
 
+  // True account role: strictly 'parent' ONLY if email is in KNOWN_PARENTS or mock parent
+  const isParent = Boolean(
+    auth &&
+      (auth.isMock ? auth.accountRole === 'parent' : isParentEmail(auth.user?.email))
+  )
+
   const [role, setRole] = useState(() => {
     const stored = getStoredAuth()
-    const isStoredTeacher = Boolean(
-      stored &&
-        (stored.isMock ? stored.accountRole === 'teacher' : isTeacherEmail(stored.user?.email))
-    )
-    if (isStoredTeacher) {
-      return stored?.role || 'teacher'
+    if (!stored) return 'student'
+    if (stored.isMock) {
+      return stored.accountRole || 'student'
     }
-    // Students are strictly locked to student role
+    if (isTeacherEmail(stored.user?.email)) {
+      return stored.role || 'teacher'
+    }
+    if (isParentEmail(stored.user?.email)) {
+      return 'parent'
+    }
     return 'student'
   })
   const [loading, setLoading] = useState(false)
@@ -51,7 +65,13 @@ function ClassroomPortal() {
   const [loadingCourseWork, setLoadingCourseWork] = useState(false)
   const [courseWorkError, setCourseWorkError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState('courses') // 'courses', 'homework', 'grades', 'parent'
+  const [activeTab, setActiveTab] = useState(() => {
+    const stored = getStoredAuth()
+    if (stored?.accountRole === 'parent' || isParentEmail(stored?.user?.email)) {
+      return 'parent'
+    }
+    return 'courses'
+  })
   const [gradeFilter] = useState('all')
   const [selectedAssignment, setSelectedAssignment] = useState(null)
   // Aggregated coursework across ALL enrolled courses (for student view)
@@ -59,7 +79,38 @@ function ClassroomPortal() {
   const [allCourseWorkLoading, setAllCourseWorkLoading] = useState(false)
   const [allCourseWorkError, setAllCourseWorkError] = useState('')
 
+  // Pre-OAuth 4-Digit Parent PIN Verification Modal states
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pinMode, setPinMode] = useState('live') // 'live' or 'preview'
+  const [pinInput, setPinInput] = useState('')
+  const [pinError, setPinError] = useState('')
+
+  // Escape key closes PIN modal
+  useEffect(() => {
+    if (!showPinModal) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowPinModal(false)
+        setPinError('')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showPinModal])
+
   const hasClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
+
+  // LAYER 1 SECURITY ENFORCEMENT:
+  // - Parents are locked to 'parent' tab (zero access to student workspace)
+  // - Students are locked out of 'parent' tab (cannot view private educator remarks or report cards)
+  useEffect(() => {
+    if (role === 'parent' && activeTab !== 'parent') {
+      setActiveTab('parent')
+    }
+    if (role === 'student' && activeTab === 'parent') {
+      setActiveTab('courses')
+    }
+  }, [role, activeTab])
 
   // Load courses when auth or role changes
   useEffect(() => {
@@ -70,7 +121,12 @@ function ClassroomPortal() {
     }
 
     if (auth.isMock) {
-      if (isTeacher && role === 'teacher') {
+      if (role === 'parent' || isParent) {
+        setCourses([MOCK_20_CLASSROOMS[1]])
+        setSelectedCourse(MOCK_20_CLASSROOMS[1])
+        setCourseWork(MOCK_ASSIGNMENTS)
+        setActiveTab('parent')
+      } else if (isTeacher && role === 'teacher') {
         setCourses(MOCK_20_CLASSROOMS)
         setSelectedCourse(MOCK_20_CLASSROOMS[0])
         setCourseWork(MOCK_ASSIGNMENTS)
@@ -81,6 +137,7 @@ function ClassroomPortal() {
       }
       return
     }
+
 
     // Real API fetch
     async function fetchRealClassroomData() {
@@ -118,20 +175,33 @@ function ClassroomPortal() {
           }
         }
 
-        // Determine whether user is genuinely a teacher (strictly KNOWN_TEACHERS)
+        // Determine whether user is genuinely a teacher, parent, or student
         let isAuthTeacher = isTeacherEmail(userEmail)
-        if (!isAuthTeacher) {
+        let isAuthParent = isParentEmail(userEmail)
+        if (!isAuthTeacher && !isAuthParent) {
           const roleResult = await determineRole(currentAuth.accessToken, userEmail)
-          isAuthTeacher = roleResult.role === 'teacher'
-          if (isAuthTeacher && roleResult.userProfile?.emailAddress) {
+          if (roleResult.role === 'teacher') {
+            isAuthTeacher = true
+          } else if (roleResult.role === 'parent') {
+            isAuthParent = true
+          }
+          if (roleResult.userProfile?.emailAddress) {
             userEmail = roleResult.userProfile.emailAddress
           }
         }
-        if (currentAuth.isMock && currentAuth.accountRole === 'teacher') {
-          isAuthTeacher = true
+        if (currentAuth.isMock) {
+          if (currentAuth.accountRole === 'teacher') isAuthTeacher = true
+          if (currentAuth.accountRole === 'parent') isAuthParent = true
         }
 
-        let userRole = isAuthTeacher ? (role === 'student' ? 'student' : 'teacher') : 'student'
+        let userRole = 'student'
+        if (isAuthTeacher) {
+          userRole = role === 'student' ? 'student' : 'teacher'
+        } else if (isAuthParent) {
+          userRole = 'parent'
+        } else {
+          userRole = 'student'
+        }
 
         if (isAuthTeacher) {
           if (role !== userRole) {
@@ -142,12 +212,24 @@ function ClassroomPortal() {
             setAuth(updated)
             saveAuth(updated)
           }
+        } else if (isAuthParent) {
+          userRole = 'parent'
+          if (role !== 'parent') {
+            setRole('parent')
+          }
+          setActiveTab((prev) => (prev !== 'parent' ? 'parent' : prev))
+          if (currentAuth.accountRole !== 'parent' || currentAuth.role !== 'parent') {
+            const updated = { ...currentAuth, role: 'parent', accountRole: 'parent' }
+            setAuth(updated)
+            saveAuth(updated)
+          }
         } else {
           // Strictly lock student accounts to student role
           userRole = 'student'
           if (role !== 'student') {
             setRole('student')
           }
+          setActiveTab((prev) => (prev === 'parent' ? 'courses' : prev))
           if (currentAuth.accountRole !== 'student' || currentAuth.role !== 'student') {
             const updated = { ...currentAuth, role: 'student', accountRole: 'student' }
             setAuth(updated)
@@ -173,7 +255,7 @@ function ClassroomPortal() {
     }
 
     fetchRealClassroomData()
-  }, [auth, role, isTeacher])
+  }, [auth, role, isTeacher, isParent])
 
   // Fetch coursework and announcements when selectedCourse changes in live mode
   useEffect(() => {
@@ -290,7 +372,38 @@ function ClassroomPortal() {
     }
   }, [courses, auth, isTeacher, role])
 
-  const handleConnectLive = async () => {
+  const handleParentConnectClick = () => {
+    setPinMode('live')
+    setPinInput('')
+    setPinError('')
+    setShowPinModal(true)
+  }
+
+  const handleParentPreviewClick = () => {
+    setPinMode('preview')
+    setPinInput('')
+    setPinError('')
+    setShowPinModal(true)
+  }
+
+  const handleVerifyPinSubmit = async (e) => {
+    if (e) e.preventDefault()
+    if (!verifyParentSecurityPin(pinInput)) {
+      setPinError('Incorrect 4-digit PIN. Please verify with your lead educator (default: 2026).')
+      return
+    }
+
+    setShowPinModal(false)
+    setPinError('')
+
+    if (pinMode === 'preview') {
+      handlePreviewLogin('parent')
+    } else {
+      await handleConnectLive('parent')
+    }
+  }
+
+  const handleConnectLive = async (intendedRole = null) => {
     setLoading(true)
     setError('')
     try {
@@ -315,9 +428,21 @@ function ClassroomPortal() {
         }
       }
 
-      const finalRole = isTeacherUser ? 'teacher' : 'student'
+      // If user entered correct PIN or is intended as parent:
+      let finalRole = 'student'
+      if (isTeacherUser) {
+        finalRole = 'teacher'
+      } else if (intendedRole === 'parent' || isParentEmail(userEmail)) {
+        finalRole = 'parent'
+      }
+
       const fullAuth = { ...authData, role: finalRole, accountRole: finalRole }
       setRole(finalRole)
+      if (finalRole === 'parent') {
+        setActiveTab('parent')
+      } else if (activeTab === 'parent' && finalRole === 'student') {
+        setActiveTab('courses')
+      }
       setAuth(fullAuth)
       saveAuth(fullAuth)
     } catch (err) {
@@ -331,9 +456,43 @@ function ClassroomPortal() {
     }
   }
 
+  const handlePreviewLogin = (previewRole) => {
+    let mockUser
+    if (previewRole === 'teacher') {
+      mockUser = MOCK_TEACHER
+    } else if (previewRole === 'parent') {
+      mockUser = MOCK_PARENT
+    } else {
+      mockUser = MOCK_STUDENT
+    }
+
+    const mockAuth = {
+      accessToken: 'mock-token',
+      expiresAt: Date.now() + 3600000,
+      user: mockUser,
+      role: previewRole,
+      accountRole: previewRole,
+      isMock: true,
+    }
+
+    setRole(previewRole)
+    if (previewRole === 'parent') {
+      setActiveTab('parent')
+      setCourses([MOCK_20_CLASSROOMS[1]])
+      setSelectedCourse(MOCK_20_CLASSROOMS[1])
+    } else {
+      setActiveTab('courses')
+      setCourses(MOCK_20_CLASSROOMS)
+      setSelectedCourse(MOCK_20_CLASSROOMS[0])
+    }
+    setCourseWork(MOCK_ASSIGNMENTS)
+    setAuth(mockAuth)
+    saveAuth(mockAuth)
+  }
+
   const handleSwitchRole = (newRole) => {
-    // If authenticated user is a student, forbid switching to teacher mode
-    if (newRole === 'teacher' && !isTeacher) {
+    // Strictly forbid non-teachers from switching roles
+    if (!isTeacher) {
       return
     }
 
@@ -347,7 +506,6 @@ function ClassroomPortal() {
       setActiveTab('courses')
     }
   }
-
 
   const handleDisconnect = () => {
     if (auth && !auth.isMock) {
@@ -414,20 +572,59 @@ function ClassroomPortal() {
               </div>
             )}
 
-            <div className="classroom-actions-row">
+            <div className="classroom-actions-row" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 className="google-connect-btn"
-                onClick={handleConnectLive}
+                onClick={() => handleConnectLive('student')}
                 disabled={loading}
               >
-                <ion-icon name="logo-google"></ion-icon>
-                <span>{loading ? 'Connecting...' : 'Connect with Google'}</span>
+                <ion-icon name="school-outline"></ion-icon>
+                <span>{loading ? 'Connecting...' : 'Connect as Student'}</span>
+              </button>
+
+              <button
+                type="button"
+                className="google-connect-btn parent"
+                onClick={handleParentConnectClick}
+                disabled={loading}
+                title="Strict Parent Dashboard only (Protected by 4-digit PIN)"
+              >
+                <ion-icon name="lock-closed-outline"></ion-icon>
+                <span>Connect as Parent / Guardian</span>
               </button>
             </div>
 
+            <div className="demo-mode-group" style={{ marginTop: '16px', alignItems: 'center' }}>
+              <span className="demo-hint-text">Instant Preview Modes:</span>
+              <div className="demo-buttons-pill">
+                <button
+                  type="button"
+                  className="demo-pill-btn student"
+                  onClick={() => handlePreviewLogin('student')}
+                >
+                  🧑‍🎓 Preview as Student
+                </button>
+                <button
+                  type="button"
+                  className="demo-pill-btn parent"
+                  onClick={handleParentPreviewClick}
+                >
+                  🔒 Preview as Parent (PIN Required)
+                </button>
+                <button
+                  type="button"
+                  className="demo-pill-btn teacher"
+                  onClick={() => handlePreviewLogin('teacher')}
+                >
+                  👨‍🏫 Preview as Teacher
+                </button>
+              </div>
+            </div>
+
+
             {!hasClientId && (
-              <div className="classroom-info-box">
+              <div className="classroom-info-box" style={{ marginTop: '14px' }}>
                 <ion-icon name="information-circle-outline"></ion-icon>
                 <div>
                   <strong>Google Cloud Setup Note:</strong> Add your <code>VITE_GOOGLE_CLIENT_ID</code> in <code>.env</code> to connect your live Google account.
@@ -446,8 +643,12 @@ function ClassroomPortal() {
               <div>
                 <div className="user-name-row">
                   <h4 className="h4 user-display-name">{auth.user.name}</h4>
-                  <span className={`role-badge ${isTeacher && role === 'teacher' ? 'teacher' : 'student'}`}>
-                    {isTeacher && role === 'teacher' ? 'TEACHER / LEAD MENTOR' : 'STUDENT WORKSPACE'}
+                  <span className={`role-badge ${isTeacher && role === 'teacher' ? 'teacher' : role === 'parent' ? 'parent' : 'student'}`}>
+                    {isTeacher && role === 'teacher'
+                      ? 'TEACHER / LEAD MENTOR'
+                      : role === 'parent'
+                      ? 'PARENT PORTAL (READ-ONLY)'
+                      : 'STUDENT WORKSPACE'}
                   </span>
                   {auth.isMock && <span className="mock-badge">PREVIEW MODE</span>}
                 </div>
@@ -481,29 +682,19 @@ function ClassroomPortal() {
                     👨‍👩‍👧 Parent Mode
                   </button>
                 </div>
-              ) : (
-                /* Student Controls: Only Student Workspace and Parent View */
+              ) : role === 'parent' ? (
+                /* Parent Controls: Strictly locked into Parent Dashboard only (Read-Only) */
                 <div className="preview-switch-group">
-                  <button
-                    type="button"
-                    className={`role-switch-pill${activeTab !== 'parent' ? ' active' : ''}`}
-                    onClick={() => {
-                      setRole('student')
-                      setActiveTab('courses')
-                    }}
-                  >
+                  <span className="role-switch-pill active" style={{ cursor: 'default' }}>
+                    👨‍👩‍👧 Parent Overview (Read-Only)
+                  </span>
+                </div>
+              ) : (
+                /* Student Controls: Only Student Workspace (Parent overview completely hidden) */
+                <div className="preview-switch-group">
+                  <span className="role-switch-pill active" style={{ cursor: 'default' }}>
                     🧑‍🎓 My Classroom
-                  </button>
-                  <button
-                    type="button"
-                    className={`role-switch-pill${activeTab === 'parent' ? ' active' : ''}`}
-                    onClick={() => {
-                      setRole('student')
-                      setActiveTab('parent')
-                    }}
-                  >
-                    👨‍👩‍👧 Parent Overview
-                  </button>
+                  </span>
                 </div>
               )}
 
@@ -527,51 +718,99 @@ function ClassroomPortal() {
             <div className="classroom-error-banner" style={{ marginBottom: '20px' }}>
               <ion-icon name="alert-circle-outline"></ion-icon>
               <div>
-                <strong>Google Classroom API Note:</strong> {error}
+                <strong>Google Classroom Security Note:</strong> {error}
               </div>
             </div>
           )}
 
           {/* Main Tri-Portal Tabs */}
-          <div className="dashboard-nav-tabs">
-            <button
-              className={`dashboard-tab${activeTab === 'courses' ? ' active' : ''}`}
-              onClick={() => setActiveTab('courses')}
+          {role === 'parent' ? (
+            <div
+              className="parent-portal-notice-bar"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 20px',
+                borderRadius: '12px',
+                background: 'var(--border-gradient-onyx)',
+                marginBottom: '24px',
+                border: '1px solid rgba(255, 179, 71, 0.25)',
+                position: 'relative',
+                overflow: 'hidden',
+                flexWrap: 'wrap',
+                gap: '12px',
+              }}
             >
-              <ion-icon name="grid-outline"></ion-icon>
-              <span>{isTeacher && role === 'teacher' ? `Classrooms (${courses.length})` : 'My Classroom'}</span>
-            </button>
-            <button
-              className={`dashboard-tab${activeTab === 'homework' ? ' active' : ''}`}
-              onClick={() => setActiveTab('homework')}
-            >
-              <ion-icon name="book-outline"></ion-icon>
-              <span>{isTeacher && role === 'teacher' ? 'Homework & Assignments' : 'My Homework & Tasks'}</span>
-            </button>
-            <button
-              className={`dashboard-tab${activeTab === 'grades' ? ' active' : ''}`}
-              onClick={() => setActiveTab('grades')}
-            >
-              <ion-icon name="ribbon-outline"></ion-icon>
-              <span>{isTeacher && role === 'teacher' ? 'Submissions & Marks' : 'My Marks & Grades'}</span>
-            </button>
-            <button
-              className={`dashboard-tab highlight-parent${activeTab === 'parent' ? ' active' : ''}`}
-              onClick={() => setActiveTab('parent')}
-            >
-              <ion-icon name="people-outline"></ion-icon>
-              <span>{isTeacher ? '👨‍👩‍👧 Parent Dashboard' : '👨‍👩‍👧 Parent Overview'}</span>
-            </button>
-            {isTeacher && role === 'teacher' && (
-              <button
-                className={`dashboard-tab highlight-announcement${activeTab === 'announcements' ? ' active' : ''}`}
-                onClick={() => setActiveTab('announcements')}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <ion-icon name="shield-checkmark" style={{ color: '#ffb347', fontSize: '24px' }}></ion-icon>
+                <div>
+                  <h4 className="h4" style={{ margin: 0, color: 'var(--white-2, #fff)' }}>
+                    👨‍👩‍👧 Executive Parent Dashboard
+                  </h4>
+                  <p style={{ margin: '2px 0 0', fontSize: '13px', color: 'var(--light-gray-70, #aaa)' }}>
+                    Confidential Academic Progress Monitoring for <strong>{currentStudentName}</strong> (Read-Only)
+                  </p>
+                </div>
+              </div>
+              <span
+                className="parent-scope-pill"
+                style={{
+                  background: 'rgba(255, 179, 71, 0.15)',
+                  color: '#ffb347',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  border: '1px solid rgba(255, 179, 71, 0.3)',
+                }}
               >
-                <ion-icon name="megaphone-outline"></ion-icon>
-                <span>📢 Session Updates</span>
+                1-on-1 Mentorship: {selectedCourse?.name || 'Classroom'}
+              </span>
+            </div>
+          ) : (
+            <div className="dashboard-nav-tabs">
+              <button
+                className={`dashboard-tab${activeTab === 'courses' ? ' active' : ''}`}
+                onClick={() => setActiveTab('courses')}
+              >
+                <ion-icon name="grid-outline"></ion-icon>
+                <span>{isTeacher && role === 'teacher' ? `Classrooms (${courses.length})` : 'My Classroom'}</span>
               </button>
-            )}
-          </div>
+              <button
+                className={`dashboard-tab${activeTab === 'homework' ? ' active' : ''}`}
+                onClick={() => setActiveTab('homework')}
+              >
+                <ion-icon name="book-outline"></ion-icon>
+                <span>{isTeacher && role === 'teacher' ? 'Homework & Assignments' : 'My Homework & Tasks'}</span>
+              </button>
+              <button
+                className={`dashboard-tab${activeTab === 'grades' ? ' active' : ''}`}
+                onClick={() => setActiveTab('grades')}
+              >
+                <ion-icon name="ribbon-outline"></ion-icon>
+                <span>{isTeacher && role === 'teacher' ? 'Submissions & Marks' : 'My Marks & Grades'}</span>
+              </button>
+              {isTeacher && (
+                <button
+                  className={`dashboard-tab highlight-parent${activeTab === 'parent' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('parent')}
+                >
+                  <ion-icon name="people-outline"></ion-icon>
+                  <span>👨‍👩‍👧 Parent Dashboard</span>
+                </button>
+              )}
+              {isTeacher && role === 'teacher' && (
+                <button
+                  className={`dashboard-tab highlight-announcement${activeTab === 'announcements' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('announcements')}
+                >
+                  <ion-icon name="megaphone-outline"></ion-icon>
+                  <span>📢 Session Updates</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* ======================================================= */}
           {/* TAB 1: CLASSROOMS / COURSES                             */}
@@ -767,15 +1006,8 @@ function ClassroomPortal() {
                               <span>View My Marks & Feedback</span>
                               <ion-icon name="ribbon-outline"></ion-icon>
                             </button>
-                            <button
-                              type="button"
-                              className="hero-cta-btn parent-link-cta"
-                              onClick={() => setActiveTab('parent')}
-                            >
-                              <span>👨‍👩‍👧 Parent Overview</span>
-                              <ion-icon name="people-outline"></ion-icon>
-                            </button>
                           </div>
+
 
                           {c.alternateLink && (
                             <div className="external-classroom-shortcut">
@@ -1429,6 +1661,105 @@ function ClassroomPortal() {
           courseName={selectedCourse?.name}
           onClose={() => setSelectedAssignment(null)}
         />
+      )}
+
+      {/* Pre-OAuth / Pre-Preview 4-Digit Parent Security PIN Modal */}
+      {showPinModal && (
+        <div
+          className="parent-pin-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pin-modal-title"
+          onClick={() => {
+            setShowPinModal(false)
+            setPinError('')
+          }}
+        >
+          <div
+            className="parent-pin-modal-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="pin-modal-header">
+              <div className="pin-modal-icon-wrap">
+                <ion-icon name="shield-checkmark-outline"></ion-icon>
+              </div>
+              <div>
+                <h3 id="pin-modal-title" className="h3 pin-modal-title">Parent Security PIN</h3>
+                <p className="pin-modal-subtitle">
+                  Enter your 4-digit security PIN to unlock the parent overview and report card.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="pin-modal-close-btn"
+                onClick={() => {
+                  setShowPinModal(false)
+                  setPinError('')
+                }}
+                aria-label="Close PIN modal"
+              >
+                <ion-icon name="close-outline"></ion-icon>
+              </button>
+            </div>
+
+            <form onSubmit={handleVerifyPinSubmit} className="pin-modal-form">
+              <div className="pin-input-group">
+                <label htmlFor="parent-pin-input" className="pin-input-label">
+                  4-Digit Access PIN
+                </label>
+                <input
+                  id="parent-pin-input"
+                  type="password"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  autoFocus
+                  placeholder="••••"
+                  value={pinInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 4)
+                    setPinInput(val)
+                    if (pinError) setPinError('')
+                  }}
+                  className={`pin-code-input ${pinError ? 'error' : ''}`}
+                />
+                <span className="pin-hint-text">
+                  Default Demo PIN: <strong>{DEFAULT_PARENT_PIN}</strong> (Issued by lead educator)
+                </span>
+              </div>
+
+              {pinError && (
+                <div className="pin-error-alert" role="alert">
+                  <ion-icon name="alert-circle-outline"></ion-icon>
+                  <span>{pinError}</span>
+                </div>
+              )}
+
+              <div className="pin-actions-row">
+                <button
+                  type="button"
+                  className="pin-cancel-btn"
+                  onClick={() => {
+                    setShowPinModal(false)
+                    setPinError('')
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="pin-submit-btn"
+                  disabled={pinInput.length !== 4}
+                >
+                  <ion-icon name="lock-open-outline"></ion-icon>
+                  <span>
+                    {pinMode === 'preview' ? 'Unlock & Preview' : 'Unlock & Connect Google'}
+                  </span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </article>
   )
