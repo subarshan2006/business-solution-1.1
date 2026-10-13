@@ -9,7 +9,6 @@ import {
 import {
   determineRole,
   isTeacherEmail,
-  isParentEmail,
   listTeacherCourses,
   listStudentCourses,
   fetchCourseWorkWithSubmissions,
@@ -32,25 +31,21 @@ function ClassroomPortal() {
       (auth.isMock ? auth.accountRole === 'teacher' : isTeacherEmail(auth.user?.email))
   )
 
-  // True account role: strictly 'parent' ONLY if email is in KNOWN_PARENTS or mock parent
+  // Parent role: strictly true if auth was established as parent (via PIN) or preview parent
   const isParent = Boolean(
-    auth &&
-      (auth.isMock ? auth.accountRole === 'parent' : isParentEmail(auth.user?.email))
+    auth && (auth.accountRole === 'parent' || auth.role === 'parent')
   )
 
   const [role, setRole] = useState(() => {
     const stored = getStoredAuth()
     if (!stored) return 'student'
-    if (stored.isMock) {
-      return stored.accountRole || 'student'
-    }
-    if (isTeacherEmail(stored.user?.email)) {
-      return stored.role || 'teacher'
-    }
-    if (isParentEmail(stored.user?.email)) {
+    if (stored.accountRole === 'parent' || stored.role === 'parent') {
       return 'parent'
     }
-    return 'student'
+    if (isTeacherEmail(stored.user?.email) || stored.accountRole === 'teacher') {
+      return stored.role || 'teacher'
+    }
+    return stored.role || 'student'
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -63,7 +58,7 @@ function ClassroomPortal() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState(() => {
     const stored = getStoredAuth()
-    if (stored?.accountRole === 'parent' || isParentEmail(stored?.user?.email)) {
+    if (stored?.accountRole === 'parent' || stored?.role === 'parent') {
       return 'parent'
     }
     return 'courses'
@@ -170,51 +165,35 @@ function ClassroomPortal() {
           }
         }
 
-        // Determine whether user is genuinely a teacher, parent, or student
-        let isAuthTeacher = isTeacherEmail(userEmail)
-        let isAuthParent = isParentEmail(userEmail)
-        if (!isAuthTeacher && !isAuthParent) {
-          const roleResult = await determineRole(currentAuth.accessToken, userEmail)
-          if (roleResult.role === 'teacher') {
-            isAuthTeacher = true
-          } else if (roleResult.role === 'parent') {
-            isAuthParent = true
-          }
-          if (roleResult.userProfile?.emailAddress) {
-            userEmail = roleResult.userProfile.emailAddress
-          }
-        }
-        if (currentAuth.isMock) {
-          if (currentAuth.accountRole === 'teacher') isAuthTeacher = true
-          if (currentAuth.accountRole === 'parent') isAuthParent = true
-        }
-
+        // Determine userRole:
+        // 1. If user connected as Parent (verified via 4-digit PIN): role is strictly 'parent'
+        // 2. If user is a verified teacher email or teacher account: role is 'teacher'
+        // 3. Otherwise: role is 'student'
         let userRole = 'student'
-        if (isAuthTeacher) {
-          userRole = role === 'student' ? 'student' : 'teacher'
-        } else if (isAuthParent) {
+        if (currentAuth.accountRole === 'parent' || currentAuth.role === 'parent') {
           userRole = 'parent'
+        } else if (isTeacherEmail(userEmail) || currentAuth.accountRole === 'teacher') {
+          userRole = role === 'student' ? 'student' : 'teacher'
         } else {
           userRole = 'student'
         }
 
-        if (isAuthTeacher) {
-          if (role !== userRole) {
-            setRole(userRole)
-          }
-          if (currentAuth.accountRole !== 'teacher') {
-            const updated = { ...currentAuth, role: userRole, accountRole: 'teacher' }
-            setAuth(updated)
-            saveAuth(updated)
-          }
-        } else if (isAuthParent) {
-          userRole = 'parent'
+        if (userRole === 'parent') {
           if (role !== 'parent') {
             setRole('parent')
           }
           setActiveTab((prev) => (prev !== 'parent' ? 'parent' : prev))
           if (currentAuth.accountRole !== 'parent' || currentAuth.role !== 'parent') {
             const updated = { ...currentAuth, role: 'parent', accountRole: 'parent' }
+            setAuth(updated)
+            saveAuth(updated)
+          }
+        } else if (userRole === 'teacher') {
+          if (role !== userRole) {
+            setRole(userRole)
+          }
+          if (currentAuth.accountRole !== 'teacher') {
+            const updated = { ...currentAuth, role: userRole, accountRole: 'teacher' }
             setAuth(updated)
             saveAuth(updated)
           }
@@ -312,8 +291,9 @@ function ClassroomPortal() {
   // Fetch coursework from ALL enrolled courses for student view
   useEffect(() => {
     if (!auth || !courses.length) return
-    // Only fetch for student role (not teacher viewing as teacher)
+    // Only fetch for student role (not teacher viewing as teacher or parent)
     if (isTeacher && role === 'teacher') return
+    if (role === 'parent') return
 
     if (auth.isMock) {
       // Build allCourseWork from mock data for all courses
@@ -412,10 +392,12 @@ function ClassroomPortal() {
 
       // If user entered correct PIN or is intended as parent:
       let finalRole = 'student'
-      if (isTeacherUser) {
-        finalRole = 'teacher'
-      } else if (intendedRole === 'parent' || isParentEmail(userEmail)) {
+      if (intendedRole === 'parent') {
         finalRole = 'parent'
+      } else if (isTeacherUser) {
+        finalRole = 'teacher'
+      } else {
+        finalRole = 'student'
       }
 
       const fullAuth = { ...authData, role: finalRole, accountRole: finalRole }

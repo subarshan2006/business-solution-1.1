@@ -112,7 +112,10 @@ export function isTeacherEmail(email) {
  * - isParentEmail -> Parent (Parent Dashboard ONLY, zero student workspace)
  * - All other accounts -> Student (Student Workspace ONLY, zero parent dashboard)
  */
-export async function determineRole(accessToken, userEmail = '') {
+export async function determineRole(accessToken, userEmail = '', intendedRole = '') {
+  if (intendedRole === 'parent') {
+    return { role: 'parent', parentCount: 0 }
+  }
   let normalizedEmail = (userEmail || '').toLowerCase().trim()
   if (isTeacherEmail(normalizedEmail)) {
     return { role: 'teacher', teacherCount: 0 }
