@@ -5574,6 +5574,11 @@ main { position: relative; z-index: 1; }
   background: rgba(255, 255, 255, 0.08);
 }
 
+[data-theme='light'] .pin-modal-close-btn:hover {
+  color: #111;
+  background: rgba(0, 0, 0, 0.08);
+}
+
 .pin-modal-form {
   display: flex;
   flex-direction: column;
@@ -5659,11 +5664,24 @@ main { position: relative; z-index: 1; }
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pin-cancel-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
+}
+
+[data-theme='light'] .pin-cancel-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+[data-theme='light'] .pin-cancel-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #111;
 }
 
 .pin-submit-btn {
