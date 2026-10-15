@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
   getStoredAuth,
   saveAuth,
@@ -523,6 +524,17 @@ function ClassroomPortal() {
                 <ion-icon name="lock-closed-outline"></ion-icon>
                 <span>Connect as Parent / Guardian</span>
               </button>
+            </div>
+
+            {/* In-Product Privacy Notice (Google Verification Requirement) */}
+            <div className="classroom-privacy-notice-box">
+              <ion-icon name="shield-checkmark-outline"></ion-icon>
+              <p>
+                By connecting with Google Classroom, you authorize Jivanaut Test Prep to access your educational coursework in accordance with our{' '}
+                <Link to="/privacy" className="privacy-inline-link">Privacy Policy</Link> and{' '}
+                <Link to="/terms" className="privacy-inline-link">Terms of Service</Link>.
+                We use industry-standard TLS encryption, store zero Google data on remote servers, and never sell or transfer your data.
+              </p>
             </div>
 
             {!hasClientId && (
@@ -1658,6 +1670,15 @@ function ClassroomPortal() {
           </div>
         </div>
       )}
+
+      {/* Classroom Portal Footer with mandatory legal links */}
+      <footer className="classroom-portal-footer">
+        <p>
+          &copy; 2026 Jivanaut Test Prep. All rights reserved. &bull;{' '}
+          <Link to="/privacy">Privacy Policy</Link> &bull;{' '}
+          <Link to="/terms">Terms of Service</Link>
+        </p>
+      </footer>
     </article>
   )
 }

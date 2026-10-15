@@ -4533,6 +4533,67 @@ main { position: relative; z-index: 1; }
   color: var(--white-1, #fff);
 }
 
+/* In-Product Privacy Notice Box (Google OAuth Verification Compliance) */
+.classroom-privacy-notice-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(71, 175, 229, 0.08);
+  border: 1px solid rgba(71, 175, 229, 0.28);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  color: var(--light-gray, #d6d6d6);
+  font-size: var(--fs-8, 12px);
+  line-height: 1.55;
+}
+
+.classroom-privacy-notice-box ion-icon {
+  font-size: 18px;
+  color: var(--color-brand-blue, #47afe5);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.classroom-privacy-notice-box p {
+  margin: 0;
+}
+
+.privacy-inline-link {
+  color: var(--color-brand-blue, #47afe5);
+  text-decoration: underline;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.privacy-inline-link:hover {
+  color: #fff;
+}
+
+/* Classroom Portal Legal Footer */
+.classroom-portal-footer {
+  margin-top: 50px;
+  padding-top: 20px;
+  border-top: 1px solid var(--jet, rgba(255, 255, 255, 0.08));
+  text-align: center;
+  color: var(--light-gray-70, #888);
+  font-size: 12px;
+}
+
+.classroom-portal-footer p {
+  margin: 0;
+}
+
+.classroom-portal-footer a {
+  color: inherit;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.classroom-portal-footer a:hover {
+  color: var(--color-brand-blue, #47afe5);
+}
+
 .classroom-error-banner {
   display: flex;
   align-items: center;
