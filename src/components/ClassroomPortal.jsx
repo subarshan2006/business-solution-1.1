@@ -370,8 +370,9 @@ function ClassroomPortal() {
 
   const handleVerifyPinSubmit = async (e) => {
     if (e) e.preventDefault()
-    if (!verifyParentSecurityPin(pinInput)) {
-      setPinError('Incorrect 4-digit PIN. Please verify with your lead educator (default: 2610).')
+    const isValid = await verifyParentSecurityPin(pinInput)
+    if (!isValid) {
+      setPinError('Incorrect 4-digit PIN. Please verify the access PIN with your teacher.')
       return
     }
 
