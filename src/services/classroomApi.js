@@ -49,7 +49,7 @@ export const KNOWN_TEACHERS = [
  * Pre-OAuth 4-Digit Parent Security PIN Management
  */
 const PARENT_PIN_STORAGE_KEY = 'nxtstep_classroom_parent_pins'
-export const DEFAULT_PARENT_PIN = '2026'
+export const DEFAULT_PARENT_PIN = '2610'
 
 /**
  * Retrieve the active 4-digit Parent Security PIN for a classroom (or universal default)
@@ -59,7 +59,9 @@ export function getParentSecurityPin(courseId = '') {
   try {
     const raw = localStorage.getItem(PARENT_PIN_STORAGE_KEY)
     const pins = raw ? JSON.parse(raw) : {}
-    return pins[courseId] || pins.default || DEFAULT_PARENT_PIN
+    if (courseId && pins[courseId]) return pins[courseId]
+    if (pins.default && pins.default !== '2026') return pins.default
+    return DEFAULT_PARENT_PIN
   } catch {
     return DEFAULT_PARENT_PIN
   }
