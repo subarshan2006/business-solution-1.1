@@ -6,8 +6,14 @@
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
-// Scopes aligned to Google Cloud Console (Strict String Match for OAuth Verification)
+// Google Classroom scopes: Courses, Announcements, Coursework, Submissions/Marks, Profile (rosters excluded)
 export const DEFAULT_SCOPES = [
+  'https://www.googleapis.com/auth/classroom.courses.readonly',
+  'https://www.googleapis.com/auth/classroom.announcements',
+  'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
+  'https://www.googleapis.com/auth/classroom.coursework.students.readonly',
+  'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
+  'https://www.googleapis.com/auth/classroom.student-submissions.students.readonly',
   'https://www.googleapis.com/auth/classroom.profile.photos',
   'https://www.googleapis.com/auth/classroom.profile.emails',
   'https://www.googleapis.com/auth/userinfo.email',
@@ -29,6 +35,11 @@ export function getStoredAuth() {
     const parsed = JSON.parse(raw)
     // Check if token expired
     if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY)
+      return null
+    }
+    // Invalidate stale tokens that lack the required classroom.courses.readonly scope
+    if (!parsed.isMock && parsed.scopes && !parsed.scopes.includes('classroom.courses.readonly')) {
       sessionStorage.removeItem(AUTH_STORAGE_KEY)
       return null
     }

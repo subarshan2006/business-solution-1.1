@@ -223,7 +223,21 @@ function ClassroomPortal() {
         }
       } catch (err) {
         console.error('Failed to load courses from Google Classroom:', err)
-        setError(err.message || 'Failed to fetch classrooms from Google.')
+        const isScopeErr =
+          err.status === 403 ||
+          err.message?.toLowerCase().includes('insufficient') ||
+          err.message?.toLowerCase().includes('scope') ||
+          err.message?.toLowerCase().includes('permission')
+
+        if (isScopeErr) {
+          clearAuth()
+          setAuth(null)
+          setError(
+            'Google Classroom permissions updated. Please sign in again to grant permission to view classrooms, coursework, and marks.'
+          )
+        } else {
+          setError(err.message || 'Failed to fetch classrooms from Google.')
+        }
       } finally {
         setLoading(false)
       }
