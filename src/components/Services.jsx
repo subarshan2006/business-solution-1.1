@@ -221,7 +221,7 @@ Mandatory session updates shared via email and Google Classroom, with continuous
       </section>
 
       <footer className="site-footer">
-        <p>© 2026 Jivanaut Test Prep — Explorer of Life Science. All rights reserved.</p>
+        <p>© 2026 Jivanaut Test Prep — Explore life science. All rights reserved.</p>
       </footer>
 
     </article>

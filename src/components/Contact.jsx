@@ -34,12 +34,26 @@ function Contact({ activePage }) {
       <section className="contact-cta-section">
         <ul className="contact-cta-grid">
           <li>
-            <a href="mailto:jivanautprep@gmail.com" className="contact-cta-card">
+            <a
+              href={ENROLL_FORM}
+              className="contact-cta-card contact-cta-card--primary"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <div className="contact-cta-icon">
+                <ion-icon name="calendar-outline"></ion-icon>
+              </div>
+              <h4 className="h4 contact-cta-title">Book Consultation</h4>
+              <p className="contact-cta-text">Schedule free 20-min session</p>
+            </a>
+          </li>
+          <li>
+            <a href="mailto:hello@jivanauttestprep.com" className="contact-cta-card">
               <div className="contact-cta-icon">
                 <ion-icon name="mail-outline"></ion-icon>
               </div>
               <h4 className="h4 contact-cta-title">Email Me</h4>
-              <p className="contact-cta-text">jivanautprep@gmail.com</p>
+              <p className="contact-cta-text">hello@jivanauttestprep.com</p>
             </a>
           </li>
           <li>
@@ -48,21 +62,7 @@ function Contact({ activePage }) {
                 <ion-icon name="logo-whatsapp"></ion-icon>
               </div>
               <h4 className="h4 contact-cta-title">WhatsApp Me</h4>
-              <p className="contact-cta-text">+91 99958 00949</p>
-            </a>
-          </li>
-          <li>
-            <a
-              href={ENROLL_FORM}
-              className="contact-cta-card"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="contact-cta-icon">
-                <ion-icon name="calendar-outline"></ion-icon>
-              </div>
-              <h4 className="h4 contact-cta-title">Book Consultation</h4>
-              <p className="contact-cta-text">Complete the parent intake form</p>
+              <p className="contact-cta-text">+91 99958 00949 (Direct)</p>
             </a>
           </li>
         </ul>
@@ -185,7 +185,7 @@ function Contact({ activePage }) {
 
       {/* Footer */}
       <footer className="site-footer">
-        <p>© 2026 Jivanaut Test Prep — Explorer of Life Science. All rights reserved.</p>
+        <p>© 2026 Jivanaut Test Prep — Explore life science. All rights reserved.</p>
       </footer>
 
     </article>

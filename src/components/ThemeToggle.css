@@ -1,99 +1,42 @@
-/* ─── Circular FAB (Floating Action Button) ───────────────────────────────── */
+/* ─── Header Theme Toggle (Audit Section 7.5: 40px icon button) ───────── */
 
-.theme-fab {
-  /* position — bottom-right, above mobile navbar (~65px tall) */
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  z-index: 100;
-
-  /* perfect circle */
-  width: 48px;
-  height: 48px;
+.theme-toggle-header-btn {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-
-  /* reset button defaults */
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
+  border: 1px solid var(--line, #24493A);
+  background: var(--surface, #0E2219);
+  color: var(--mint, #34D399);
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-
-  /* dark mode look — deep onyx + golden icon */
-  background: #1e1e1e;
-  color: var(--award-gold, #ff6b6b);
-  border: 1.5px solid var(--award-gold, #ff6b6b);
-  box-shadow:
-    0 4px 16px hsla(0, 0%, 0%, 0.5),
-    0 0 0 0 hsla(0, 100%, 62%, 0);
-
-  /* smooth all changes */
-  transition:
-    transform          0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow         0.3s ease,
-    background         0.35s ease,
-    color              0.35s ease,
-    border-color       0.35s ease;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
 }
 
-/* press-down ripple pulse on click */
-.theme-fab:active {
-  transform: scale(0.88);
+.theme-toggle-header-btn:hover {
+  background: var(--elevated, #153126);
+  border-color: var(--mint, #34D399);
+  color: var(--mint-hi, #6EE7B7);
+  transform: translateY(-1px);
 }
 
-/* hover lift */
-.theme-fab:hover {
-  transform: translateY(-3px) scale(1.08);
-  box-shadow:
-    0 8px 28px hsla(0, 0%, 0%, 0.55),
-    0 0 0 6px hsla(0, 100%, 62%, 0.20);
-}
-
-/* ─── Light mode variant ──────────────────────────────────────────────────── */
-
-[data-theme='light'] .theme-fab {
-  background: var(--color-brand-white, #fffeff);
-  color: #8b0000;
-  border-color: var(--award-gold, #ff6b6b);
-  box-shadow:
-    0 4px 16px hsla(0, 40%, 30%, 0.20),
-    0 0 0 0 hsla(0, 90%, 50%, 0);
-}
-
-[data-theme='light'] .theme-fab:hover {
-  box-shadow:
-    0 8px 28px hsla(0, 40%, 30%, 0.30),
-    0 0 0 6px hsla(0, 90%, 50%, 0.20);
-}
-
-/* ─── SVG icon size ───────────────────────────────────────────────────────── */
-
-.theme-icon {
-  width: 22px;
-  height: 22px;
+.theme-header-icon {
+  width: 20px;
+  height: 20px;
   display: block;
-  /* icon swap animation */
-  animation: icon-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes icon-pop {
-  0%   { transform: scale(0.5) rotate(-30deg); opacity: 0; }
-  100% { transform: scale(1)   rotate(0deg);   opacity: 1; }
+[data-theme='light'] .theme-toggle-header-btn {
+  background: var(--surface, #FFFFFF);
+  border-color: var(--line, #D5E3DA);
+  color: var(--mint, #0B6B4B);
 }
 
-/* ─── Desktop — move above page content area, not above mobile navbar ─────── */
-
-@media (min-width: 1024px) {
-  .theme-fab {
-    bottom: 28px;
-    right: 28px;
-    width: 52px;
-    height: 52px;
-  }
-
-  .theme-icon {
-    width: 24px;
-    height: 24px;
-  }
+[data-theme='light'] .theme-toggle-header-btn:hover {
+  background: #F4F8F5;
+  border-color: var(--mint, #0B6B4B);
+  color: var(--mint-hi, #095A3F);
 }

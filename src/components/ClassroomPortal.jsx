@@ -1033,9 +1033,9 @@ function ClassroomPortal() {
                         <p>Fetching active assignments directly from Google Classroom.</p>
                       </div>
                     ) : courseWorkError ? (
-                      <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
-                        <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
-                        <h4 className="h4" style={{ color: '#ff6b6b' }}>Google Classroom Permission Required</h4>
+                      <div className="empty-state-card" style={{ borderColor: 'rgba(248, 113, 113, 0.4)' }}>
+                        <ion-icon name="alert-circle-outline" style={{ color: 'var(--error, #F87171)' }}></ion-icon>
+                        <h4 className="h4" style={{ color: 'var(--error, #F87171)' }}>Google Classroom Permission Required</h4>
                         <p>{courseWorkError}</p>
                         <div style={{ marginTop: '16px' }}>
                           <button
@@ -1150,9 +1150,9 @@ function ClassroomPortal() {
                       <p>Fetching assignments from {courses.length} enrolled classroom{courses.length !== 1 ? 's' : ''}.</p>
                     </div>
                   ) : allCourseWorkError ? (
-                    <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
-                      <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
-                      <h4 className="h4" style={{ color: '#ff6b6b' }}>Failed to Load Coursework</h4>
+                    <div className="empty-state-card" style={{ borderColor: 'rgba(248, 113, 113, 0.4)' }}>
+                      <ion-icon name="alert-circle-outline" style={{ color: 'var(--error, #F87171)' }}></ion-icon>
+                      <h4 className="h4" style={{ color: 'var(--error, #F87171)' }}>Failed to Load Coursework</h4>
                       <p>{allCourseWorkError}</p>
                     </div>
                   ) : Object.keys(allCourseWork).length > 0 ? (
@@ -1308,9 +1308,9 @@ function ClassroomPortal() {
                         <p>Querying student submission records and scores from Google Classroom.</p>
                       </div>
                     ) : courseWorkError ? (
-                      <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
-                        <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
-                        <h4 className="h4" style={{ color: '#ff6b6b' }}>Google Classroom Permission Required</h4>
+                      <div className="empty-state-card" style={{ borderColor: 'rgba(248, 113, 113, 0.4)' }}>
+                        <ion-icon name="alert-circle-outline" style={{ color: 'var(--error, #F87171)' }}></ion-icon>
+                        <h4 className="h4" style={{ color: 'var(--error, #F87171)' }}>Google Classroom Permission Required</h4>
                         <p>{courseWorkError}</p>
                         <div style={{ marginTop: '16px' }}>
                           <button
@@ -1416,9 +1416,9 @@ function ClassroomPortal() {
                       <p>Querying submission records and scores from {courses.length} enrolled classroom{courses.length !== 1 ? 's' : ''}.</p>
                     </div>
                   ) : allCourseWorkError ? (
-                    <div className="empty-state-card" style={{ borderColor: 'rgba(255, 107, 107, 0.4)' }}>
-                      <ion-icon name="alert-circle-outline" style={{ color: '#ff6b6b' }}></ion-icon>
-                      <h4 className="h4" style={{ color: '#ff6b6b' }}>Failed to Load Grades</h4>
+                    <div className="empty-state-card" style={{ borderColor: 'rgba(248, 113, 113, 0.4)' }}>
+                      <ion-icon name="alert-circle-outline" style={{ color: 'var(--error, #F87171)' }}></ion-icon>
+                      <h4 className="h4" style={{ color: 'var(--error, #F87171)' }}>Failed to Load Grades</h4>
                       <p>{allCourseWorkError}</p>
                     </div>
                   ) : Object.keys(allCourseWork).length > 0 ? (

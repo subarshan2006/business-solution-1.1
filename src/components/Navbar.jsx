@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import ThemeToggle from './ThemeToggle'
 
 const pages = [
   { label: 'Home', key: 'home' },
-  { label: 'About Me', key: 'about' },
+  { label: 'About', key: 'about' },
   { label: 'Courses', key: 'services' },
-  { label: 'Contact', key: 'contact' },
 ]
 
-function Navbar({ activePage }) {
+const ENROLL_FORM =
+  'https://docs.google.com/forms/d/e/1FAIpQLSc615afQFRpiaWyfpmTKWOBSGzOYmZDcg95rZZ9u3HKvBbT8g/viewform'
+
+function Navbar({ activePage, theme, toggleTheme, showThemeToggle = true }) {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
@@ -43,10 +46,21 @@ function Navbar({ activePage }) {
     window.scrollTo(0, 0)
   }
 
+  const goToResults = () => {
+    if (activePage !== 'home') {
+      navigate('/', { state: { activePage: 'home' } })
+      setTimeout(() => {
+        document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    } else {
+      document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   return (
     <>
       {/* ===== DESKTOP NAVBAR ===== */}
-      <nav className="navbar navbar-desktop">
+      <nav className="navbar navbar-desktop" aria-label="Main Navigation">
         <ul className="navbar-list">
           {pages.map((page) => (
             <li className="navbar-item" key={page.key}>
@@ -60,28 +74,55 @@ function Navbar({ activePage }) {
             </li>
           ))}
           <li className="navbar-item">
+            <button
+              className="navbar-link"
+              data-nav-link
+              onClick={goToResults}
+            >
+              Results
+            </button>
+          </li>
+          <li className="navbar-item navbar-item-utility">
             <Link
               to="/classroom"
-              className={`navbar-link${activePage === 'classroom' ? ' active' : ''}`}
+              className={`navbar-link navbar-login-link${activePage === 'classroom' ? ' active' : ''}`}
               data-nav-link
             >
-              Classroom
+              Student Login
             </Link>
+          </li>
+          {showThemeToggle && (
+            <li className="navbar-item navbar-item-theme">
+              <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+            </li>
+          )}
+          <li className="navbar-item navbar-item-cta">
+            <a
+              href={ENROLL_FORM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="navbar-cta-btn"
+            >
+              Book a free call
+            </a>
           </li>
         </ul>
       </nav>
 
-      {/* ===== MOBILE HAMBURGER + POPUP ===== */}
-      <button
-        ref={btnRef}
-        className={`mobile-hamburger${menuOpen ? ' open' : ''}`}
-        onClick={() => setMenuOpen(prev => !prev)}
-        aria-label="Toggle navigation menu"
-      >
-        <span className="hamburger-line" />
-        <span className="hamburger-line" />
-        <span className="hamburger-line" />
-      </button>
+      {/* ===== MOBILE HEADER CONTROLS (Top Right) ===== */}
+      <div className="mobile-header-bar">
+        {showThemeToggle && <ThemeToggle theme={theme} toggleTheme={toggleTheme} />}
+        <button
+          ref={btnRef}
+          className={`mobile-hamburger${menuOpen ? ' open' : ''}`}
+          onClick={() => setMenuOpen(prev => !prev)}
+          aria-label="Toggle navigation menu"
+        >
+          <span className="hamburger-line" />
+          <span className="hamburger-line" />
+          <span className="hamburger-line" />
+        </button>
+      </div>
 
       <div ref={menuRef} className={`mobile-menu-popup${menuOpen ? ' open' : ''}`}>
         <ul className="mobile-menu-list">
@@ -99,13 +140,36 @@ function Navbar({ activePage }) {
             </li>
           ))}
           <li>
+            <button
+              className="mobile-menu-link"
+              onClick={() => {
+                goToResults()
+                setMenuOpen(false)
+              }}
+            >
+              Results
+            </button>
+          </li>
+          <li>
             <Link
               to="/classroom"
               className={`mobile-menu-link${activePage === 'classroom' ? ' active' : ''}`}
               onClick={() => setMenuOpen(false)}
             >
-              Classroom
+              Student Login
             </Link>
+          </li>
+          <li style={{ marginTop: '8px' }}>
+            <a
+              href={ENROLL_FORM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="navbar-cta-btn"
+              style={{ display: 'block', textAlign: 'center', width: '100%' }}
+              onClick={() => setMenuOpen(false)}
+            >
+              Book a free call
+            </a>
           </li>
         </ul>
       </div>

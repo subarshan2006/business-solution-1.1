@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import Logo from './Logo'
 
 function Sidebar() {
   const [isActive, setIsActive] = useState(false)
@@ -9,14 +10,14 @@ function Sidebar() {
 
       <div className="sidebar-info">
 
-        <figure className="avatar-box">
-          <img src={`${import.meta.env.BASE_URL}assets/images/logo-image.png`} alt="Jivanaut Test Prep" width="80" style={{ borderRadius: '20px', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)' }} />
+        <figure className="avatar-box" style={{ background: 'transparent', boxShadow: 'none' }}>
+          <Logo variant="mark" size={76} />
         </figure>
 
         <div className="info-content">
-          <h1 className="name" title="Jivanaut Test Prep">Jivanaut Test Prep</h1>
+          <h1 className="name" title="Steena Antony">Steena Antony</h1>
           <p className="title">
-            <span className="status-dot"></span> AP Life Science Mentor
+            <span className="status-dot"></span> AP Biology &amp; USABO Tutor
           </p>
         </div>
 
@@ -39,11 +40,21 @@ function Sidebar() {
 
           <li className="contact-item">
             <div className="icon-box">
+              <ion-icon name="calendar-outline"></ion-icon>
+            </div>
+            <div className="contact-info">
+              <p className="contact-title">Consultation</p>
+              <a href="https://docs.google.com/forms/d/e/1FAIpQLSc615afQFRpiaWyfpmTKWOBSGzOYmZDcg95rZZ9u3HKvBbT8g/viewform" target="_blank" rel="noopener noreferrer" className="contact-link">Book Free 20-min Call</a>
+            </div>
+          </li>
+
+          <li className="contact-item">
+            <div className="icon-box">
               <ion-icon name="mail-outline"></ion-icon>
             </div>
             <div className="contact-info">
               <p className="contact-title">Email</p>
-              <a href="mailto:jivanautprep@gmail.com" className="contact-link">jivanautprep@gmail.com</a>
+              <a href="mailto:hello@jivanauttestprep.com" className="contact-link">hello@jivanauttestprep.com</a>
             </div>
           </li>
 
@@ -53,7 +64,17 @@ function Sidebar() {
             </div>
             <div className="contact-info">
               <p className="contact-title">WhatsApp</p>
-              <a href="https://wa.me/919995800949" className="contact-link">+91 99958 00949</a>
+              <a href="https://wa.me/919995800949" target="_blank" rel="noopener noreferrer" className="contact-link">+91 99958 00949</a>
+            </div>
+          </li>
+
+          <li className="contact-item">
+            <div className="icon-box">
+              <ion-icon name="time-outline"></ion-icon>
+            </div>
+            <div className="contact-info">
+              <p className="contact-title">Hours &amp; Zones</p>
+              <address>Sessions in ET · CT · MT · PT</address>
             </div>
           </li>
 
@@ -63,37 +84,17 @@ function Sidebar() {
             </div>
             <div className="contact-info">
               <p className="contact-title">Credentials</p>
-              <span className="contact-link" style={{ cursor: 'default' }}>MSc Zoology · MSc Environmental Science · B.Ed · Diploma in Psychology &amp; Counseling</span>
+              <span className="contact-link" style={{ cursor: 'default' }}>M.Sc. Zoology · M.Sc. Env. Science · B.Ed.</span>
             </div>
           </li>
 
           <li className="contact-item">
             <div className="icon-box">
-              <ion-icon name="flask-outline"></ion-icon>
-            </div>
-            <div className="contact-info">
-              <p className="contact-title">Specialisation</p>
-              <span className="contact-link" style={{ cursor: 'default' }}>AP Biology · APES · AP Psych</span>
-            </div>
-          </li>
-
-          <li className="contact-item">
-            <div className="icon-box">
-              <ion-icon name="ribbon-outline"></ion-icon>
+              <ion-icon name="school-outline"></ion-icon>
             </div>
             <div className="contact-info">
               <p className="contact-title">Experience</p>
               <span className="contact-link" style={{ cursor: 'default' }}>11+ Years Teaching</span>
-            </div>
-          </li>
-
-          <li className="contact-item">
-            <div className="icon-box">
-              <ion-icon name="location-outline"></ion-icon>
-            </div>
-            <div className="contact-info">
-              <p className="contact-title">Location</p>
-              <address>Online — US (EST–PST) &amp; Global</address>
             </div>
           </li>
 

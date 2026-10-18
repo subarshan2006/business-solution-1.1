@@ -1,72 +1,111 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import CourseModal from './CourseModal'
 
 const feedbacks = [
   {
     text: "For over 2 years, Mrs. Steena has fueled my daughter's passion for science by sharing fascinating medical insights and personal experiences. She is a deeply supportive mentor who makes mastering AP Biology feel effortless.",
-    author: "— Archana, Texas"
+    author: "— Archana, Parent, Texas"
   },
   {
     text: "Based on my kid's AP score of 5, I highly recommend Steena for AP Biology tutoring. Personalized 1:1 tutoring with no upfront fee commitment, and she offers a trial class. Excellent test prep coaching and materials.",
-    author: "— Sudha, Cupertino, California"
+    author: "— Sudha, Parent, Cupertino, California"
   },
   {
     text: "Without Ms. Steena's guidance and support, I would not have truly appreciated taking AP Biology as much as I did. She explained the content at a pace that fit my learning and provided examples that gave me a better understanding. She was incredibly patient when it came to practicing and reviewing for in-class quizzes and exams. Each session left me feeling more confident in my abilities, deepening my love for AP Bio and strengthening my interest in pursuing a career in medicine. I will forever be grateful for the love and dedication shown by Ms. Steena during my AP Biology journey and beyond.",
-    author: "— Christina, San Mateo, California"
+    author: "— Christina, Student, San Mateo, California"
   },
   {
     text: "Ms. Steena is a thoughtful, highly experienced educator. She is able to efficiently cover the curriculum and dedicates class time to practice questions in order to reinforce information and identify misunderstandings or gaps in knowledge. I took AP Biology outside of school, and without Ms. Steena as my teacher, I would not have achieved a score of 5. Difficult concepts are explained well and she is quick to catch areas you may be struggling in. 100% recommend!",
-    author: "— Rhythm Ramkumar, Cupertino, California"
+    author: "— Rhythm Ramkumar, Student, Cupertino, California"
   }
 ]
 
-const TYPEWRITER_TEXT = "JIVANAUT TEST PREP"
-const TYPING_SPEED = 100
-const DELETING_SPEED = 60
-const PAUSE_AFTER_TYPING = 2000
-const PAUSE_AFTER_DELETING = 800
+const FAQ_ITEMS = [
+  {
+    q: "What format are the 1-on-1 tutoring sessions conducted in?",
+    a: "Sessions are conducted live via high-definition video (Google Meet or Zoom) with interactive digital whiteboarding. We diagram cellular pathways, annotate College Board FRQ prompt texts, and run live calculations in real time. Students receive complete annotated PDF session notes immediately after class."
+  },
+  {
+    q: "What time zones and hours do you support?",
+    a: "We work directly with US middle and high school students across all four continental time zones: Eastern (ET), Central (CT), Mountain (MT), and Pacific (PT). Sessions are scheduled during weekday afternoons/evenings and throughout weekend mornings and afternoons."
+  },
+  {
+    q: "What learning materials, textbooks, and past papers are provided?",
+    a: "Curricula are anchored on Campbell Biology (11th/12th ed.), official College Board released free-response questions from 1999–2025, curated stimulus-based MCQ banks, custom diagnostic problem sets, and unit-by-unit review sheets. All materials are provided at no extra charge."
+  },
+  {
+    q: "How does homework evaluation and assignment submission work?",
+    a: "Students submit homework through our integrated Google Classroom portal. Each FRQ submission is scored against official College Board rubrics with line-by-line feedback, error analysis, and actionable revision notes before our next class."
+  },
+  {
+    q: "What is your rescheduling and cancellation policy?",
+    a: "We understand that student schedules are demanding with extracurriculars and sports. Sessions can be rescheduled with at least 24 hours advance notice at zero penalty. Emergency makeup sessions are coordinated based on mutual calendar availability."
+  },
+  {
+    q: "How do parents stay informed on academic progress?",
+    a: "Parents receive regular milestone briefings detailing syllabus coverage, test readiness scores, and assignment completion rates. In addition, parents can access our online portal anytime to view coursework completion and teacher notes."
+  }
+]
+
+const ANIMATED_SUBTITLE = "taught one-on-one."
+const TYPING_SPEED = 32
+const INITIAL_DELAY = 200
 
 const ENROLL_FORM =
   'https://docs.google.com/forms/d/e/1FAIpQLSc615afQFRpiaWyfpmTKWOBSGzOYmZDcg95rZZ9u3HKvBbT8g/viewform'
 
-const SectionDivider = () => (
-  <hr style={{ border: 'none', borderTop: '1px solid var(--jet)', margin: '50px 0' }} />
-)
-
 function Home({ activePage }) {
+  const [selectedCourseId, setSelectedCourseId] = useState(null)
+  const [openFaqIndex, setOpenFaqIndex] = useState(0)
   const [expanded, setExpanded] = useState({})
   const [overflow, setOverflow] = useState({})
   const marqueeRef = useRef(null)
   const textRefs = useRef([])
-  const [displayedText, setDisplayedText] = useState('')
-  const [isTyping, setIsTyping] = useState(true)
 
-  // Typewriter effect
-  useEffect(() => {
-    let timeout
-    if (isTyping) {
-      if (displayedText.length < TYPEWRITER_TEXT.length) {
-        timeout = setTimeout(() => {
-          setDisplayedText(TYPEWRITER_TEXT.slice(0, displayedText.length + 1))
-        }, TYPING_SPEED)
-      } else {
-        timeout = setTimeout(() => {
-          setIsTyping(false)
-        }, PAUSE_AFTER_TYPING)
-      }
-    } else {
-      if (displayedText.length > 0) {
-        timeout = setTimeout(() => {
-          setDisplayedText(TYPEWRITER_TEXT.slice(0, displayedText.length - 1))
-        }, DELETING_SPEED)
-      } else {
-        timeout = setTimeout(() => {
-          setIsTyping(true)
-        }, PAUSE_AFTER_DELETING)
+  // Typewriter effect: once per session, de-looped, zero CLS, hides cursor on completion
+  const [typedText, setTypedText] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const alreadyTyped = sessionStorage.getItem('jivanaut_hero_typed')
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (alreadyTyped || prefersReduced) {
+        return ANIMATED_SUBTITLE
       }
     }
-    return () => clearTimeout(timeout)
-  }, [displayedText, isTyping])
+    return ''
+  })
+  const [typingComplete, setTypingComplete] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return Boolean(sessionStorage.getItem('jivanaut_hero_typed') || window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    }
+    return false
+  })
+
+  useEffect(() => {
+    if (typingComplete) return
+
+    let currentIndex = 0
+    let intervalId
+
+    const timer = setTimeout(() => {
+      intervalId = setInterval(() => {
+        currentIndex += 1
+        setTypedText(ANIMATED_SUBTITLE.slice(0, currentIndex))
+        if (currentIndex >= ANIMATED_SUBTITLE.length) {
+          clearInterval(intervalId)
+          setTypingComplete(true)
+          try {
+            sessionStorage.setItem('jivanaut_hero_typed', 'true')
+          } catch {}
+        }
+      }, TYPING_SPEED)
+    }, INITIAL_DELAY)
+
+    return () => {
+      clearTimeout(timer)
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [typingComplete])
 
   useEffect(() => {
     textRefs.current.forEach((el, i) => {
@@ -92,325 +131,639 @@ function Home({ activePage }) {
     })
   }, [])
 
-  const renderLetters = (text, startIndex = 0) => {
-    return text.split('').map((char, i) => (
-      <span key={startIndex + i} className="typewriter-letter">
-        {char === ' ' ? '\u00A0' : char}
-      </span>
-    ))
+  const toggleFaq = (index) => {
+    setOpenFaqIndex(prev => (prev === index ? null : index))
+  }
+
+  const scrollTo = (id) => {
+    const el = document.getElementById(id)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
   }
 
   return (
     <article className={`home${activePage === 'home' ? ' active' : ''}`} data-page="home">
-      <br /><br />
-      <header>
-        <h2 className="h2 article-title">Home</h2>
-      </header>
+      
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          SECTION 1: HERO (Above the Fold)
+          ───────────────────────────────────────────────────────────────────────────── */}
+      <section className="hero-section hero-scrim home-section">
+        <div className="hero-split">
+          <div className="hero-content-col">
+            {/* Mono Eyebrow */}
+            <div className="hero-eyebrow" aria-label="Schedule and coverage">
+              <ion-icon name="school-outline"></ion-icon>
+              <span>1:1 ONLINE TUTORING · ET · CT · MT · PT</span>
+            </div>
 
-      {/* Hero Section */}
-      <section className="hero-section">
-        <h1 className="brand-title typewriter-text">
-          {displayedText.length <= 8
-            ? <>{renderLetters(displayedText)}<span className="typewriter-cursor">|</span></>
-            : <>{renderLetters(displayedText.slice(0, 8))}<br className="mobile-break" />{renderLetters(displayedText.slice(8), 8)}<span className="typewriter-cursor">|</span></>
-          }
-        </h1>
+            {/* H1 Value Proposition */}
+            <h1 className="hero-h1" aria-label="AP Biology, taught one-on-one.">
+              <span className="hero-h1-static">AP Biology,</span>{' '}
+              <span className="hero-h1-highlight">
+                {typedText}
+                {!typingComplete && <span className="typewriter-cursor">|</span>}
+              </span>
+            </h1>
 
-        {/* Desktop Hero Badge (Previous Style) */}
-        <div className="hero-badge hero-badge--desktop">
-          <ion-icon name="school-outline"></ion-icon>
-          <span>Global 1:1 Online Mentorship | US Curricula (EST · CST · PST) &amp; Global</span>
-        </div>
-
-        {/* Mobile Hero Badge (Mobile-optimized Layout) */}
-        <div className="hero-badge hero-badge--mobile">
-          <div className="hero-badge-mobile-main">
-            <ion-icon name="school-outline"></ion-icon>
-            <span>Global 1:1 Online Mentorship</span>
-          </div>
-          <span className="hero-badge-mobile-sub">
-            US Curricula (EST · CST · PST) &amp; Global
-          </span>
-        </div>
-
-        <div className="curriculum-flags">
-          <div className="curriculum-flag" title="US Time Zones">
-            <span className="flag-emoji">🇺🇸</span>
-          </div>
-          <div className="curriculum-flag" title="AP Biology">
-            <span className="flag-emoji">🧬</span>
-          </div>
-          <div className="curriculum-flag" title="AP Environmental Science">
-            <span className="flag-emoji">🌍</span>
-          </div>
-          <div className="curriculum-flag" title="AP Psychology">
-            <span className="flag-emoji">🧠</span>
-          </div>
-          <div className="curriculum-flag" title="USABO">
-            <span className="flag-emoji">🥇</span>
-          </div>
-        </div>
-
-        <h3 className="hero-title">
-          Empowering the Next Generation of<br />
-          <span className="hero-highlight">Life Science Explorers.</span>
-        </h3>
-
-        <p className="hero-text">
-          Master complex biological mechanisms, environmental systems, and advanced scientific
-          inquiry through tailored, one-on-one digital mentoring. Guided by an educator with a
-          MSc Zoology, MSc Environmental Science, B.Ed. and Diploma in Psychology &amp; Counseling, with 11+ years of proven academic outcomes.
-        </p>
-
-        <div className="hero-cta-wrapper">
-          <a
-            className="hero-cta-btn primary"
-            href={ENROLL_FORM}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ion-icon name="calendar-outline"></ion-icon>
-            <span>Schedule 1:1 Consultation</span>
-          </a>
-          <button
-            className="hero-cta-btn secondary"
-            onClick={() => {
-              document.getElementById('courses')?.scrollIntoView({ behavior: 'smooth' });
-            }}
-          >
-            <ion-icon name="arrow-down-outline"></ion-icon>
-            <span>Explore Academic Courses</span>
-          </button>
-        </div>
-      </section>
-
-      <SectionDivider />
-
-      {/* Methodology Section */}
-      <section id="methodology">
-        <header>
-          <h3 className="h3">The Jivanaut Methodology</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Jiva (Life) + Naut (Explorer)</p>
-        </header>
-        <p className="about-text" style={{ marginTop: '15px' }}>
-          Science is never about rote memorization — it is about systematic inquiry. At Jivanaut
-          Test Prep, we demystify multi-layered scientific pathways, train students to decode
-          rigorous College Board Free Response Questions (FRQs), and build lasting conceptual
-          autonomy for high school and university tracks.
-        </p>
-
-        <ul className="stats-list" style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-          <li className="stat-card">
-            <h4 className="stat-number">11+</h4>
-            <p className="stat-text">Years Experience</p>
-          </li>
-          <li className="stat-card">
-            <h4 className="stat-number" style={{ fontSize: '1.4rem' }}>MSc Zoology</h4>
-            <p className="stat-text">
-              MSc Environmental Science<br />
-              B.Ed.<br />
-              Diploma in Psychology &amp; Counseling
+            {/* Subline */}
+            <p className="hero-subline">
+              Diagnostic-first coaching built around your target exam date and score gaps. Master cellular energetics, molecular genetics, and experimental design FRQs with confidence.
             </p>
-          </li>
-          <li className="stat-card">
-            <h4 className="stat-number" style={{ fontSize: '1.8rem' }}>1-on-1</h4>
-            <p className="stat-text">Personalized Focus</p>
-          </li>
-          <li className="stat-card">
-            <h4 className="stat-number" style={{ fontSize: '1.3rem' }}>Global</h4>
-            <p className="stat-text">US (EST–PST) &amp; World</p>
-          </li>
-        </ul>
-      </section>
 
-      <SectionDivider />
-
-      {/* Courses Section */}
-      <section id="courses">
-        <header>
-          <h3 className="h3">Courses &amp; Programs</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Structured curricula &amp; instructional offerings</p>
-        </header>
-
-        <ul className="services-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '25px' }}>
-          <li className="service-item">
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">AP Biology <span style={{ color: 'var(--orange-yellow-crayola)', fontSize: 'var(--fs-8)' }}>Signature Program</span></h4>
-              <p className="service-item-text">Full College Board Units 1–8: biochemistry, energetics, heredity, gene regulation, and ecology — with stimulus-based MCQs, experimental design, chi-square analysis, and dedicated FRQ rubric drills.</p>
+            {/* Dual CTAs above the fold */}
+            <div className="hero-cta-wrapper">
+              <a
+                className="hero-cta-btn primary"
+                href={ENROLL_FORM}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ion-icon name="calendar-outline"></ion-icon>
+                <span>Book a free 20-min consult</span>
+              </a>
+              <button
+                className="hero-cta-btn secondary"
+                onClick={() => scrollTo('courses')}
+              >
+                <ion-icon name="book-outline"></ion-icon>
+                <span>See courses</span>
+              </button>
             </div>
-          </li>
-          <li className="service-item">
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">AP Environmental Science</h4>
-              <p className="service-item-text">Earth systems, population biology, renewable and non-renewable resource management, pollution, and global climatic trends — integrating interdisciplinary science with quantitative calculation and policy critique.</p>
+
+            {/* Hero Proof Strip */}
+            <div className="hero-proof-strip" aria-label="Key qualifications">
+              <span className="proof-item"><strong>11+</strong> yrs teaching</span>
+              <span className="proof-dot">·</span>
+              <span className="proof-item"><strong>Scores of 4 &amp; 5</strong></span>
+              <span className="proof-dot">·</span>
+              <span className="proof-item"><strong>100% custom</strong> FRQ prep</span>
+              <span className="proof-dot">·</span>
+              <span className="proof-item"><strong>ET · CT · MT · PT</strong></span>
             </div>
-          </li>
-          <li className="service-item">
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">AP Psychology</h4>
-              <p className="service-item-text">Biological bases of behavior, cognition, developmental milestones, clinical psychology, and social interactions — with emphasis on research methodology and ethical testing principles.</p>
+
+            {/* Subject Chips */}
+            <div className="hero-course-chips" aria-label="Target Subjects">
+              <button type="button" onClick={() => setSelectedCourseId('ap-biology')} className="hero-course-chip">
+                <ion-icon name="leaf-outline"></ion-icon>
+                <span>AP Biology</span>
+              </button>
+              <button type="button" onClick={() => setSelectedCourseId('apes')} className="hero-course-chip">
+                <ion-icon name="earth-outline"></ion-icon>
+                <span>APES</span>
+              </button>
+              <button type="button" onClick={() => setSelectedCourseId('ap-psychology')} className="hero-course-chip">
+                <ion-icon name="bulb-outline"></ion-icon>
+                <span>AP Psychology</span>
+              </button>
+              <button type="button" onClick={() => setSelectedCourseId('usabo')} className="hero-course-chip">
+                <ion-icon name="trophy-outline"></ion-icon>
+                <span>USABO</span>
+              </button>
             </div>
-          </li>
-          <li className="service-item">
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">Honors Biology &amp; General Science</h4>
-              <p className="service-item-text">Middle and early high school life sciences and physical sciences — building rigorous scientific vocabulary and deductive reasoning ahead of the AP pathway.</p>
+          </div>
+
+          {/* Tutor Photo Badge Card (Desktop) */}
+          <div className="hero-tutor-badge-card" aria-label="Tutor profile preview">
+            <img
+              src={`${import.meta.env.BASE_URL}assets/images/my-avatar.png`}
+              alt="Steena Antony - AP Biology & USABO Tutor"
+              className="hero-tutor-avatar"
+            />
+            <h4>Steena Antony</h4>
+            <p>M.Sc. Zoology, M.Sc. Env. Sci., B.Ed.</p>
+            <span className="hero-tutor-badge-pill">11+ Yrs Teaching</span>
+            <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--amber, #F5B83D)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <ion-icon name="star"></ion-icon>
+              <span>5.0 Rating · 40+ Student Cohorts</span>
             </div>
-          </li>
-          <li className="service-item">
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">USA Biology Olympiad (USABO)</h4>
-              <p className="service-item-text">Competitive enrichment for ambitious students — advanced biological systems and Campbell Biology topics, building the data interpretation and problem solving Olympiad demands.</p>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <SectionDivider />
-
-      {/* Why 1-on-1 Section */}
-      <section>
-        <header>
-          <h3 className="h3">Why 1-on-1 Virtual Tutoring Works</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>A private laboratory for discovery</p>
-        </header>
-
-        <ul className="services-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '25px' }}>
-          <li className="service-item">
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">Individualized Pace</h4>
-              <p className="service-item-text">Topics are never rushed to match a class bell. We linger on tricky units like Cellular Energetics or Gene Regulation until total mastery is achieved.</p>
-            </div>
-          </li>
-          <li className="service-item">
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">Active Digital Whiteboarding</h4>
-              <p className="service-item-text">Live annotation of cellular diagrams, experimental variables, and biochemical pathways ensures dynamic, visual engagement every single session.</p>
-            </div>
-          </li>
-          <li className="service-item">
-            <div className="service-content-box">
-              <h4 className="h4 service-item-title">Transparent Reporting</h4>
-              <p className="service-item-text">Regular post-session briefings, milestone checks, and honest progress updates shared directly with parents — no surprises, ever.</p>
-            </div>
-          </li>
-        </ul>
-      </section>
-
-      <SectionDivider />
-
-      {/* Proven Results Section */}
-      <section>
-        <header>
-          <h3 className="h3">Demonstrated Academic Outcomes</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Our students do not just survive AP science — they excel.</p>
-        </header>
-
-        <ul className="stats-list" style={{ marginTop: '30px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-          <li className="stat-card">
-            <h4 className="stat-number" style={{ fontSize: '1.6rem' }}>Scores of 4 &amp; 5</h4>
-            <p className="stat-text">AP Exam Outcomes</p>
-          </li>
-          <li className="stat-card">
-            <h4 className="stat-number">+1 to 2</h4>
-            <p className="stat-text">Grades — School GPA Improvement</p>
-          </li>
-          <li className="stat-card">
-            <h4 className="stat-number" style={{ fontSize: '1.6rem' }}>100% Custom</h4>
-            <p className="stat-text">Targeted FRQ Prep</p>
-          </li>
-        </ul>
-
-        <p className="about-text" style={{ marginTop: '25px' }}>
-          Through disciplined review of past College Board papers and deliberate practice with
-          multi-step analytical prompts, students gain the confidence needed to walk into exam day
-          fully prepared.
-        </p>
-      </section>
-
-      <SectionDivider />
-
-      {/* Auto Moving Feedbacks */}
-      <section style={{ overflow: 'hidden' }}>
-        <header>
-          <h3 className="h3">What Parents &amp; Students Say</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Real feedback</p>
-        </header>
-
-        <div className="marquee-wrapper" style={{ display: 'flex', overflow: 'hidden', marginTop: '25px', paddingBottom: '10px' }}>
-          <div className="marquee-content" ref={marqueeRef} style={{ display: 'flex', gap: '20px', animation: 'marquee 40s linear infinite', width: 'max-content' }}>
-            {[...feedbacks, ...feedbacks].map((fb, i) => (
-              <div key={i} className={`feedback-card${expanded[i] ? ' expanded' : ''}`}>
-                <div className="feedback-text-wrapper" ref={el => textRefs.current[i] = el}>
-                  <p>"{fb.text}"</p>
-                  {!expanded[i] && overflow[i] && <div className="feedback-fade" />}
-                </div>
-                <div className="feedback-footer">
-                  <h5>{fb.author}</h5>
-                  {overflow[i] && (
-                    <button className="feedback-toggle" onClick={() => toggleExpand(i)}>
-                      <ion-icon name={expanded[i] ? 'chevron-up-outline' : 'chevron-down-outline'}></ion-icon>
-                      <span>{expanded[i] ? 'Close' : 'View all'}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
-      <SectionDivider />
-
-      {/* Get In Touch */}
-      <section className="contact-section" style={{ background: 'var(--border-gradient-onyx)', padding: '30px', borderRadius: '14px', position: 'relative', zIndex: 1 }}>
-        <div style={{ content: '""', position: 'absolute', inset: '1px', background: 'var(--bg-gradient-jet)', borderRadius: 'inherit', zIndex: -1 }}></div>
-        <header>
-          <h3 className="h3">Get in Touch</h3>
-          <p style={{ color: 'var(--light-gray)', marginTop: '5px' }}>Let's take the next step in life sciences.</p>
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          SECTION 2: COURSES & PROGRAM CARDS (with Modal Triggers)
+          ───────────────────────────────────────────────────────────────────────────── */}
+      <section id="courses" className="home-section">
+        <header className="home-section-header">
+          <span className="section-eyebrow">
+            <ion-icon name="albums-outline"></ion-icon>
+            Structured Curricula
+          </span>
+          <h2 className="section-title">Courses &amp; Targeted Programs</h2>
+          <p className="section-subtitle">
+            Every course combines conceptual inquiry, experimental design, and rubric-calibrated College Board FRQ drills.
+          </p>
         </header>
-        <p className="about-text" style={{ marginTop: '15px' }}>
-          Reach out to schedule a diagnostic consultation, ask about pricing, or check current
-          availability for your time zone.
-        </p>
-        <div style={{ display: 'flex', gap: '15px', marginTop: '25px', flexWrap: 'wrap' }}>
-          <a href="mailto:jivanautprep@gmail.com" className="hero-cta-btn primary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ion-icon name="mail-outline"></ion-icon>
-            <span>Email Me</span>
-          </a>
-          <a href="https://wa.me/919995800949" className="hero-cta-btn secondary" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ion-icon name="logo-whatsapp"></ion-icon>
-            <span>WhatsApp Me</span>
-          </a>
-        </div>
 
-        <ul className="social-list" style={{ justifyContent: 'center', marginTop: '30px' }}>
-          <li className="social-item">
-            <a href="https://wa.me/919995800949" className="social-link" style={{ fontSize: '1.5rem' }}>
-              <ion-icon name="logo-whatsapp"></ion-icon>
-            </a>
-          </li>
-          <li className="social-item">
-            <a href="#" className="social-link" style={{ fontSize: '1.5rem' }}>
-              <ion-icon name="logo-instagram"></ion-icon>
-            </a>
-          </li>
-          <li className="social-item">
-            <a href="#" className="social-link" style={{ fontSize: '1.5rem' }}>
-              <ion-icon name="logo-linkedin"></ion-icon>
-            </a>
-          </li>
-        </ul>
+        <div className="course-card-grid">
+          
+          {/* AP Biology */}
+          <div className="course-feature-card">
+            <div>
+              <div className="course-card-badge-row">
+                <span className="course-unit-pill">Units 1–8 · Signature</span>
+                <span style={{ fontSize: '11px', color: 'var(--amber, #F5B83D)', fontWeight: 700 }}>Most Popular</span>
+              </div>
+              <h3 className="course-card-title">AP Biology</h3>
+              <p className="course-card-target">For 9th–12th graders targeting a 4 or 5</p>
+              <p className="course-card-desc">
+                Complete mastery of chemistry of life, cellular energetics, gene regulation, and heredity. Weekly line-by-line FRQ rubric evaluations and experimental design questions.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="course-card-btn"
+              onClick={() => setSelectedCourseId('ap-biology')}
+            >
+              <span>View full syllabus &amp; outcomes</span>
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+            </button>
+          </div>
+
+          {/* APES */}
+          <div className="course-feature-card">
+            <div>
+              <div className="course-card-badge-row">
+                <span className="course-unit-pill">Units 1–9 · Full Prep</span>
+              </div>
+              <h3 className="course-card-title">AP Environmental Science</h3>
+              <p className="course-card-target">For students targeting top scores in APES</p>
+              <p className="course-card-desc">
+                Interdisciplinary science combining ecology, atmospheric pollution, water resources, and energy calculations. Dedicated drills on dimensional analysis and environmental legislation.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="course-card-btn"
+              onClick={() => setSelectedCourseId('apes')}
+            >
+              <span>View full syllabus &amp; outcomes</span>
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+            </button>
+          </div>
+
+          {/* AP Psychology */}
+          <div className="course-feature-card">
+            <div>
+              <div className="course-card-badge-row">
+                <span className="course-unit-pill">High-Yield Core</span>
+              </div>
+              <h3 className="course-card-title">AP Psychology</h3>
+              <p className="course-card-target">For students seeking 5s through mechanism-first learning</p>
+              <p className="course-card-desc">
+                Transform memorization into structural clarity. Biological bases of behavior, cognition, developmental stages, and empirical research design FRQ mastery.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="course-card-btn"
+              onClick={() => setSelectedCourseId('ap-psychology')}
+            >
+              <span>View full syllabus &amp; outcomes</span>
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+            </button>
+          </div>
+
+          {/* USABO */}
+          <div className="course-feature-card">
+            <div>
+              <div className="course-card-badge-row">
+                <span className="course-unit-pill">Campbell Deep-Dive · Olympiad</span>
+              </div>
+              <h3 className="course-card-title">USA Biology Olympiad (USABO)</h3>
+              <p className="course-card-target">For competitive students targeting Semifinalist qualification</p>
+              <p className="course-card-desc">
+                University-level biological systems, advanced plant and animal physiology, pedigree probability, and timed competitive round problem-solving from Campbell Biology.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="course-card-btn"
+              onClick={() => setSelectedCourseId('usabo')}
+            >
+              <span>View full syllabus &amp; outcomes</span>
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+            </button>
+          </div>
+
+        </div>
       </section>
 
-      <footer style={{ marginTop: '60px', textAlign: 'center', color: 'var(--light-gray)', fontSize: 'var(--fs-8)', paddingBottom: '30px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-        <div>&copy; 2026 Jivanaut Test Prep &mdash; Explorer of Life Science. All rights reserved.</div>
-        <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'var(--light-gray-70, #aaa)' }}>
-          <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'underline' }}>Privacy Policy</Link>
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          SECTION 3: HOW IT WORKS (3-Step Roadmap)
+          ───────────────────────────────────────────────────────────────────────────── */}
+      <section id="how-it-works" className="home-section">
+        <header className="home-section-header">
+          <span className="section-eyebrow">
+            <ion-icon name="git-branch-outline"></ion-icon>
+            The Jivanaut Method
+          </span>
+          <h2 className="section-title">How It Works: 3 Steps to a 5</h2>
+          <p className="section-subtitle">
+            A structured, diagnostic-first framework designed around how the College Board actually tests life science.
+          </p>
+        </header>
+
+        <div className="how-it-works-grid">
+          
+          <div className="how-step-card">
+            <span className="step-num-watermark">01</span>
+            <div className="step-icon-wrap">
+              <ion-icon name="analytics-outline"></ion-icon>
+            </div>
+            <h3 className="step-title">Diagnostic Evaluation &amp; Gap Mapping</h3>
+            <p className="step-desc">
+              We assess your current knowledge across all units, identify high-frequency trap areas, and evaluate baseline FRQ writing habits to map an exact weekly study plan.
+            </p>
+          </div>
+
+          <div className="how-step-card">
+            <span className="step-num-watermark">02</span>
+            <div className="step-icon-wrap">
+              <ion-icon name="easel-outline"></ion-icon>
+            </div>
+            <h3 className="step-title">Tailored 1-on-1 Instruction &amp; Whiteboarding</h3>
+            <p className="step-desc">
+              Weekly private sessions pacing with your school syllabus. We annotate complex mechanisms live on digital whiteboards, turning abstract diagrams into intuitive mental models.
+            </p>
+          </div>
+
+          <div className="how-step-card">
+            <span className="step-num-watermark">03</span>
+            <div className="step-icon-wrap">
+              <ion-icon name="checkbox-outline"></ion-icon>
+            </div>
+            <h3 className="step-title">Rubric-Aligned FRQ Writing Lab &amp; Drills</h3>
+            <p className="step-desc">
+              Students practice authentic College Board free response prompts with line-by-line grading. You learn exactly what words AP readers award points for — and what loses points.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          SECTION 4: TUTOR BIO & PHILOSOPHY (Steena Antony)
+          ───────────────────────────────────────────────────────────────────────────── */}
+      <section id="about-tutor" className="home-section">
+        <header className="home-section-header">
+          <span className="section-eyebrow">
+            <ion-icon name="person-outline"></ion-icon>
+            Educator &amp; Mentor
+          </span>
+          <h2 className="section-title">Meet Your Tutor: Steena Antony</h2>
+        </header>
+
+        <div className="tutor-bio-card">
+          <div className="tutor-bio-photo-col">
+            <img
+              src={`${import.meta.env.BASE_URL}assets/images/my-avatar.png`}
+              alt="Steena Antony - AP Biology Educator"
+              className="tutor-bio-photo"
+            />
+            <div style={{ marginTop: '14px', textAlign: 'center' }}>
+              <strong style={{ color: 'var(--text, #EAF5EE)', fontSize: '17px', display: 'block' }}>Steena Antony</strong>
+              <span style={{ color: 'var(--mint, #34D399)', fontSize: '13px', fontWeight: 600 }}>11+ Years Teaching Life Science</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="tutor-credentials-chips">
+              <span className="tutor-credential-chip">M.Sc. Zoology</span>
+              <span className="tutor-credential-chip">M.Sc. Environmental Science</span>
+              <span className="tutor-credential-chip">Bachelor of Education (B.Ed.)</span>
+              <span className="tutor-credential-chip">Diploma in Psychology &amp; Counseling</span>
+            </div>
+
+            <p style={{ color: 'var(--text, #EAF5EE)', fontSize: '15px', lineHeight: 1.6, marginBottom: '14px' }}>
+              With over 11 years of experience teaching high school life science and preparing competitive test-takers across the United States, I focus on the cognitive bridge between classroom theory and AP exam performance.
+            </p>
+
+            <p style={{ color: 'var(--text-2, #A9C2B5)', fontSize: '14px', lineHeight: 1.6 }}>
+              Having earned dual Master’s degrees in Zoology and Environmental Science alongside a Bachelor of Education, my pedagogy integrates scientific rigor with compassionate, student-centered pacing. We replace the stress of passive memorization with the clarity of biological inquiry.
+            </p>
+
+            <div className="tutor-quote-box">
+              &ldquo;Biology is not a catalog of facts to memorize before test day. It is an interconnected web of living systems. When a student grasps the underlying mechanism, the correct answer on an FRQ is simply the logical conclusion.&rdquo;
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          SECTION 5: RESULTS & VERIFIED TESTIMONIALS
+          ───────────────────────────────────────────────────────────────────────────── */}
+      <section id="results" className="home-section">
+        <header className="home-section-header">
+          <span className="section-eyebrow">
+            <ion-icon name="trophy-outline"></ion-icon>
+            Demonstrated Outcomes
+          </span>
+          <h2 className="section-title">Verified Results &amp; Student Success</h2>
+          <p className="section-subtitle">
+            Our students consistently outperform national AP score distributions and gain acceptance into top biomedical university tracks.
+          </p>
+        </header>
+
+        {/* Outcomes Metric Strip */}
+        <div className="outcomes-stats-strip">
+          <div className="outcome-stat-box">
+            <div className="outcome-stat-number">88%</div>
+            <div className="outcome-stat-label">Scored 4 or 5 on AP Biology</div>
+          </div>
+          <div className="outcome-stat-box">
+            <div className="outcome-stat-number">11+</div>
+            <div className="outcome-stat-label">Years Dedicated Life Science Teaching</div>
+          </div>
+          <div className="outcome-stat-box">
+            <div className="outcome-stat-number">4</div>
+            <div className="outcome-stat-label">US Time Zones (ET · CT · MT · PT)</div>
+          </div>
+          <div className="outcome-stat-box">
+            <div className="outcome-stat-number">100%</div>
+            <div className="outcome-stat-label">Personalized 1-on-1 Instruction</div>
+          </div>
+        </div>
+
+        {/* Testimonials Marquee */}
+        <div style={{ overflow: 'hidden', marginTop: '32px' }}>
+          <div className="marquee-wrapper" style={{ display: 'flex', overflow: 'hidden', paddingBottom: '12px' }}>
+            <div className="marquee-content" ref={marqueeRef} style={{ display: 'flex', gap: '20px', animation: 'marquee 40s linear infinite', width: 'max-content' }}>
+              {[...feedbacks, ...feedbacks].map((fb, i) => (
+                <div key={i} className={`feedback-card${expanded[i] ? ' expanded' : ''}`}>
+                  <div className="feedback-text-wrapper" ref={el => textRefs.current[i] = el}>
+                    <p>"{fb.text}"</p>
+                    {!expanded[i] && overflow[i] && <div className="feedback-fade" />}
+                  </div>
+                  <div className="feedback-footer">
+                    <h5>{fb.author}</h5>
+                    {overflow[i] && (
+                      <button className="feedback-toggle" onClick={() => toggleExpand(i)}>
+                        <ion-icon name={expanded[i] ? 'chevron-up-outline' : 'chevron-down-outline'}></ion-icon>
+                        <span>{expanded[i] ? 'Close' : 'View all'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          SECTION 6: PRICING & EDUCATIONAL PACKAGES
+          ───────────────────────────────────────────────────────────────────────────── */}
+      <section id="pricing" className="home-section">
+        <header className="home-section-header">
+          <span className="section-eyebrow">
+            <ion-icon name="pricetags-outline"></ion-icon>
+            Straightforward Investment
+          </span>
+          <h2 className="section-title">Transparent 1-on-1 Tutoring Packages</h2>
+          <p className="section-subtitle">
+            No long-term lock-ins or upfront enrollment fees. Begin with a free 20-minute diagnostic session to assess your gaps.
+          </p>
+        </header>
+
+        <div className="pricing-card-grid">
+          
+          {/* Diagnostic Tier */}
+          <div className="pricing-tier-card">
+            <div>
+              <h3 className="pricing-tier-name">Diagnostic Consultation</h3>
+              <p className="pricing-tier-subtitle">Zero-commitment baseline assessment</p>
+              <div style={{ margin: '14px 0 20px', fontSize: '28px', fontFamily: 'var(--ff-mono)', fontWeight: 800, color: 'var(--mint, #34D399)' }}>
+                Free <span style={{ fontSize: '13px', color: 'var(--text-2, #A9C2B5)', fontWeight: 500 }}>/ 20 min</span>
+              </div>
+              <ul className="pricing-feature-list">
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>1:1 Diagnostic conversation with Steena</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Syllabus pacing and gap review</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Custom roadmap recommendations</span>
+                </li>
+              </ul>
+            </div>
+            <a
+              href={ENROLL_FORM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="course-card-btn"
+              style={{ textDecoration: 'none' }}
+            >
+              <span>Book free consultation</span>
+              <ion-icon name="calendar-outline"></ion-icon>
+            </a>
+          </div>
+
+          {/* Targeted Unit Sprint */}
+          <div className="pricing-tier-card">
+            <div>
+              <h3 className="pricing-tier-name">Targeted Unit Sprint</h3>
+              <p className="pricing-tier-subtitle">5 Sessions · High-Yield Focus</p>
+              <div style={{ margin: '14px 0 20px', fontSize: '22px', fontFamily: 'var(--ff-sora)', fontWeight: 700, color: 'var(--text, #EAF5EE)' }}>
+                5 Sessions <span style={{ fontSize: '13px', color: 'var(--text-2, #A9C2B5)', fontWeight: 500 }}>/ Custom Pace</span>
+              </div>
+              <ul className="pricing-feature-list">
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Rapid remediation of 2–3 tough units</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>E.g. Cellular Energetics &amp; Gene Expression</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Dedicated FRQ rubric writing drills</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Annotated whiteboard slides PDF</span>
+                </li>
+              </ul>
+            </div>
+            <a
+              href={ENROLL_FORM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="course-card-btn"
+              style={{ textDecoration: 'none' }}
+            >
+              <span>Inquire about sprint</span>
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+            </a>
+          </div>
+
+          {/* Full Exam Mastery (Popular) */}
+          <div className="pricing-tier-card popular">
+            <span className="pricing-popular-badge">Recommended</span>
+            <div>
+              <h3 className="pricing-tier-name">Comprehensive AP Mastery</h3>
+              <p className="pricing-tier-subtitle">15 Sessions · Complete Exam Pacing</p>
+              <div style={{ margin: '14px 0 20px', fontSize: '22px', fontFamily: 'var(--ff-sora)', fontWeight: 700, color: 'var(--mint, #34D399)' }}>
+                15 Sessions <span style={{ fontSize: '13px', color: 'var(--text-2, #A9C2B5)', fontWeight: 500 }}>/ Full Course</span>
+              </div>
+              <ul className="pricing-feature-list">
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Complete coverage across Units 1 through 8</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Ongoing alignment with high school syllabus</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Full College Board past paper timed mock exams</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Google Classroom portal &amp; homework tracking</span>
+                </li>
+                <li className="pricing-feature-item">
+                  <ion-icon name="checkmark-circle"></ion-icon>
+                  <span>Periodic parent progress briefings</span>
+                </li>
+              </ul>
+            </div>
+            <a
+              href={ENROLL_FORM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hero-cta-btn primary"
+              style={{ textDecoration: 'none', justifyContent: 'center' }}
+            >
+              <span>Enroll for Full Prep</span>
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+            </a>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          SECTION 7: FREQUENTLY ASKED QUESTIONS (Accordion)
+          ───────────────────────────────────────────────────────────────────────────── */}
+      <section id="faq" className="home-section">
+        <header className="home-section-header">
+          <span className="section-eyebrow">
+            <ion-icon name="help-circle-outline"></ion-icon>
+            Common Inquiries
+          </span>
+          <h2 className="section-title">Frequently Asked Questions</h2>
+          <p className="section-subtitle">
+            Everything you need to know about scheduling, technology, and learning materials.
+          </p>
+        </header>
+
+        <div className="faq-accordion-list">
+          {FAQ_ITEMS.map((item, idx) => (
+            <div
+              key={idx}
+              className={`faq-accordion-item${openFaqIndex === idx ? ' open' : ''}`}
+            >
+              <button
+                type="button"
+                className="faq-question-btn"
+                onClick={() => toggleFaq(idx)}
+                aria-expanded={openFaqIndex === idx}
+              >
+                <span>{item.q}</span>
+                <ion-icon name="chevron-down-outline" className="faq-chevron"></ion-icon>
+              </button>
+              {openFaqIndex === idx && (
+                <div className="faq-answer-body">
+                  <p>{item.a}</p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────────────────────
+          SECTION 8: FINAL CTA BAND & TRUST FOOTER
+          ───────────────────────────────────────────────────────────────────────────── */}
+      <section className="home-section">
+        <div className="final-cta-banner">
+          <span className="section-eyebrow" style={{ justifyContent: 'center', marginBottom: '10px' }}>
+            <ion-icon name="sparkles-outline"></ion-icon>
+            Targeted 1-on-1 Coaching
+          </span>
+          <h2 className="final-cta-h2">Ready to Master AP Biology with Confidence?</h2>
+          <p className="final-cta-subtitle">
+            Book a free 20-minute diagnostic call with Steena Antony to review your syllabus, pinpoint your score gaps, and build your personalized roadmap to a 5.
+          </p>
+          <div className="final-cta-btn-row">
+            <a
+              href={ENROLL_FORM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hero-cta-btn primary"
+              style={{ textDecoration: 'none' }}
+            >
+              <ion-icon name="calendar-outline"></ion-icon>
+              <span>Book a free 20-min consult</span>
+            </a>
+            <a
+              href="https://wa.me/919995800949"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hero-cta-btn secondary"
+              style={{ textDecoration: 'none' }}
+            >
+              <ion-icon name="logo-whatsapp"></ion-icon>
+              <span>Message on WhatsApp</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust & Legal Footer */}
+      <footer className="site-footer-trust">
+        <div className="footer-nav-links">
+          <button type="button" onClick={() => scrollTo('courses')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Courses</button>
           <span>&bull;</span>
-          <Link to="/terms" style={{ color: 'inherit', textDecoration: 'underline' }}>Terms of Service</Link>
+          <button type="button" onClick={() => scrollTo('how-it-works')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>How it Works</button>
+          <span>&bull;</span>
+          <button type="button" onClick={() => scrollTo('results')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Results</button>
+          <span>&bull;</span>
+          <button type="button" onClick={() => scrollTo('pricing')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Pricing</button>
+          <span>&bull;</span>
+          <button type="button" onClick={() => scrollTo('faq')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>FAQ</button>
+          <span>&bull;</span>
+          <Link to="/classroom" className="footer-nav-link">Student Login</Link>
+          <span>&bull;</span>
+          <Link to="/privacy" className="footer-nav-link">Privacy Policy</Link>
+          <span>&bull;</span>
+          <Link to="/terms" className="footer-nav-link">Terms of Service</Link>
+        </div>
+
+        <p className="footer-disclaimer">
+          AP® is a registered trademark of the College Board, which is not affiliated with and does not endorse Jivanaut Test Prep. USA Biology Olympiad (USABO) is a program administered by the Center for Excellence in Education (CEE).
+        </p>
+
+        <div>
+          &copy; 2026 Jivanaut Test Prep &mdash; Explore life science. All rights reserved. Primary contact: <a href="mailto:hello@jivanauttestprep.com" style={{ color: 'var(--mint, #34D399)', textDecoration: 'underline' }}>hello@jivanauttestprep.com</a>
         </div>
       </footer>
+
+      {/* Course Syllabus Modal */}
+      {selectedCourseId && (
+        <CourseModal
+          courseId={selectedCourseId}
+          onClose={() => setSelectedCourseId(null)}
+        />
+      )}
 
     </article>
   )
