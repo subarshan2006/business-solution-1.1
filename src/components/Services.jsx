@@ -27,10 +27,10 @@ function Services({ activePage }) {
 
           <li className="service-item">
             <div className="service-icon-box">
-              <ion-icon name="leaf-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+              <ion-icon name="leaf-outline" style={{ fontSize: '32px', color: 'var(--mint, #34D399)' }}></ion-icon>
             </div>
             <div className="service-content-box">
-              <h4 className="h4 service-item-title">AP Biology <span style={{ color: 'var(--orange-yellow-crayola)', fontSize: 'var(--fs-8)' }}>Signature Program</span></h4>
+              <h4 className="h4 service-item-title">AP Biology <span style={{ color: 'var(--amber, #F5B83D)', fontSize: 'var(--fs-8)' }}>Signature Program</span></h4>
               <p className="service-item-text">
                 <strong>Scope:</strong> Full College Board Units 1–8 coverage — biochemistry,
                 energetics, heredity, gene regulation, and ecology.
@@ -44,7 +44,7 @@ function Services({ activePage }) {
 
           <li className="service-item">
             <div className="service-icon-box">
-              <ion-icon name="earth-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+              <ion-icon name="earth-outline" style={{ fontSize: '32px', color: 'var(--mint, #34D399)' }}></ion-icon>
             </div>
             <div className="service-content-box">
               <h4 className="h4 service-item-title">AP Environmental Science (APES)</h4>
@@ -61,7 +61,7 @@ function Services({ activePage }) {
 
           <li className="service-item">
             <div className="service-icon-box">
-              <ion-icon name="bulb-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+              <ion-icon name="bulb-outline" style={{ fontSize: '32px', color: 'var(--mint, #34D399)' }}></ion-icon>
             </div>
             <div className="service-content-box">
               <h4 className="h4 service-item-title">AP Psychology</h4>
@@ -78,7 +78,7 @@ function Services({ activePage }) {
 
           <li className="service-item">
             <div className="service-icon-box">
-              <ion-icon name="school-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+              <ion-icon name="school-outline" style={{ fontSize: '32px', color: 'var(--mint, #34D399)' }}></ion-icon>
             </div>
             <div className="service-content-box">
               <h4 className="h4 service-item-title">Honors Biology &amp; General Science</h4>
@@ -95,7 +95,7 @@ function Services({ activePage }) {
 
           <li className="service-item service-item--addon">
             <div className="service-icon-box">
-              <ion-icon name="trophy-outline" style={{ fontSize: '32px', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+              <ion-icon name="trophy-outline" style={{ fontSize: '32px', color: 'var(--mint, #34D399)' }}></ion-icon>
             </div>
             <div className="service-content-box">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '7px' }}>

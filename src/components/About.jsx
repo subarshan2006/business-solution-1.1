@@ -1,3 +1,5 @@
+import Logo from './Logo'
+
 const experience = [
   {
     title: 'Independent Science Mentor — Jivanaut Test Prep',
@@ -25,7 +27,7 @@ function TimelineSection({ icon, title, items }) {
   return (
     <section className="experience-section">
       <div className="experience-heading">
-        <div className="icon-box" style={{ color: 'var(--orange-yellow-crayola)', fontSize: '2rem' }}>
+        <div className="icon-box" style={{ color: 'var(--mint, #34D399)', fontSize: '2rem' }}>
           <ion-icon name={icon}></ion-icon>
         </div>
         <div>
@@ -54,7 +56,7 @@ function TimelineSection({ icon, title, items }) {
 const PillIcon = ({ icon }) => (
   <div
     className="icon-box"
-    style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'hsla(38, 90%, 45%, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--orange-yellow-crayola)' }}
+    style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'rgba(52, 211, 153, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mint, #34D399)' }}
   >
     <ion-icon name={icon} style={{ fontSize: '1.5rem' }}></ion-icon>
   </div>
@@ -89,26 +91,13 @@ function About({ activePage, setActivePage }) {
           <div
             className="about-logo-wrapper"
             style={{
-              width: '150px',
-              height: '150px',
-              borderRadius: '24px',
-              overflow: 'hidden',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-              border: '2px solid hsla(38, 90%, 50%, 0.4)',
-              background: '#1e1e1f',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
             }}
           >
-            <img
-              src={`${import.meta.env.BASE_URL}assets/images/logo-image.png`}
-              alt="Jivanaut - The Explorer of Life Science"
-              width="150"
-              height="150"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
+            <Logo variant="mark" size={88} />
           </div>
 
           <div style={{ maxWidth: '780px', margin: '0 auto' }}>
@@ -121,7 +110,7 @@ function About({ activePage, setActivePage }) {
                 letterSpacing: '-0.2px',
               }}
             >
-              JIVANAUT  <span style={{ color: 'var(--orange-yellow-crayola)' }}>The Explorer of Life Science</span>
+              JIVANAUT &middot; <span style={{ color: 'var(--mint, #34D399)' }}>The Explorer of Life Science</span>
             </h3>
 
             <p
@@ -132,7 +121,7 @@ function About({ activePage, setActivePage }) {
                 margin: 0,
               }}
             >
-              The microscope represents discovery and scientific inquiry, while the growing life forms and book symbolize curiosity, learning, and the wonder of life. Together, they reflect Jivanaut's mission: to guide students beyond memorizing facts and inspire them to explore, understand, and truly experience the science of life.
+              The name Jivanaut stems from <em>Jiva</em> (Sanskrit for Life) and <em>Naut</em> (Voyager or Explorer). Anchored in the continuous DNA double helix, our mission is to guide students beyond passive memorization and empower them to explore, analyze, and master the intricate mechanisms of life science.
             </p>
           </div>
         </div>
@@ -141,7 +130,7 @@ function About({ activePage, setActivePage }) {
       {/* My Story */}
       <section className="about-story" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-          <div className="icon-box" style={{ color: 'var(--orange-yellow-crayola)', fontSize: '2rem' }}>
+          <div className="icon-box" style={{ color: 'var(--mint, #34D399)', fontSize: '2rem' }}>
             <ion-icon name="flask-outline"></ion-icon>
           </div>
           <h3 className="h3" style={{ marginBottom: 0 }}>The Vision Behind Jivanaut</h3>
@@ -163,8 +152,8 @@ function About({ activePage, setActivePage }) {
             students must analyse novel experimental data, deduce causal relationships, and
             articulate findings precisely under timed conditions.
           </p>
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', background: 'hsla(0, 0%, 100%, 0.04)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--orange-yellow-crayola)' }}>
-            <ion-icon name="bulb-outline" style={{ fontSize: '2.5rem', color: 'var(--orange-yellow-crayola)' }}></ion-icon>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', background: 'hsla(0, 0%, 100%, 0.04)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--mint, #34D399)' }}>
+            <ion-icon name="bulb-outline" style={{ fontSize: '2.5rem', color: 'var(--mint, #34D399)' }}></ion-icon>
             <p className="about-text" style={{ fontSize: '1rem', fontStyle: 'italic', color: 'var(--white-2)' }}>
               My mission is to serve as an academic co-pilot: creating an encouraging, academically
               rigorous space where students transform confusion into confidence, conquer their
@@ -177,7 +166,7 @@ function About({ activePage, setActivePage }) {
       {/* Three Pillars of Instruction */}
       <section className="about-philosophy" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-          <div className="icon-box" style={{ color: 'var(--orange-yellow-crayola)', fontSize: '2rem' }}>
+          <div className="icon-box" style={{ color: 'var(--mint, #34D399)', fontSize: '2rem' }}>
             <ion-icon name="extension-puzzle-outline"></ion-icon>
           </div>
           <h3 className="h3" style={{ marginBottom: 0 }}>Three Pillars of Instruction</h3>
@@ -221,7 +210,7 @@ function About({ activePage, setActivePage }) {
       {/* Why 1-on-1 Works */}
       <section className="about-philosophy" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-          <div className="icon-box" style={{ color: 'var(--orange-yellow-crayola)', fontSize: '2rem' }}>
+          <div className="icon-box" style={{ color: 'var(--mint, #34D399)', fontSize: '2rem' }}>
             <ion-icon name="rocket-outline"></ion-icon>
           </div>
           <h3 className="h3" style={{ marginBottom: 0 }}>Why 1-on-1 Virtual Tutoring Works</h3>

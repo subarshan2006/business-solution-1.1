@@ -179,9 +179,28 @@ function GfpBackground() {
 
     document.addEventListener('visibilitychange', handleVisibility)
 
+    // IntersectionObserver optimization: pause canvas RAF loop if offscreen
+    let observer = null
+    if ('IntersectionObserver' in window) {
+      observer = new IntersectionObserver((entries) => {
+        const entry = entries[0]
+        if (entry && !entry.isIntersecting) {
+          isPaused = true
+          if (animationFrameId) cancelAnimationFrame(animationFrameId)
+        } else if (!document.hidden) {
+          isPaused = false
+          if (!prefersReducedMotion) {
+            animationFrameId = requestAnimationFrame(render)
+          }
+        }
+      }, { threshold: 0.05 })
+      observer.observe(canvas)
+    }
+
     return () => {
       window.removeEventListener('resize', resize)
       document.removeEventListener('visibilitychange', handleVisibility)
+      if (observer) observer.disconnect()
       if (animationFrameId) cancelAnimationFrame(animationFrameId)
     }
   }, [])

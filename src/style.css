@@ -472,13 +472,15 @@ main {
 }
 
 .info-content .title {
-  color: var(--white-1);
-  background: var(--onyx);
-  font-size: var(--fs-8);
-  font-weight: var(--fw-300);
+  color: var(--text);
+  background: var(--elevated);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   width: max-content;
-  padding: 3px 12px;
-  border-radius: 8px;
+  padding: 4px 12px;
+  border-radius: var(--r-pill, 999px);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -487,11 +489,12 @@ main {
 .status-dot {
   width: 8px;
   height: 8px;
-  background-color: #28c76f; /* Green color */
+  background-color: #10B981; /* High-contrast emerald green */
   border-radius: 50%;
   display: inline-block;
   position: relative;
-  box-shadow: 0 0 0 0 rgba(40, 199, 111, 0.7);
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
   animation: pulse-green 2s infinite;
 }
 
@@ -3352,6 +3355,16 @@ textarea.form-input::-webkit-resizer { display: none; }
   --on-mint: #FFFFFF;
   --amber: #B45309;
 
+  --color-brand-black: #07130E;
+  --color-brand-white: #0B2A1E;
+  --color-brand-text: #0B2A1E;
+  --color-brand-gray: #E8F0EB;
+  --color-background: #F4F8F5;
+  --color-title: #0B2A1E;
+  --color-text: #4A6657;
+  --color-subtitle: #24493A;
+  --color-border: #D5E3DA;
+
   --hero-accent: var(--mint);
   --hero-accent-soft: var(--mint-hi);
   --hero-accent-glow: rgba(11, 107, 75, 0.2);
@@ -3407,7 +3420,7 @@ textarea.form-input::-webkit-resizer { display: none; }
   --orange-yellow-crayola:  var(--mint);
   --vegas-gold:             var(--mint-hi);
   --light-gray:             var(--text-2);
-  --light-gray-70:          rgba(74, 102, 87, 0.7);
+  --light-gray-70:          var(--text-2);
   --bittersweet-shimmer:    var(--mint);
 
   /* ── Light-mode surfaces ──────────────────────────────────────────────────── */
@@ -3482,8 +3495,10 @@ textarea.form-input::-webkit-resizer { display: none; }
 }
 
 [data-theme='light'] .info-content .title {
-  background: var(--color-brand-gray);
-  color: var(--color-brand-text);
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: 600;
 }
 
 /* ── Navbar ───────────────────────────────────────────────────────────────── */
