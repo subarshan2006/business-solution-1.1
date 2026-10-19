@@ -130,17 +130,17 @@ function CourseModal({ courseId, onClose }) {
       <div className="assignment-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '780px', maxHeight: '88vh', overflowY: 'auto' }}>
         
         {/* Modal Header */}
-        <div className="assignment-modal-header" style={{ position: 'sticky', top: 0, background: 'var(--surface, #0E2219)', zIndex: 10 }}>
+        <div className="assignment-modal-header" style={{ position: 'sticky', top: 0, background: 'var(--surface, #1e1e24)', zIndex: 10 }}>
           <div>
             <div className="modal-tag-row">
-              <span className="modal-topic-tag" style={{ background: 'rgba(52, 211, 153, 0.15)', color: 'var(--mint, #34D399)' }}>
+              <span className="modal-topic-tag" style={{ background: 'rgba(255, 92, 92, 0.15)', color: 'var(--mint, #FF5C5C)' }}>
                 {course.tag}
               </span>
             </div>
             <h2 id="course-modal-title" className="modal-assignment-title" style={{ fontSize: '24px', fontFamily: "var(--ff-sora, 'Sora', sans-serif)" }}>
               {course.title}
             </h2>
-            <p style={{ color: 'var(--text-2, #A9C2B5)', fontSize: '13px', marginTop: '4px' }}>
+            <p style={{ color: 'var(--text-2, #A1A1AA)', fontSize: '13px', marginTop: '4px' }}>
               {course.subtitle}
             </p>
           </div>
@@ -158,34 +158,34 @@ function CourseModal({ courseId, onClose }) {
         <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
           
           {/* Target Audience & Overview */}
-          <div style={{ background: 'rgba(52, 211, 153, 0.05)', border: '1px solid var(--line, #24493A)', borderRadius: '12px', padding: '16px 20px' }}>
-            <h4 style={{ color: 'var(--mint, #34D399)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
+          <div style={{ background: 'rgba(255, 92, 92, 0.05)', border: '1px solid var(--line, #383842)', borderRadius: '12px', padding: '16px 20px' }}>
+            <h4 style={{ color: 'var(--mint, #FF5C5C)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
               Target Student Profile
             </h4>
-            <p style={{ color: 'var(--text, #EAF5EE)', fontSize: '14px', lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text, #FFFFFF)', fontSize: '14px', lineHeight: 1.5 }}>
               {course.target}
             </p>
-            <p style={{ color: 'var(--text-2, #A9C2B5)', fontSize: '13px', marginTop: '8px', lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-2, #A1A1AA)', fontSize: '13px', marginTop: '8px', lineHeight: 1.5 }}>
               {course.description}
             </p>
           </div>
 
           {/* Core Curriculum Units */}
           <div>
-            <h3 style={{ fontSize: '17px', color: 'var(--text, #EAF5EE)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ion-icon name="list-outline" style={{ color: 'var(--mint, #34D399)' }}></ion-icon>
+            <h3 style={{ fontSize: '17px', color: 'var(--text, #FFFFFF)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ion-icon name="list-outline" style={{ color: 'var(--mint, #FF5C5C)' }}></ion-icon>
               <span>Curriculum Scope &amp; Sequence</span>
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '10px' }}>
               {course.units.map((unit, idx) => (
-                <div key={idx} style={{ background: 'var(--surface, #0E2219)', border: '1px solid var(--line, #24493A)', borderRadius: '10px', padding: '12px 14px' }}>
+                <div key={idx} style={{ background: 'var(--surface, #1e1e24)', border: '1px solid var(--line, #383842)', borderRadius: '10px', padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '11px', fontFamily: 'var(--ff-mono)', color: 'var(--mint, #34D399)', fontWeight: 700 }}>
+                    <span style={{ fontSize: '11px', fontFamily: 'var(--ff-mono)', color: 'var(--mint, #FF5C5C)', fontWeight: 700 }}>
                       {unit.num}
                     </span>
-                    <strong style={{ fontSize: '13px', color: 'var(--text, #EAF5EE)' }}>{unit.name}</strong>
+                    <strong style={{ fontSize: '13px', color: 'var(--text, #FFFFFF)' }}>{unit.name}</strong>
                   </div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-2, #A9C2B5)', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text-2, #A1A1AA)', lineHeight: 1.4 }}>
                     {unit.topics}
                   </p>
                 </div>
@@ -195,14 +195,14 @@ function CourseModal({ courseId, onClose }) {
 
           {/* FRQ & Rubric Mastery */}
           <div>
-            <h3 style={{ fontSize: '17px', color: 'var(--text, #EAF5EE)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ion-icon name="document-text-outline" style={{ color: 'var(--mint, #34D399)' }}></ion-icon>
+            <h3 style={{ fontSize: '17px', color: 'var(--text, #FFFFFF)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ion-icon name="document-text-outline" style={{ color: 'var(--mint, #FF5C5C)' }}></ion-icon>
               <span>Targeted Exam Mastery</span>
             </h3>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '4px' }}>
               {course.frqMastery.map((item, idx) => (
-                <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: 'var(--text, #EAF5EE)', lineHeight: 1.5 }}>
-                  <ion-icon name="checkmark-circle" style={{ color: 'var(--mint, #34D399)', fontSize: '18px', flexShrink: 0, marginTop: '2px' }}></ion-icon>
+                <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: 'var(--text, #FFFFFF)', lineHeight: 1.5 }}>
+                  <ion-icon name="checkmark-circle" style={{ color: 'var(--mint, #FF5C5C)', fontSize: '18px', flexShrink: 0, marginTop: '2px' }}></ion-icon>
                   <span>{item}</span>
                 </li>
               ))}
@@ -211,14 +211,14 @@ function CourseModal({ courseId, onClose }) {
 
           {/* Key Student Outcomes */}
           <div>
-            <h3 style={{ fontSize: '17px', color: 'var(--text, #EAF5EE)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ion-icon name="ribbon-outline" style={{ color: 'var(--mint, #34D399)' }}></ion-icon>
+            <h3 style={{ fontSize: '17px', color: 'var(--text, #FFFFFF)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ion-icon name="ribbon-outline" style={{ color: 'var(--mint, #FF5C5C)' }}></ion-icon>
               <span>Instructional Outcomes</span>
             </h3>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '4px' }}>
               {course.outcomes.map((item, idx) => (
-                <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: 'var(--text-2, #A9C2B5)', lineHeight: 1.5 }}>
-                  <ion-icon name="star-outline" style={{ color: 'var(--amber, #F5B83D)', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}></ion-icon>
+                <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: 'var(--text-2, #A1A1AA)', lineHeight: 1.5 }}>
+                  <ion-icon name="star-outline" style={{ color: 'var(--amber, #F59E0B)', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}></ion-icon>
                   <span>{item}</span>
                 </li>
               ))}
@@ -226,7 +226,7 @@ function CourseModal({ courseId, onClose }) {
           </div>
 
           {/* CTA Row */}
-          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--line, #24493A)' }}>
+          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--line, #383842)' }}>
             <a
               href="https://docs.google.com/forms/d/e/1FAIpQLSc615afQFRpiaWyfpmTKWOBSGzOYmZDcg95rZZ9u3HKvBbT8g/viewform"
               target="_blank"

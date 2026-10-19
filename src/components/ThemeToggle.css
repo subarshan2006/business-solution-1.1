@@ -1,12 +1,12 @@
-/* ─── Header Theme Toggle (Audit Section 7.5: 40px icon button) ───────── */
+/* ─── Header Theme Toggle (40px icon button) ───────── */
 
 .theme-toggle-header-btn {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: 1px solid var(--line, #24493A);
-  background: var(--surface, #0E2219);
-  color: var(--mint, #34D399);
+  border: 1px solid var(--line, #383842);
+  background: var(--surface, #1e1e24);
+  color: var(--mint, #FF5C5C);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -17,9 +17,9 @@
 }
 
 .theme-toggle-header-btn:hover {
-  background: var(--elevated, #153126);
-  border-color: var(--mint, #34D399);
-  color: var(--mint-hi, #6EE7B7);
+  background: var(--elevated, #26262e);
+  border-color: var(--mint, #FF5C5C);
+  color: var(--mint-hi, #FF8585);
   transform: translateY(-1px);
 }
 
@@ -31,12 +31,12 @@
 
 [data-theme='light'] .theme-toggle-header-btn {
   background: var(--surface, #FFFFFF);
-  border-color: var(--line, #D5E3DA);
-  color: var(--mint, #0B6B4B);
+  border-color: var(--line, #E4E4E7);
+  color: var(--mint, #DC2626);
 }
 
 [data-theme='light'] .theme-toggle-header-btn:hover {
-  background: #F4F8F5;
-  border-color: var(--mint, #0B6B4B);
-  color: var(--mint-hi, #095A3F);
+  background: #FEE2E2;
+  border-color: var(--mint, #DC2626);
+  color: var(--mint-hi, #B91C1C);
 }

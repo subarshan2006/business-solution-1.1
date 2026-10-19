@@ -423,8 +423,8 @@ function Home({ activePage }) {
               className="tutor-bio-photo"
             />
             <div style={{ marginTop: '14px', textAlign: 'center' }}>
-              <strong style={{ color: 'var(--text, #EAF5EE)', fontSize: '17px', display: 'block' }}>Steena Antony</strong>
-              <span style={{ color: 'var(--mint, #34D399)', fontSize: '13px', fontWeight: 600 }}>11+ Years Teaching Life Science</span>
+              <strong style={{ color: 'var(--text, #FFFFFF)', fontSize: '17px', display: 'block' }}>Steena Antony</strong>
+              <span style={{ color: 'var(--mint, #FF5C5C)', fontSize: '13px', fontWeight: 600 }}>11+ Years Teaching Life Science</span>
             </div>
           </div>
 
@@ -436,11 +436,11 @@ function Home({ activePage }) {
               <span className="tutor-credential-chip">Diploma in Psychology &amp; Counseling</span>
             </div>
 
-            <p style={{ color: 'var(--text, #EAF5EE)', fontSize: '15px', lineHeight: 1.6, marginBottom: '14px' }}>
+            <p style={{ color: 'var(--text, #FFFFFF)', fontSize: '15px', lineHeight: 1.6, marginBottom: '14px' }}>
               With over 11 years of experience teaching high school life science and preparing competitive test-takers across the United States, I focus on the cognitive bridge between classroom theory and AP exam performance.
             </p>
 
-            <p style={{ color: 'var(--text-2, #A9C2B5)', fontSize: '14px', lineHeight: 1.6 }}>
+            <p style={{ color: 'var(--text-2, #A1A1AA)', fontSize: '14px', lineHeight: 1.6 }}>
               Having earned dual Master’s degrees in Zoology and Environmental Science alongside a Bachelor of Education, my pedagogy integrates scientific rigor with compassionate, student-centered pacing. We replace the stress of passive memorization with the clarity of biological inquiry.
             </p>
 
@@ -534,8 +534,8 @@ function Home({ activePage }) {
             <div>
               <h3 className="pricing-tier-name">Diagnostic Consultation</h3>
               <p className="pricing-tier-subtitle">Zero-commitment baseline assessment</p>
-              <div style={{ margin: '14px 0 20px', fontSize: '28px', fontFamily: 'var(--ff-mono)', fontWeight: 800, color: 'var(--mint, #34D399)' }}>
-                Free <span style={{ fontSize: '13px', color: 'var(--text-2, #A9C2B5)', fontWeight: 500 }}>/ 20 min</span>
+              <div style={{ margin: '14px 0 20px', fontSize: '28px', fontFamily: 'var(--ff-mono)', fontWeight: 800, color: 'var(--mint, #FF5C5C)' }}>
+                Free <span style={{ fontSize: '13px', color: 'var(--text-2, #A1A1AA)', fontWeight: 500 }}>/ 20 min</span>
               </div>
               <ul className="pricing-feature-list">
                 <li className="pricing-feature-item">
@@ -569,8 +569,8 @@ function Home({ activePage }) {
             <div>
               <h3 className="pricing-tier-name">Targeted Unit Sprint</h3>
               <p className="pricing-tier-subtitle">5 Sessions · High-Yield Focus</p>
-              <div style={{ margin: '14px 0 20px', fontSize: '22px', fontFamily: 'var(--ff-sora)', fontWeight: 700, color: 'var(--text, #EAF5EE)' }}>
-                5 Sessions <span style={{ fontSize: '13px', color: 'var(--text-2, #A9C2B5)', fontWeight: 500 }}>/ Custom Pace</span>
+              <div style={{ margin: '14px 0 20px', fontSize: '22px', fontFamily: 'var(--ff-sora)', fontWeight: 700, color: 'var(--text, #FFFFFF)' }}>
+                5 Sessions <span style={{ fontSize: '13px', color: 'var(--text-2, #A1A1AA)', fontWeight: 500 }}>/ Custom Pace</span>
               </div>
               <ul className="pricing-feature-list">
                 <li className="pricing-feature-item">
@@ -609,8 +609,8 @@ function Home({ activePage }) {
             <div>
               <h3 className="pricing-tier-name">Comprehensive AP Mastery</h3>
               <p className="pricing-tier-subtitle">15 Sessions · Complete Exam Pacing</p>
-              <div style={{ margin: '14px 0 20px', fontSize: '22px', fontFamily: 'var(--ff-sora)', fontWeight: 700, color: 'var(--mint, #34D399)' }}>
-                15 Sessions <span style={{ fontSize: '13px', color: 'var(--text-2, #A9C2B5)', fontWeight: 500 }}>/ Full Course</span>
+              <div style={{ margin: '14px 0 20px', fontSize: '22px', fontFamily: 'var(--ff-sora)', fontWeight: 700, color: 'var(--mint, #FF5C5C)' }}>
+                15 Sessions <span style={{ fontSize: '13px', color: 'var(--text-2, #A1A1AA)', fontWeight: 500 }}>/ Full Course</span>
               </div>
               <ul className="pricing-feature-list">
                 <li className="pricing-feature-item">
@@ -753,7 +753,7 @@ function Home({ activePage }) {
         </p>
 
         <div>
-          &copy; 2026 Jivanaut Test Prep &mdash; Explore life science. All rights reserved. Primary contact: <a href="mailto:hello@jivanauttestprep.com" style={{ color: 'var(--mint, #34D399)', textDecoration: 'underline' }}>hello@jivanauttestprep.com</a>
+          &copy; 2026 Jivanaut Test Prep &mdash; Explore life science. All rights reserved. Primary contact: <a href="mailto:hello@jivanauttestprep.com" style={{ color: 'var(--mint, #FF5C5C)', textDecoration: 'underline' }}>hello@jivanauttestprep.com</a>
         </div>
       </footer>
 
