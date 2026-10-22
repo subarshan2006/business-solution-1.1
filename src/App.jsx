@@ -11,6 +11,7 @@ import BackgroundVideo from './components/BackgroundVideo'
 import WhatsAppFab from './components/WhatsAppFab'
 import NotesPage from './components/NotesPage'
 import ClassroomPortal from './components/ClassroomPortal'
+import QuizRunner from './features/questionBank/components/QuizRunner'
 import PrivacyPolicy from './components/PrivacyPolicy'
 import TermsOfService from './components/TermsOfService'
 
@@ -65,6 +66,22 @@ function App() {
             showWhatsAppFab={false}
           >
             <ClassroomPortal />
+          </Layout>
+        } />
+        <Route path="/quiz/:bankId" element={
+          <Layout activePage="quiz" setActivePage={() => {}}
+            showThemeToggle={false}
+            showWhatsAppFab={false}
+          >
+            <QuizRunner />
+          </Layout>
+        } />
+        <Route path="/quiz" element={
+          <Layout activePage="quiz" setActivePage={() => {}}
+            showThemeToggle={false}
+            showWhatsAppFab={false}
+          >
+            <QuizRunner />
           </Layout>
         } />
         <Route path="/studentrecords/:slug" element={

@@ -1,0 +1,154 @@
+import { useState, useEffect } from 'react'
+import {
+  getQuestionBanks,
+  isStudentAuthorized,
+} from '../services/questionBankStorage'
+import {
+  getStudentAttempt,
+} from '../services/quizAttemptService'
+
+function StudentQuizList({ auth, onLaunchQuiz, onSignIn }) {
+  const [assignedBanks, setAssignedBanks] = useState([])
+
+  const studentEmail = auth?.user?.email || ''
+
+  useEffect(() => {
+    if (!studentEmail) {
+      setAssignedBanks([])
+      return
+    }
+
+    const allBanks = getQuestionBanks()
+    const authorized = allBanks.filter(
+      (b) => b.published && isStudentAuthorized(b, studentEmail)
+    )
+
+    const listWithAttempts = authorized.map((b) => {
+      const att = getStudentAttempt(b.id, studentEmail)
+      return {
+        ...b,
+        attempt: att || null,
+        isCompleted: Boolean(att && att.status === 'completed'),
+      }
+    })
+
+    setAssignedBanks(listWithAttempts)
+  }, [studentEmail])
+
+  if (!auth || !studentEmail) {
+    return (
+      <div className="qb-student-empty-card">
+        <ion-icon name="lock-closed-outline" class="qb-empty-icon"></ion-icon>
+        <h3>Sign In to Access Practice Quizzes</h3>
+        <p>Please sign in with your student Google account to see the interactive quizzes assigned to you.</p>
+        {onSignIn && (
+          <button type="button" className="btn btn-primary" onClick={onSignIn}>
+            <ion-icon name="logo-google"></ion-icon>
+            <span>Sign In with Google</span>
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="qb-student-quiz-container">
+      <div className="qb-student-header">
+        <div>
+          <h2 className="qb-title">My Practice Quizzes</h2>
+          <p className="qb-subtitle">
+            Interactive quizzes assigned directly to your student email (<strong>{studentEmail}</strong>).
+          </p>
+        </div>
+      </div>
+
+      {assignedBanks.length === 0 ? (
+        <div className="qb-student-empty-card">
+          <ion-icon name="book-outline" class="qb-empty-icon"></ion-icon>
+          <h3>No Practice Quizzes Assigned</h3>
+          <p>
+            You are signed in as <strong>{studentEmail}</strong>. Your instructor has not assigned any active quizzes to this email yet.
+          </p>
+          <span className="qb-hint-badge">
+            Contact your instructor to add your email address to the Question Bank.
+          </span>
+        </div>
+      ) : (
+        <div className="qb-grid">
+          {assignedBanks.map((bank) => {
+            const questionCount = Array.isArray(bank.questions) ? bank.questions.length : 0
+            const attempt = bank.attempt
+
+            return (
+              <div key={bank.id} className="qb-card qb-student-card">
+                <div className="qb-card-header">
+                  <span className="qb-subject-badge">{bank.subject || 'AP Biology'}</span>
+                  {bank.isCompleted ? (
+                    <span className="qb-attempt-badge completed">
+                      ✓ Completed ({attempt.score}/{attempt.totalQuestions})
+                    </span>
+                  ) : (
+                    <span className="qb-attempt-badge pending">
+                      ● Ready to Take
+                    </span>
+                  )}
+                </div>
+
+                <h3 className="qb-card-title">{bank.title}</h3>
+                <p className="qb-card-desc">{bank.description || 'Targeted practice quiz.'}</p>
+
+                <div className="qb-meta-row">
+                  <div className="qb-meta-item">
+                    <ion-icon name="help-circle-outline"></ion-icon>
+                    <span>{questionCount} Questions</span>
+                  </div>
+                  {bank.settings?.oneAttempt && (
+                    <div className="qb-meta-item">
+                      <ion-icon name="lock-closed-outline"></ion-icon>
+                      <span>1 Attempt Limit</span>
+                    </div>
+                  )}
+                </div>
+
+                {bank.isCompleted && attempt && (
+                  <div className="qb-student-score-summary">
+                    <div className="qb-student-score-num">
+                      Score: <strong>{attempt.score} / {attempt.totalQuestions}</strong> ({attempt.percentage}%)
+                    </div>
+                    <div className="qb-student-score-date">
+                      Finished {new Date(attempt.completedAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                )}
+
+                <div className="qb-student-card-actions">
+                  {bank.isCompleted ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary qb-full-btn"
+                      onClick={() => onLaunchQuiz(bank.id)}
+                    >
+                      <ion-icon name="eye-outline"></ion-icon>
+                      <span>View Results</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn btn-primary qb-full-btn"
+                      onClick={() => onLaunchQuiz(bank.id)}
+                    >
+                      <ion-icon name="play-outline"></ion-icon>
+                      <span>Start Quiz</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default StudentQuizList

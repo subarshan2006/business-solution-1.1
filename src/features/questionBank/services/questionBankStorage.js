@@ -1,0 +1,237 @@
+/**
+ * Question Bank Storage Service
+ * Manages persistent storage of question banks and questions in browser storage.
+ * Direct email-based access control with zero dependency on sensitive Google Classroom scopes.
+ */
+
+const STORAGE_KEY = 'nxtstep_question_banks'
+
+// Initial seed question bank for immediate demonstration & testing
+export const INITIAL_QUESTION_BANKS = [
+  {
+    id: 'qb_ap_bio_cells',
+    title: 'AP Biology — Cellular Energetics & Organelles',
+    description: 'Targeted high-yield MCQs covering ATP synthase, oxidative phosphorylation, and cellular structure.',
+    subject: 'AP Biology',
+    published: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    authorizedStudents: [
+      'student1@gmail.com',
+      'demo@jivanauttestprep.com',
+    ],
+    settings: {
+      randomizeQuestions: true,
+      randomizeOptions: true,
+      oneAttempt: true,
+      showExplanation: true,
+      questionsPerAttempt: null, // all questions
+    },
+    questions: [
+      {
+        id: 'Q001',
+        question: 'Which of the following processes occurs in the mitochondrial matrix and generates NADH and FADH2 for the electron transport chain?',
+        options: [
+          { id: 'A', text: 'Glycolysis' },
+          { id: 'B', text: 'The Krebs (Citric Acid) Cycle' },
+          { id: 'C', text: 'Lactic acid fermentation' },
+          { id: 'D', text: 'Photophosphorylation' },
+        ],
+        correctOption: 'B',
+        explanation: 'The Krebs Cycle (Citric Acid Cycle) takes place within the mitochondrial matrix. Acetyl-CoA is oxidized, producing CO2, ATP, and the electron carriers NADH and FADH2, which feed directly into the inner mitochondrial electron transport chain.',
+      },
+      {
+        id: 'Q002',
+        question: 'A scientist treats cell culture with an uncoupling agent that dissipates the proton gradient across the inner mitochondrial membrane. What is the most immediate effect on ATP synthesis?',
+        options: [
+          { id: 'A', text: 'Electron transport halts immediately' },
+          { id: 'B', text: 'Oxygen consumption completely stops' },
+          { id: 'C', text: 'ATP synthesis via ATP synthase drops drastically while electron transport continues' },
+          { id: 'D', text: 'Glycolytic phosphorylation increases to double normal rates' },
+        ],
+        correctOption: 'C',
+        explanation: 'Uncoupling agents (like DNP) allow protons to leak across the inner mitochondrial membrane, bypassing ATP synthase. This collapses the proton motive force needed for chemiosmotic ATP generation, while electron transport and oxygen consumption often continue or accelerate with energy released as heat.',
+      },
+      {
+        id: 'Q003',
+        question: 'Which organelle is characterized by hydrolytic enzymes that function optimally in an acidic luminal pH maintained by proton pumps?',
+        options: [
+          { id: 'A', text: 'Peroxisome' },
+          { id: 'B', text: 'Lysosome' },
+          { id: 'C', text: 'Rough endoplasmic reticulum' },
+          { id: 'D', text: 'Golgi cisternae' },
+        ],
+        correctOption: 'B',
+        explanation: 'Lysosomes are membrane-bound digestive vesicles containing acid hydrolases. V-type proton ATPases actively pump H+ into the lysosome to maintain an acidic luminal pH (~4.5–5.0), protecting the rest of the cell should a lysosome rupture.',
+      },
+      {
+        id: 'Q004',
+        question: 'During non-cyclic photophosphorylation in chloroplasts, what is the ultimate source of electrons that replaces those excited in Photosystem II (P680)?',
+        options: [
+          { id: 'A', text: 'NADPH' },
+          { id: 'B', text: 'Water (H2O)' },
+          { id: 'C', text: 'Carbon dioxide (CO2)' },
+          { id: 'D', text: 'Photosystem I (P700)' },
+        ],
+        correctOption: 'B',
+        explanation: 'The oxygen-evolving complex of Photosystem II photolyzes water molecules (2 H2O → 4 H+ + 4 e- + O2). The extracted electrons fill the electron holes in P680+ reaction centers, releasing oxygen as a byproduct.',
+      },
+      {
+        id: 'Q005',
+        question: 'Which of the following best describes competitive enzyme inhibition?',
+        options: [
+          { id: 'A', text: 'The inhibitor binds covalently to an allosteric site, decreasing Vmax.' },
+          { id: 'B', text: 'The inhibitor binds reversibly to the active site, increasing apparent Km without altering Vmax.' },
+          { id: 'C', text: 'The inhibitor binds exclusively to the enzyme-substrate complex, reducing both Km and Vmax.' },
+          { id: 'D', text: 'The inhibitor permanently denatures the enzyme quaternary structure.' },
+        ],
+        correctOption: 'B',
+        explanation: 'In competitive inhibition, the inhibitor competes directly with the substrate for the active site. Increasing substrate concentration can outcompete the inhibitor, so Vmax remains attainable, but a higher substrate concentration is required to reach 1/2 Vmax (Km increases).',
+      },
+    ],
+  },
+]
+
+/**
+ * Retrieve all question banks from storage (or seed if empty)
+ */
+export function getQuestionBanks() {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return INITIAL_QUESTION_BANKS
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_QUESTION_BANKS))
+      return INITIAL_QUESTION_BANKS
+    }
+    const banks = JSON.parse(raw)
+    return Array.isArray(banks) ? banks : INITIAL_QUESTION_BANKS
+  } catch (err) {
+    console.error('Failed to load question banks from localStorage:', err)
+    return INITIAL_QUESTION_BANKS
+  }
+}
+
+/**
+ * Get single question bank by ID
+ */
+export function getQuestionBankById(id) {
+  if (!id) return null
+  const banks = getQuestionBanks()
+  return banks.find((b) => b.id === id) || null
+}
+
+/**
+ * Save / Update a question bank
+ */
+export function saveQuestionBank(bank) {
+  if (!bank || !bank.id) return null
+  const banks = getQuestionBanks()
+  const now = new Date().toISOString()
+  const cleanBank = {
+    ...bank,
+    updatedAt: now,
+  }
+
+  const index = banks.findIndex((b) => b.id === bank.id)
+  let updated
+  if (index >= 0) {
+    updated = [...banks]
+    updated[index] = cleanBank
+  } else {
+    cleanBank.createdAt = cleanBank.createdAt || now
+    updated = [cleanBank, ...banks]
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+  } catch (err) {
+    console.error('Failed to save question bank to localStorage:', err)
+  }
+  return cleanBank
+}
+
+/**
+ * Delete a question bank by ID
+ */
+export function deleteQuestionBank(id) {
+  if (!id) return false
+  const banks = getQuestionBanks()
+  const filtered = banks.filter((b) => b.id !== id)
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
+    return true
+  } catch (err) {
+    console.error('Failed to delete question bank:', err)
+    return false
+  }
+}
+
+/**
+ * Factory to create a new Question Bank with defaults
+ */
+export function createQuestionBank({
+  title = 'Untitled Question Bank',
+  description = '',
+  subject = 'AP Biology',
+  questions = [],
+  authorizedStudents = [],
+  settings = {},
+  published = false,
+} = {}) {
+  const id = `qb_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+  const now = new Date().toISOString()
+
+  return {
+    id,
+    title: title.trim(),
+    description: description.trim(),
+    subject: subject.trim(),
+    questions,
+    authorizedStudents: normalizeEmailList(authorizedStudents),
+    published,
+    createdAt: now,
+    updatedAt: now,
+    settings: {
+      randomizeQuestions: true,
+      randomizeOptions: true,
+      oneAttempt: true,
+      showExplanation: true,
+      questionsPerAttempt: null,
+      ...settings,
+    },
+  }
+}
+
+/**
+ * Normalize and clean an array or string of emails
+ */
+export function normalizeEmailList(input) {
+  if (!input) return []
+  let emails = []
+  if (Array.isArray(input)) {
+    emails = input
+  } else if (typeof input === 'string') {
+    emails = input.split(/[\n,;]+/)
+  }
+  return Array.from(
+    new Set(
+      emails
+        .map((e) => String(e).trim().toLowerCase())
+        .filter((e) => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+    )
+  )
+}
+
+/**
+ * Check if a student's Google email is authorized for a bank
+ */
+export function isStudentAuthorized(bank, studentEmail) {
+  if (!bank || !studentEmail) return false
+  const cleanEmail = String(studentEmail).trim().toLowerCase()
+  const list = Array.isArray(bank.authorizedStudents)
+    ? bank.authorizedStudents.map((e) => String(e).trim().toLowerCase())
+    : []
+  return list.includes(cleanEmail)
+}

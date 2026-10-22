@@ -22,6 +22,9 @@ import {
 import ParentDashboard from './ParentDashboard'
 import AssignmentModal from './AssignmentModal'
 import SessionAnnouncementGenerator from './SessionAnnouncementGenerator'
+import QuestionBankList from '../features/questionBank/components/QuestionBankList'
+import StudentQuizList from '../features/questionBank/components/StudentQuizList'
+import QuizRunner from '../features/questionBank/components/QuizRunner'
 
 function ClassroomPortal() {
   const [auth, setAuth] = useState(() => getStoredAuth())
@@ -70,6 +73,7 @@ function ClassroomPortal() {
   const [allCourseWork, setAllCourseWork] = useState({}) // { courseId: { courseName, items: [] } }
   const [allCourseWorkLoading, setAllCourseWorkLoading] = useState(false)
   const [allCourseWorkError, setAllCourseWorkError] = useState('')
+  const [previewBankId, setPreviewBankId] = useState(null)
 
   // Pre-OAuth 4-Digit Parent PIN Verification Modal states
   const [showPinModal, setShowPinModal] = useState(false)
@@ -738,6 +742,13 @@ function ClassroomPortal() {
                   <span>📢 Session Updates</span>
                 </button>
               )}
+              <button
+                className={`dashboard-tab highlight-questionbank${activeTab === 'questionBanks' ? ' active' : ''}`}
+                onClick={() => setActiveTab('questionBanks')}
+              >
+                <ion-icon name="help-circle-outline"></ion-icon>
+                <span>{isTeacher && role === 'teacher' ? '📚 Question Banks' : '📝 Practice Quizzes'}</span>
+              </button>
             </div>
           )}
 
@@ -1580,7 +1591,35 @@ function ClassroomPortal() {
               />
             </div>
           )}
+
+          {/* ======================================================= */}
+          {/* TAB 6: 📚 QUESTION BANKS / PRACTICE QUIZZES             */}
+          {/* ======================================================= */}
+          {activeTab === 'questionBanks' && (
+            <div className="tab-pane">
+              {isTeacher && role === 'teacher' ? (
+                <QuestionBankList onLaunchQuiz={(bankId) => setPreviewBankId(bankId)} />
+              ) : (
+                <StudentQuizList
+                  auth={auth}
+                  onLaunchQuiz={(bankId) => setPreviewBankId(bankId)}
+                  onSignIn={() => handleConnectLive('student')}
+                />
+              )}
+            </div>
+          )}
         </section>
+      )}
+
+      {/* Question Bank Quiz Modal / Runner */}
+      {previewBankId && (
+        <div className="qb-quiz-overlay-modal">
+          <QuizRunner
+            bankId={previewBankId}
+            isPreview={isTeacher && role === 'teacher'}
+            onClosePreview={() => setPreviewBankId(null)}
+          />
+        </div>
       )}
 
       {/* Assignment Detail Modal */}
