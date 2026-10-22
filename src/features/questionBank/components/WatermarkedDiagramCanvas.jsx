@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { revokeEphemeralBlob } from '../services/ephemeralImageService'
 
-function WatermarkedDiagramCanvas({ src, watermarkText = '', alt = 'Question Diagram' }) {
+function WatermarkedDiagramCanvas({ src, watermarkText = '', alt = 'Question Diagram', maxWidth = 800 }) {
   const canvasRef = useRef(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -29,7 +29,7 @@ function WatermarkedDiagramCanvas({ src, watermarkText = '', alt = 'Question Dia
 
       // Support high-DPI displays
       const dpr = window.devicePixelRatio || 1
-      const displayWidth = Math.min(img.width, 700)
+      const displayWidth = Math.min(img.width, maxWidth)
       const displayHeight = (img.height / img.width) * displayWidth
 
       canvas.width = displayWidth * dpr
@@ -42,12 +42,12 @@ function WatermarkedDiagramCanvas({ src, watermarkText = '', alt = 'Question Dia
       // Draw diagram
       ctx.drawImage(img, 0, 0, displayWidth, displayHeight)
 
-      // Apply dynamic anti-piracy forensic watermark
+      // Apply dynamic anti-piracy forensic watermark (subtle slate visible on light & dark)
       if (watermarkText) {
         ctx.save()
         ctx.rotate((-25 * Math.PI) / 180)
         ctx.font = '600 12px Inter, sans-serif'
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)'
+        ctx.fillStyle = 'rgba(71, 85, 105, 0.22)'
         ctx.textAlign = 'center'
 
         const text = watermarkText
@@ -82,7 +82,7 @@ function WatermarkedDiagramCanvas({ src, watermarkText = '', alt = 'Question Dia
         revokeEphemeralBlob(src)
       }
     }
-  }, [src, watermarkText])
+  }, [src, watermarkText, maxWidth])
 
   if (!src) return null
 

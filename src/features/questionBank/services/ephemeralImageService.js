@@ -8,6 +8,24 @@
 const activeBlobs = new Set()
 
 /**
+ * Resolve an asset relative path to account for base URL (e.g. GitHub Pages or root)
+ */
+export function resolveAssetUrl(path) {
+  if (!path) return ''
+  if (
+    path.startsWith('data:') ||
+    path.startsWith('blob:') ||
+    path.startsWith('http://') ||
+    path.startsWith('https://')
+  ) {
+    return path
+  }
+  const clean = path.startsWith('/') ? path.slice(1) : path
+  const base = import.meta.env.BASE_URL || '/'
+  return `${base.endsWith('/') ? base : base + '/'}${clean}`
+}
+
+/**
  * Convert a base64 or data URL into an in-memory ephemeral Blob URL
  */
 export function createEphemeralBlob(input) {
@@ -65,6 +83,7 @@ export function revokeEphemeralBlob(url) {
  * Immediately destroys all image URLs created for the quiz session
  */
 export function purgeAllEphemeralImages() {
+  const count = activeBlobs.size
   activeBlobs.forEach((url) => {
     try {
       URL.revokeObjectURL(url)
@@ -73,4 +92,14 @@ export function purgeAllEphemeralImages() {
     }
   })
   activeBlobs.clear()
+  if (count > 0) {
+    console.info(`[EphemeralProtection] Successfully purged ${count} proprietary question diagram(s) from memory.`)
+  }
+}
+
+/**
+ * Get count of active ephemeral blobs in memory
+ */
+export function getActiveEphemeralCount() {
+  return activeBlobs.size
 }

@@ -16,6 +16,7 @@ import {
 import { prepareQuizQuestions } from '../utils/quizUtils'
 import {
   createEphemeralBlob,
+  resolveAssetUrl,
   purgeAllEphemeralImages,
 } from '../services/ephemeralImageService'
 import WatermarkedDiagramCanvas from './WatermarkedDiagramCanvas'
@@ -153,6 +154,11 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
       // EPHEMERAL PURGE: Revoke all image blobs from memory immediately
       purgeAllEphemeralImages()
+
+      // Zero out image data payloads from memory state
+      setPreparedQuestions((prev) =>
+        prev.map((q) => ({ ...q, image: null, imageUrl: null, explanationImage: null }))
+      )
 
       setStage('completed')
     },
@@ -507,27 +513,38 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               <span className="qb-progress-percent">{progressPercent}% Completed</span>
             </div>
 
-            {/* Question Prompt */}
-            <h2 className="qb-active-question-prompt">{currentQ.question}</h2>
+            {/* Question Topic & Category Pill */}
+            {currentQ.topic && (
+              <div className="qb-question-topic-pill">
+                <ion-icon name="bookmarks-outline"></ion-icon>
+                <span>{currentQ.topic}</span>
+              </div>
+            )}
 
-            {/* Ephemeral Question Diagram (if question has image) */}
+            {/* Ephemeral Question Diagram / Stitched Slide Screenshot */}
             {(currentQ.image || currentQ.imageUrl) && (
-              <div className="qb-diagram-section">
+              <div className="qb-diagram-section slide-deck-diagram">
                 <WatermarkedDiagramCanvas
-                  src={createEphemeralBlob(currentQ.image || currentQ.imageUrl)}
+                  src={createEphemeralBlob(resolveAssetUrl(currentQ.image || currentQ.imageUrl))}
                   watermarkText={watermarkLabel}
-                  alt={`Figure for Question ${currentIndex + 1}`}
+                  alt={`Question ${currentIndex + 1} Diagram`}
+                  maxWidth={820}
                 />
               </div>
             )}
 
-            {/* Multiple Choice Options List */}
-            <div className="qb-quiz-options-group">
+            {/* If NOT a slide deck, display text prompt */}
+            {!bank.isSlideDeck && (
+              <h2 className="qb-active-question-prompt">{currentQ.question}</h2>
+            )}
+
+            {/* Multiple Choice Options Selector */}
+            <div className={bank.isSlideDeck ? 'qb-slide-choice-grid' : 'qb-quiz-options-group'}>
               {currentQ.options.map((opt) => {
                 const isSelected = selectedOptionId === opt.id
                 const isCorrectOption = opt.id.toUpperCase() === currentQ.correctOption.toUpperCase()
 
-                let optClass = 'qb-quiz-option-button'
+                let optClass = bank.isSlideDeck ? 'qb-slide-choice-btn' : 'qb-quiz-option-button'
                 if (isSelected) optClass += ' selected'
                 if (isAnswerSubmitted) {
                   optClass += ' locked'
@@ -582,7 +599,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                       <strong>✓ Correct!</strong>
                     </div>
                     <p>
-                      Your answer: <strong>{selectedOptionId}. {currentQ.options.find((o) => o.id === selectedOptionId)?.text}</strong>
+                      Your answer: <strong>Choice {selectedOptionId}</strong>
                     </p>
                   </div>
                 ) : (
@@ -592,22 +609,37 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                       <strong>✗ Incorrect</strong>
                     </div>
                     <p>
-                      Your answer: <strong>{selectedOptionId}. {currentQ.options.find((o) => o.id === selectedOptionId)?.text}</strong>
+                      Your answer: <strong>Choice {selectedOptionId}</strong>
                     </p>
                     <p className="qb-correct-highlight">
-                      Correct answer: <strong>{currentQ.correctOption}. {currentQ.options.find((o) => o.id === currentQ.correctOption)?.text}</strong>
+                      Correct answer: <strong>Choice {currentQ.correctOption}</strong>
                     </p>
                   </div>
                 )}
 
-                {/* Detailed Educational Reason */}
-                {bank.settings?.showExplanation !== false && currentQ.explanation && (
+                {/* Detailed Educational Reason & Visual Solution */}
+                {bank.settings?.showExplanation !== false && (
                   <div className="qb-quiz-explanation-box">
                     <div className="qb-exp-label">
                       <ion-icon name="bulb-outline"></ion-icon>
-                      <span>Reason &amp; Explanation:</span>
+                      <span>Reason &amp; Solution Rationale:</span>
                     </div>
-                    <p className="qb-exp-content">{currentQ.explanation}</p>
+
+                    {/* Stitched Explanation & Distractor Slide */}
+                    {currentQ.explanationImage && (
+                      <div className="qb-explanation-diagram-wrapper" style={{ margin: '14px 0' }}>
+                        <WatermarkedDiagramCanvas
+                          src={createEphemeralBlob(resolveAssetUrl(currentQ.explanationImage))}
+                          watermarkText={watermarkLabel}
+                          alt={`Explanation for Question ${currentIndex + 1}`}
+                          maxWidth={820}
+                        />
+                      </div>
+                    )}
+
+                    {currentQ.explanation && (
+                      <p className="qb-exp-content" style={{ whiteSpace: 'pre-line' }}>{currentQ.explanation}</p>
+                    )}
                   </div>
                 )}
 

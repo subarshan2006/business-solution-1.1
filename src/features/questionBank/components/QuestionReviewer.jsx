@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { saveQuestionBank } from '../services/questionBankStorage'
 import { validateQuestions } from '../services/questionValidator'
+import { resolveAssetUrl } from '../services/ephemeralImageService'
 
 function QuestionReviewer({ bank, onClose, onSaved }) {
   const [questions, setQuestions] = useState(
@@ -351,7 +352,7 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
                   {(currentQ.image || currentQ.imageUrl) && (
                     <div className="qb-review-diagram-box">
                       <img
-                        src={currentQ.image || currentQ.imageUrl}
+                        src={resolveAssetUrl(currentQ.image || currentQ.imageUrl)}
                         alt="Question Figure"
                         className="qb-review-diagram-img"
                       />
@@ -384,6 +385,17 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
                       <ion-icon name="bulb-outline"></ion-icon>
                       <span>Explanation:</span>
                     </div>
+
+                    {currentQ.explanationImage && (
+                      <div className="qb-review-diagram-box" style={{ margin: '10px 0' }}>
+                        <img
+                          src={resolveAssetUrl(currentQ.explanationImage)}
+                          alt="Explanation Solution Figure"
+                          className="qb-review-diagram-img"
+                        />
+                      </div>
+                    )}
+
                     <p className="qb-exp-text">
                       {currentQ.explanation || (
                         <em style={{ color: 'var(--text-color-muted)' }}>No explanation provided.</em>

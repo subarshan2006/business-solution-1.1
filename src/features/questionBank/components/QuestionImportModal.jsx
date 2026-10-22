@@ -102,6 +102,24 @@ function QuestionImportModal({ bank, onClose, onImported }) {
         const questions = parseQuestionsFromCsv(text)
         const validated = validateQuestions(questions)
         setValidationResult(validated)
+      } else if (file.name.endsWith('.json')) {
+        try {
+          const parsedJson = JSON.parse(text)
+          let questions = []
+          if (Array.isArray(parsedJson)) {
+            questions = parsedJson
+          } else if (Array.isArray(parsedJson.questions)) {
+            questions = parsedJson.questions
+          } else {
+            throw new Error('JSON file must contain an array of questions or a "questions" property.')
+          }
+
+          const validated = validateQuestions(questions)
+          setValidationResult(validated)
+          setProgressMsg(`Successfully loaded ${questions.length} questions from ${file.name}.`)
+        } catch (jsonErr) {
+          throw new Error(`Invalid JSON format: ${jsonErr.message}`)
+        }
       } else {
         setRawText(text)
         handleParse(text)
@@ -111,7 +129,6 @@ function QuestionImportModal({ bank, onClose, onImported }) {
       setError(err.message || 'Failed to parse file.')
     } finally {
       setLoading(false)
-      setProgressMsg('')
     }
   }
 
@@ -157,8 +174,11 @@ function QuestionImportModal({ bank, onClose, onImported }) {
     const existingQuestions = Array.isArray(bank.questions) ? bank.questions : []
     const combined = appendMode ? [...existingQuestions, ...newQuestions] : newQuestions
 
+    const hasScreenshots = combined.some((q) => q.image || q.imageUrl)
+
     const updated = saveQuestionBank({
       ...bank,
+      isSlideDeck: bank.isSlideDeck || hasScreenshots,
       questions: combined,
     })
 

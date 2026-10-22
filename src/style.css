@@ -12281,3 +12281,107 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
   border-radius: 8px;
   object-fit: contain;
 }
+
+/* Slide Question & Choice Grid Styles */
+.qb-question-topic-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 92, 92, 0.08);
+  border: 1px solid rgba(255, 92, 92, 0.2);
+  color: #ff7676;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+
+.qb-diagram-section.slide-deck-diagram {
+  margin: 14px 0 24px 0;
+}
+
+.qb-slide-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin: 20px 0 26px 0;
+}
+
+@media (max-width: 640px) {
+  .qb-slide-choice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.qb-slide-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-surface, #1e1e24);
+  border: 2px solid var(--line, #383842);
+  border-radius: 12px;
+  padding: 16px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1, #FFFFFF);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  position: relative;
+  width: 100%;
+}
+
+.qb-slide-choice-btn:hover:not(:disabled) {
+  border-color: rgba(255, 92, 92, 0.5);
+  background: rgba(255, 92, 92, 0.05);
+  transform: translateY(-1px);
+}
+
+.qb-slide-choice-btn.selected {
+  border-color: #ff5c5c;
+  background: rgba(255, 92, 92, 0.12);
+  box-shadow: 0 0 16px rgba(255, 92, 92, 0.2);
+}
+
+.qb-slide-choice-btn.selected .qb-opt-letter-circle {
+  background: #ff5c5c;
+  color: #ffffff;
+  border-color: #ff5c5c;
+}
+
+.qb-slide-choice-btn.locked {
+  cursor: default;
+}
+
+.qb-slide-choice-btn.option-revealed-correct {
+  border-color: #10B981 !important;
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #10B981 !important;
+}
+
+.qb-slide-choice-btn.option-revealed-correct .qb-opt-letter-circle {
+  background: #10B981 !important;
+  color: #ffffff !important;
+  border-color: #10B981 !important;
+}
+
+.qb-slide-choice-btn.option-revealed-wrong {
+  border-color: #EF4444 !important;
+  background: rgba(239, 68, 68, 0.14) !important;
+  color: #EF4444 !important;
+}
+
+.qb-slide-choice-btn.option-revealed-wrong .qb-opt-letter-circle {
+  background: #EF4444 !important;
+  color: #ffffff !important;
+  border-color: #EF4444 !important;
+}
+
+.qb-explanation-diagram-wrapper {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line, #383842);
+  border-radius: 12px;
+  padding: 10px;
+  overflow: hidden;
+}

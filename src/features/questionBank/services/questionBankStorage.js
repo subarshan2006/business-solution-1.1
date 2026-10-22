@@ -4,10 +4,13 @@
  * Direct email-based access control with zero dependency on sensitive Google Classroom scopes.
  */
 
+import unit1QuizData from '../../../data/unit1_chemistry_of_life_quiz.json'
+
 const STORAGE_KEY = 'nxtstep_question_banks'
 
 // Initial seed question bank for immediate demonstration & testing
 export const INITIAL_QUESTION_BANKS = [
+  unit1QuizData,
   {
     id: 'qb_ap_bio_cells',
     title: 'AP Biology — Cellular Energetics & Organelles',
@@ -108,7 +111,22 @@ export function getQuestionBanks() {
       return INITIAL_QUESTION_BANKS
     }
     const banks = JSON.parse(raw)
-    return Array.isArray(banks) ? banks : INITIAL_QUESTION_BANKS
+    if (!Array.isArray(banks)) {
+      return INITIAL_QUESTION_BANKS
+    }
+
+    // Ensure preloaded Unit 1 bank exists in list with latest in-memory data
+    const unit1Idx = banks.findIndex((b) => b.id === unit1QuizData.id)
+    if (unit1Idx === -1) {
+      banks.unshift(unit1QuizData)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(banks))
+    } else if (banks[unit1Idx]?.questions?.[0]?.image?.includes('assets/quiz-images/')) {
+      // Upgrade legacy static image bank to dynamic in-memory data
+      banks[unit1Idx] = unit1QuizData
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(banks))
+    }
+
+    return banks
   } catch (err) {
     console.error('Failed to load question banks from localStorage:', err)
     return INITIAL_QUESTION_BANKS
