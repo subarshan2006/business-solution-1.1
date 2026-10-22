@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   getStoredAuth,
@@ -14,6 +14,11 @@ import {
   recordCompletedAttempt,
 } from '../services/quizAttemptService'
 import { prepareQuizQuestions } from '../utils/quizUtils'
+import {
+  createEphemeralBlob,
+  purgeAllEphemeralImages,
+} from '../services/ephemeralImageService'
+import WatermarkedDiagramCanvas from './WatermarkedDiagramCanvas'
 
 function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
   const params = useParams()
@@ -25,7 +30,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState('')
 
-  // Quiz progression states
+  // Quiz progression stages:
   // 'checking_auth' | 'access_denied' | 'already_completed' | 'start_screen' | 'in_progress' | 'completed'
   const [stage, setStage] = useState('checking_auth')
 
@@ -33,18 +38,31 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedOptionId, setSelectedOptionId] = useState('')
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false)
-  const [studentAnswers, setStudentAnswers] = useState([]) // array of { qId, selectedOption, correctOption, isCorrect }
+  const [studentAnswers, setStudentAnswers] = useState([]) // array of { questionId, selectedOption, correctOption, isCorrect }
   const [finalScore, setFinalScore] = useState(0)
   const [completedAttemptData, setCompletedAttemptData] = useState(null)
 
-  // 1. Load Bank metadata ONLY (do not load questions yet)
+  // Timer states
+  const [secondsRemaining, setSecondsRemaining] = useState(null)
+  const [timedOutNotice, setTimedOutNotice] = useState(false)
+  const timerIntervalRef = useRef(null)
+
+  // 1. Cleanup ephemeral image blobs when unmounting or leaving quiz
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+      purgeAllEphemeralImages()
+    }
+  }, [])
+
+  // 2. Load Bank metadata ONLY
   useEffect(() => {
     if (!activeBankId) return
     const b = getQuestionBankById(activeBankId)
     setBank(b)
   }, [activeBankId])
 
-  // 2. Perform Authorization Gate check
+  // 3. Perform Authorization Gate check
   useEffect(() => {
     if (!bank) return
 
@@ -81,7 +99,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
       }
     }
 
-    // AUTHORIZED: Now load questions into memory
+    // AUTHORIZED: Load questions into memory
     const qs = prepareQuizQuestions(bank.questions, bank.settings)
     setPreparedQuestions(qs)
     setStage('start_screen')
@@ -110,12 +128,76 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     setStage('checking_auth')
   }
 
+  // Finish and Record Attempt (Auto-purges images immediately)
+  const handleFinishQuiz = useCallback(
+    (isTimeout = false) => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+
+      // Calculate score
+      const correctCount = studentAnswers.filter((a) => a.isCorrect).length
+      setFinalScore(correctCount)
+
+      if (isTimeout) {
+        setTimedOutNotice(true)
+      }
+
+      if (!isPreview && auth?.user?.email && bank) {
+        const saved = recordCompletedAttempt(bank.id, auth.user.email, {
+          score: correctCount,
+          totalQuestions: preparedQuestions.length,
+          answers: studentAnswers,
+          studentName: auth.user.name || auth.user.email,
+        })
+        setCompletedAttemptData(saved)
+      }
+
+      // EPHEMERAL PURGE: Revoke all image blobs from memory immediately
+      purgeAllEphemeralImages()
+
+      setStage('completed')
+    },
+    [studentAnswers, isPreview, auth, bank, preparedQuestions.length]
+  )
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (stage !== 'in_progress') {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+      return
+    }
+
+    const timeLimitMins = bank?.settings?.timeLimitMinutes
+    if (!timeLimitMins || Number(timeLimitMins) <= 0) {
+      return // Untimed quiz
+    }
+
+    const totalSeconds = Number(timeLimitMins) * 60
+    setSecondsRemaining(totalSeconds)
+
+    timerIntervalRef.current = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev === null) return totalSeconds
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current)
+          handleFinishQuiz(true)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+    }
+  }, [stage, bank, handleFinishQuiz])
+
   // Start Quiz
   const handleStartQuiz = () => {
     setCurrentIndex(0)
     setSelectedOptionId('')
     setIsAnswerSubmitted(false)
     setStudentAnswers([])
+    setTimedOutNotice(false)
     setStage('in_progress')
   }
 
@@ -150,27 +232,8 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
       setSelectedOptionId('')
       setIsAnswerSubmitted(false)
     } else {
-      // Quiz finished
-      handleFinishQuiz()
+      handleFinishQuiz(false)
     }
-  }
-
-  // Finish and Record Attempt
-  const handleFinishQuiz = () => {
-    const correctCount = studentAnswers.filter((a) => a.isCorrect).length
-    setFinalScore(correctCount)
-
-    if (!isPreview && auth?.user?.email) {
-      const saved = recordCompletedAttempt(bank.id, auth.user.email, {
-        score: correctCount,
-        totalQuestions: preparedQuestions.length,
-        answers: studentAnswers,
-        studentName: auth.user.name || auth.user.email,
-      })
-      setCompletedAttemptData(saved)
-    }
-
-    setStage('completed')
   }
 
   if (!bank) {
@@ -196,6 +259,21 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     ? Math.round(((currentIndex + (isAnswerSubmitted ? 1 : 0)) / preparedQuestions.length) * 100)
     : 0
 
+  // Format timer MM:SS
+  const formatTimer = (secs) => {
+    if (secs === null || secs === undefined) return ''
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+  }
+
+  const isTimerWarning = secondsRemaining !== null && secondsRemaining <= 300 // 5 mins
+  const isTimerCritical = secondsRemaining !== null && secondsRemaining <= 60 // 1 min
+
+  // Watermark text for diagram
+  const studentEmail = auth?.user?.email || 'NxtStep Student'
+  const watermarkLabel = `${studentEmail} • ${bank.title}`
+
   return (
     <div className="qb-quiz-fullscreen-wrapper">
       {/* Quiz Top Navigation Bar */}
@@ -204,13 +282,28 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
           <button
             type="button"
             className="qb-quiz-back-btn"
-            onClick={isPreview && onClosePreview ? onClosePreview : () => navigate('/classroom')}
+            onClick={() => {
+              purgeAllEphemeralImages()
+              if (isPreview && onClosePreview) {
+                onClosePreview()
+              } else {
+                navigate('/classroom')
+              }
+            }}
           >
             <ion-icon name="arrow-back-outline"></ion-icon>
             <span>{isPreview ? 'Close Preview' : 'Back to Portal'}</span>
           </button>
           <span className="qb-quiz-subject-tag">{bank.subject || 'AP Biology'}</span>
         </div>
+
+        {/* Center: Live Countdown Timer */}
+        {stage === 'in_progress' && secondsRemaining !== null && (
+          <div className={`qb-countdown-pill ${isTimerCritical ? 'critical' : isTimerWarning ? 'warning' : ''}`}>
+            <ion-icon name="timer-outline"></ion-icon>
+            <span className="font-mono">{formatTimer(secondsRemaining)}</span>
+          </div>
+        )}
 
         <div className="qb-quiz-nav-right">
           {isPreview ? (
@@ -347,9 +440,20 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 <ion-icon name="help-circle-outline"></ion-icon>
                 <div>
                   <strong>{preparedQuestions.length} Questions</strong>
-                  <span>Multiple choice questions with comprehensive explanations.</span>
+                  <span>Interactive multiple choice questions with comprehensive explanations.</span>
                 </div>
               </div>
+
+              {bank.settings?.timeLimitMinutes && (
+                <div className="qb-rule-item">
+                  <ion-icon name="timer-outline"></ion-icon>
+                  <div>
+                    <strong>Time Limit: {bank.settings.timeLimitMinutes} Minutes</strong>
+                    <span>A countdown timer will run during the quiz. The exam auto-submits when time expires.</span>
+                  </div>
+                </div>
+              )}
+
               <div className="qb-rule-item">
                 <ion-icon name="shield-checkmark-outline"></ion-icon>
                 <div>
@@ -357,6 +461,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   <span>Your student authorization is confirmed.</span>
                 </div>
               </div>
+
               {bank.settings?.oneAttempt && (
                 <div className="qb-rule-item highlight-warn">
                   <ion-icon name="alert-circle-outline"></ion-icon>
@@ -375,7 +480,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 onClick={handleStartQuiz}
                 disabled={preparedQuestions.length === 0}
               >
-                <span>Start Quiz Now</span>
+                <span>Start Timed Quiz</span>
                 <ion-icon name="arrow-forward-outline"></ion-icon>
               </button>
             </div>
@@ -402,8 +507,19 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               <span className="qb-progress-percent">{progressPercent}% Completed</span>
             </div>
 
-            {/* Question Text */}
+            {/* Question Prompt */}
             <h2 className="qb-active-question-prompt">{currentQ.question}</h2>
+
+            {/* Ephemeral Question Diagram (if question has image) */}
+            {(currentQ.image || currentQ.imageUrl) && (
+              <div className="qb-diagram-section">
+                <WatermarkedDiagramCanvas
+                  src={createEphemeralBlob(currentQ.image || currentQ.imageUrl)}
+                  watermarkText={watermarkLabel}
+                  alt={`Figure for Question ${currentIndex + 1}`}
+                />
+              </div>
+            )}
 
             {/* Multiple Choice Options List */}
             <div className="qb-quiz-options-group">
@@ -457,7 +573,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 </button>
               </div>
             ) : (
-              /* Instant Feedback Banner & Explanation */
+              /* Instant Feedback Banner & Educational Reason */
               <div className="qb-feedback-reveal-panel">
                 {selectedOptionId.toUpperCase() === currentQ.correctOption.toUpperCase() ? (
                   <div className="qb-feedback-banner correct">
@@ -466,7 +582,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                       <strong>✓ Correct!</strong>
                     </div>
                     <p>
-                      Your answer: <strong>{selectedOptionId}. {currentQ.options.find(o => o.id === selectedOptionId)?.text}</strong>
+                      Your answer: <strong>{selectedOptionId}. {currentQ.options.find((o) => o.id === selectedOptionId)?.text}</strong>
                     </p>
                   </div>
                 ) : (
@@ -476,20 +592,20 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                       <strong>✗ Incorrect</strong>
                     </div>
                     <p>
-                      Your answer: <strong>{selectedOptionId}. {currentQ.options.find(o => o.id === selectedOptionId)?.text}</strong>
+                      Your answer: <strong>{selectedOptionId}. {currentQ.options.find((o) => o.id === selectedOptionId)?.text}</strong>
                     </p>
                     <p className="qb-correct-highlight">
-                      Correct answer: <strong>{currentQ.correctOption}. {currentQ.options.find(o => o.id === currentQ.correctOption)?.text}</strong>
+                      Correct answer: <strong>{currentQ.correctOption}. {currentQ.options.find((o) => o.id === currentQ.correctOption)?.text}</strong>
                     </p>
                   </div>
                 )}
 
-                {/* Explanation */}
+                {/* Detailed Educational Reason */}
                 {bank.settings?.showExplanation !== false && currentQ.explanation && (
                   <div className="qb-quiz-explanation-box">
                     <div className="qb-exp-label">
                       <ion-icon name="bulb-outline"></ion-icon>
-                      <span>Explanation:</span>
+                      <span>Reason &amp; Explanation:</span>
                     </div>
                     <p className="qb-exp-content">{currentQ.explanation}</p>
                   </div>
@@ -512,7 +628,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         )}
 
         {/* ========================================================= */}
-        {/* VIEW 6: FINAL SCORECARD RESULT                           */}
+        {/* VIEW 6: FINAL SCORECARD RESULT (DIAGRAMS PURGED)          */}
         {/* ========================================================= */}
         {stage === 'completed' && (
           <div className="qb-quiz-card text-center">
@@ -520,7 +636,15 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               <ion-icon name="ribbon-outline"></ion-icon>
             </div>
             <h2 className="qb-hero-title">Quiz Completed!</h2>
-            <p className="qb-hero-desc">Great job on finishing <em>&ldquo;{bank.title}&rdquo;</em>.</p>
+
+            {timedOutNotice ? (
+              <div className="qb-alert-toast" style={{ justifyContent: 'center', marginBottom: '16px' }}>
+                <ion-icon name="time-outline"></ion-icon>
+                <span>Time expired! Your completed answers have been auto-submitted.</span>
+              </div>
+            ) : (
+              <p className="qb-hero-desc">Great job on finishing <em>&ldquo;{bank.title}&rdquo;</em>.</p>
+            )}
 
             <div className="qb-scorecard-box">
               <div className="qb-result-score-big">
@@ -552,6 +676,12 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               </p>
             </div>
 
+            {/* Ephemeral Notice */}
+            <div className="qb-ephemeral-purged-banner">
+              <ion-icon name="shield-checkmark-outline"></ion-icon>
+              <span>Security notice: Question diagrams were loaded ephemerally and have been permanently purged from browser memory.</span>
+            </div>
+
             {bank.settings?.oneAttempt && !isPreview && (
               <div className="qb-info-banner" style={{ marginBottom: '24px' }}>
                 <ion-icon name="lock-closed-outline"></ion-icon>
@@ -562,7 +692,14 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             <button
               type="button"
               className="btn btn-primary qb-hero-btn"
-              onClick={isPreview && onClosePreview ? onClosePreview : () => navigate('/classroom')}
+              onClick={() => {
+                purgeAllEphemeralImages()
+                if (isPreview && onClosePreview) {
+                  onClosePreview()
+                } else {
+                  navigate('/classroom')
+                }
+              }}
             >
               Back to Dashboard
             </button>

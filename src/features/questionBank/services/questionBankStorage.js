@@ -26,19 +26,21 @@ export const INITIAL_QUESTION_BANKS = [
       oneAttempt: true,
       showExplanation: true,
       questionsPerAttempt: null, // all questions
+      timeLimitMinutes: 20,
     },
     questions: [
       {
         id: 'Q001',
-        question: 'Which of the following processes occurs in the mitochondrial matrix and generates NADH and FADH2 for the electron transport chain?',
+        question: 'Refer to the cellular organelle schematic below. Which labeled region represents the mitochondrial matrix where the Krebs (Citric Acid) Cycle enzymes reside?',
+        image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 220" width="100%" height="220"><rect width="540" height="220" fill="%231a1a24" rx="16"/><ellipse cx="270" cy="110" rx="220" ry="85" fill="none" stroke="%23ff5c5c" stroke-width="4"/><path d="M 80,110 C 100,50 140,50 160,110 C 180,170 220,170 240,110 C 260,50 300,50 320,110 C 340,170 380,170 400,110 C 420,50 460,50 480,110" fill="none" stroke="%2360a5fa" stroke-width="3" stroke-dasharray="6,4"/><text x="270" y="32" fill="%23ffffff" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle">Figure 1: Mitochondrial Structural Architecture</text><circle cx="120" cy="110" r="14" fill="%23ef4444"/><text x="120" y="115" fill="%23ffffff" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">A</text><circle cx="270" cy="110" r="14" fill="%2310b981"/><text x="270" y="115" fill="%23ffffff" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">B</text><circle cx="420" cy="110" r="14" fill="%23f59e0b"/><text x="420" y="115" fill="%23ffffff" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">C</text><text x="270" y="200" fill="%23a1a1aa" font-family="sans-serif" font-size="11" text-anchor="middle">Label B indicates the internal lumen (Matrix); Label A points to Cristae.</text></svg>',
         options: [
-          { id: 'A', text: 'Glycolysis' },
-          { id: 'B', text: 'The Krebs (Citric Acid) Cycle' },
-          { id: 'C', text: 'Lactic acid fermentation' },
-          { id: 'D', text: 'Photophosphorylation' },
+          { id: 'A', text: 'Region A (Outer mitochondrial membrane)' },
+          { id: 'B', text: 'Region B (Mitochondrial Matrix lumen)' },
+          { id: 'C', text: 'Region C (Inner membrane folding/Cristae)' },
+          { id: 'D', text: 'Region D (Intermembrane space)' },
         ],
         correctOption: 'B',
-        explanation: 'The Krebs Cycle (Citric Acid Cycle) takes place within the mitochondrial matrix. Acetyl-CoA is oxidized, producing CO2, ATP, and the electron carriers NADH and FADH2, which feed directly into the inner mitochondrial electron transport chain.',
+        explanation: 'Region B marks the mitochondrial matrix lumen. Acetyl-CoA is oxidized within this aqueous internal compartment, generating CO2, ATP, and the electron carriers NADH and FADH2.',
       },
       {
         id: 'Q002',

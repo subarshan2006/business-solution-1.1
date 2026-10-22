@@ -27,6 +27,9 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
   const [questionsPerAttempt, setQuestionsPerAttempt] = useState(
     bank?.settings?.questionsPerAttempt || ''
   )
+  const [timeLimitMinutes, setTimeLimitMinutes] = useState(
+    bank?.settings?.timeLimitMinutes || '20'
+  )
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -45,12 +48,14 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
     }
 
     const qCount = questionsPerAttempt ? parseInt(questionsPerAttempt, 10) : null
+    const tLimit = timeLimitMinutes ? parseInt(timeLimitMinutes, 10) : null
     const settings = {
       randomizeQuestions,
       randomizeOptions,
       oneAttempt,
       showExplanation,
       questionsPerAttempt: qCount && qCount > 0 ? qCount : null,
+      timeLimitMinutes: tLimit && tLimit > 0 ? tLimit : null,
     }
 
     let saved
@@ -105,22 +110,22 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
             />
           </div>
 
-          <div className="qb-form-row">
-            <div className="qb-form-group">
-              <label className="qb-form-label">Subject / Course</label>
-              <select
-                className="qb-form-select"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-              >
-                <option value="AP Biology">AP Biology</option>
-                <option value="AP Environmental Science">AP Environmental Science</option>
-                <option value="AP Psychology">AP Psychology</option>
-                <option value="USABO Enrichment">USABO Enrichment</option>
-                <option value="General Science">General Science</option>
-              </select>
-            </div>
+          <div className="qb-form-group">
+            <label className="qb-form-label">Subject / Course</label>
+            <select
+              className="qb-form-select"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            >
+              <option value="AP Biology">AP Biology</option>
+              <option value="AP Environmental Science">AP Environmental Science</option>
+              <option value="AP Psychology">AP Psychology</option>
+              <option value="USABO Enrichment">USABO Enrichment</option>
+              <option value="General Science">General Science</option>
+            </select>
+          </div>
 
+          <div className="qb-form-row">
             <div className="qb-form-group">
               <label className="qb-form-label">Questions Per Attempt</label>
               <input
@@ -130,6 +135,18 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
                 value={questionsPerAttempt}
                 onChange={(e) => setQuestionsPerAttempt(e.target.value)}
                 placeholder="Leave blank for all questions"
+              />
+            </div>
+
+            <div className="qb-form-group">
+              <label className="qb-form-label">Time Limit (Minutes)</label>
+              <input
+                type="number"
+                min="1"
+                className="qb-form-input"
+                value={timeLimitMinutes}
+                onChange={(e) => setTimeLimitMinutes(e.target.value)}
+                placeholder="e.g. 20 (leave blank for untimed)"
               />
             </div>
           </div>

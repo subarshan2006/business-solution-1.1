@@ -12064,3 +12064,220 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
     font-size: 18px;
   }
 }
+
+
+/* ==========================================================================
+   TIMED QUIZ & EPHEMERAL DIAGRAM CANVAS STYLES
+   ========================================================================== */
+
+/* Live Countdown Pill */
+.qb-countdown-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line, #383842);
+  border-radius: 20px;
+  color: var(--text-1, #FFFFFF);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: all 0.3s ease;
+}
+
+.qb-countdown-pill ion-icon {
+  font-size: 18px;
+  color: var(--mint, #FF5C5C);
+}
+
+.qb-countdown-pill.warning {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #F59E0B;
+}
+
+.qb-countdown-pill.warning ion-icon {
+  color: #F59E0B;
+}
+
+.qb-countdown-pill.critical {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #EF4444;
+  animation: timerPulse 1s infinite alternate ease-in-out;
+}
+
+.qb-countdown-pill.critical ion-icon {
+  color: #EF4444;
+}
+
+@keyframes timerPulse {
+  from {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  to {
+    transform: scale(1.04);
+    box-shadow: 0 0 12px 3px rgba(239, 68, 68, 0.3);
+  }
+}
+
+/* Ephemeral Diagram Canvas Container */
+.qb-diagram-section {
+  margin: 0 0 24px 0;
+}
+
+.qb-diagram-wrapper {
+  width: 100%;
+}
+
+.qb-diagram-container {
+  position: relative;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1.5px solid var(--line, #383842);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-in;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.qb-diagram-container:hover {
+  border-color: rgba(255, 92, 92, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.qb-diagram-canvas {
+  max-width: 100%;
+  height: auto !important;
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.qb-diagram-zoom-hint {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  background: rgba(10, 10, 12, 0.75);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  color: var(--text-2, #A1A1AA);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.qb-diagram-loading, .qb-diagram-error {
+  padding: 30px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-2, #A1A1AA);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.qb-diagram-error ion-icon {
+  font-size: 32px;
+  color: #EF4444;
+}
+
+/* Lightbox Zoom Modal */
+.qb-diagram-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 8, 0.94);
+  backdrop-filter: blur(12px);
+  z-index: 20000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  cursor: zoom-out;
+}
+
+.qb-lightbox-content {
+  max-width: 900px;
+  width: 100%;
+  background: var(--card-bg, #1e1e24);
+  border: 1px solid var(--line, #383842);
+  border-radius: 20px;
+  padding: 16px 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  cursor: default;
+}
+
+.qb-lightbox-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1, #FFFFFF);
+}
+
+.qb-lightbox-body {
+  max-height: 78vh;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.qb-lightbox-body canvas {
+  max-width: 100%;
+  height: auto !important;
+  border-radius: 10px;
+}
+
+/* Ephemeral Purged Banner */
+.qb-ephemeral-purged-banner {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-2, #A1A1AA);
+  max-width: 520px;
+  margin: 16px auto 24px auto;
+  text-align: left;
+}
+
+.qb-ephemeral-purged-banner ion-icon {
+  font-size: 22px;
+  color: #10B981;
+  flex-shrink: 0;
+}
+
+/* Reviewer Diagram Styles */
+.qb-review-diagram-box {
+  margin: 14px 0 18px 0;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line, #383842);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.qb-review-diagram-img {
+  max-width: 100%;
+  max-height: 240px;
+  border-radius: 8px;
+  object-fit: contain;
+}

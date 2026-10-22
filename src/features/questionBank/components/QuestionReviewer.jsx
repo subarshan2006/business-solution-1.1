@@ -221,6 +221,28 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
                   </div>
 
                   <div className="qb-form-group">
+                    <label className="qb-form-label">Diagram Image URL or Base64 (Optional)</label>
+                    <input
+                      type="text"
+                      className="qb-form-input"
+                      value={editedQuestion.image || ''}
+                      onChange={(e) =>
+                        setEditedQuestion({ ...editedQuestion, image: e.target.value })
+                      }
+                      placeholder="e.g. assets/quiz-images/figure1.png or data:image/png;base64,..."
+                    />
+                    {editedQuestion.image && (
+                      <div className="qb-preview-img-box" style={{ marginTop: '8px' }}>
+                        <img
+                          src={editedQuestion.image}
+                          alt="Diagram preview"
+                          style={{ maxHeight: '180px', borderRadius: '8px' }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="qb-form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <label className="qb-form-label" style={{ margin: 0 }}>Options</label>
                       <button
@@ -325,6 +347,16 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
                   </div>
 
                   <h3 className="qb-q-prompt">{currentQ.question}</h3>
+
+                  {(currentQ.image || currentQ.imageUrl) && (
+                    <div className="qb-review-diagram-box">
+                      <img
+                        src={currentQ.image || currentQ.imageUrl}
+                        alt="Question Figure"
+                        className="qb-review-diagram-img"
+                      />
+                    </div>
+                  )}
 
                   <div className="qb-view-options-list">
                     {Array.isArray(currentQ.options) &&

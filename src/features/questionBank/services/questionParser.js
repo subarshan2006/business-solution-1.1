@@ -68,6 +68,7 @@ export function normalizeQuestionObject(q, fallbackIndex = 1) {
   return {
     id,
     question,
+    image: q.image || q.imageUrl || null,
     options,
     correctOption,
     explanation,
