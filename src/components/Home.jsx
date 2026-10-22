@@ -222,22 +222,6 @@ function Home({ activePage }) {
               </button>
             </div>
           </div>
-
-          {/* Tutor Photo Badge Card (Desktop) */}
-          <div className="hero-tutor-badge-card" aria-label="Tutor profile preview">
-            <img
-              src={`${import.meta.env.BASE_URL}assets/images/my-avatar.png`}
-              alt="Steena Antony - AP Biology & USABO Tutor"
-              className="hero-tutor-avatar"
-            />
-            <h4>Steena Antony</h4>
-            <p>M.Sc. Zoology, M.Sc. Env. Sci., B.Ed.</p>
-            <span className="hero-tutor-badge-pill">11+ Yrs Teaching</span>
-            <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--amber, #F5B83D)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <ion-icon name="star"></ion-icon>
-              <span>5.0 Rating · 40+ Student Cohorts</span>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -416,31 +400,29 @@ function Home({ activePage }) {
         </header>
 
         <div className="tutor-bio-card">
-          <div className="tutor-bio-photo-col">
-            <img
-              src={`${import.meta.env.BASE_URL}assets/images/my-avatar.png`}
-              alt="Steena Antony - AP Biology Educator"
-              className="tutor-bio-photo"
-            />
-            <div style={{ marginTop: '14px', textAlign: 'center' }}>
-              <strong style={{ color: 'var(--text, #FFFFFF)', fontSize: '17px', display: 'block' }}>Steena Antony</strong>
-              <span style={{ color: 'var(--mint, #FF5C5C)', fontSize: '13px', fontWeight: 600 }}>11+ Years Teaching Life Science</span>
+          <div className="tutor-bio-header">
+            <div className="tutor-bio-identity">
+              <h3 className="tutor-bio-name">Steena Antony</h3>
+              <span className="tutor-bio-badge">
+                <ion-icon name="ribbon-outline"></ion-icon>
+                <span>11+ Years Teaching Life Science</span>
+              </span>
             </div>
-          </div>
 
-          <div>
             <div className="tutor-credentials-chips">
               <span className="tutor-credential-chip">M.Sc. Zoology</span>
               <span className="tutor-credential-chip">M.Sc. Environmental Science</span>
               <span className="tutor-credential-chip">Bachelor of Education (B.Ed.)</span>
               <span className="tutor-credential-chip">Diploma in Psychology &amp; Counseling</span>
             </div>
+          </div>
 
-            <p style={{ color: 'var(--text, #FFFFFF)', fontSize: '15px', lineHeight: 1.6, marginBottom: '14px' }}>
+          <div className="tutor-bio-body">
+            <p className="tutor-bio-lead">
               With over 11 years of experience teaching high school life science and preparing competitive test-takers across the United States, I focus on the cognitive bridge between classroom theory and AP exam performance.
             </p>
 
-            <p style={{ color: 'var(--text-2, #A1A1AA)', fontSize: '14px', lineHeight: 1.6 }}>
+            <p className="tutor-bio-secondary">
               Having earned dual Master’s degrees in Zoology and Environmental Science alongside a Bachelor of Education, my pedagogy integrates scientific rigor with compassionate, student-centered pacing. We replace the stress of passive memorization with the clarity of biological inquiry.
             </p>
 
@@ -512,143 +494,7 @@ function Home({ activePage }) {
         </div>
       </section>
 
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          SECTION 6: PRICING & EDUCATIONAL PACKAGES
-          ───────────────────────────────────────────────────────────────────────────── */}
-      <section id="pricing" className="home-section">
-        <header className="home-section-header">
-          <span className="section-eyebrow">
-            <ion-icon name="pricetags-outline"></ion-icon>
-            Straightforward Investment
-          </span>
-          <h2 className="section-title">Transparent 1-on-1 Tutoring Packages</h2>
-          <p className="section-subtitle">
-            No long-term lock-ins or upfront enrollment fees. Begin with a free 20-minute diagnostic session to assess your gaps.
-          </p>
-        </header>
 
-        <div className="pricing-card-grid">
-          
-          {/* Diagnostic Tier */}
-          <div className="pricing-tier-card">
-            <div>
-              <h3 className="pricing-tier-name">Diagnostic Consultation</h3>
-              <p className="pricing-tier-subtitle">Zero-commitment baseline assessment</p>
-              <div style={{ margin: '14px 0 20px', fontSize: '28px', fontFamily: 'var(--ff-mono)', fontWeight: 800, color: 'var(--mint, #FF5C5C)' }}>
-                Free <span style={{ fontSize: '13px', color: 'var(--text-2, #A1A1AA)', fontWeight: 500 }}>/ 20 min</span>
-              </div>
-              <ul className="pricing-feature-list">
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>1:1 Diagnostic conversation with Steena</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Syllabus pacing and gap review</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Custom roadmap recommendations</span>
-                </li>
-              </ul>
-            </div>
-            <a
-              href={ENROLL_FORM}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="course-card-btn"
-              style={{ textDecoration: 'none' }}
-            >
-              <span>Book free consultation</span>
-              <ion-icon name="calendar-outline"></ion-icon>
-            </a>
-          </div>
-
-          {/* Targeted Unit Sprint */}
-          <div className="pricing-tier-card">
-            <div>
-              <h3 className="pricing-tier-name">Targeted Unit Sprint</h3>
-              <p className="pricing-tier-subtitle">5 Sessions · High-Yield Focus</p>
-              <div style={{ margin: '14px 0 20px', fontSize: '22px', fontFamily: 'var(--ff-sora)', fontWeight: 700, color: 'var(--text, #FFFFFF)' }}>
-                5 Sessions <span style={{ fontSize: '13px', color: 'var(--text-2, #A1A1AA)', fontWeight: 500 }}>/ Custom Pace</span>
-              </div>
-              <ul className="pricing-feature-list">
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Rapid remediation of 2–3 tough units</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>E.g. Cellular Energetics &amp; Gene Expression</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Dedicated FRQ rubric writing drills</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Annotated whiteboard slides PDF</span>
-                </li>
-              </ul>
-            </div>
-            <a
-              href={ENROLL_FORM}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="course-card-btn"
-              style={{ textDecoration: 'none' }}
-            >
-              <span>Inquire about sprint</span>
-              <ion-icon name="arrow-forward-outline"></ion-icon>
-            </a>
-          </div>
-
-          {/* Full Exam Mastery (Popular) */}
-          <div className="pricing-tier-card popular">
-            <span className="pricing-popular-badge">Recommended</span>
-            <div>
-              <h3 className="pricing-tier-name">Comprehensive AP Mastery</h3>
-              <p className="pricing-tier-subtitle">15 Sessions · Complete Exam Pacing</p>
-              <div style={{ margin: '14px 0 20px', fontSize: '22px', fontFamily: 'var(--ff-sora)', fontWeight: 700, color: 'var(--mint, #FF5C5C)' }}>
-                15 Sessions <span style={{ fontSize: '13px', color: 'var(--text-2, #A1A1AA)', fontWeight: 500 }}>/ Full Course</span>
-              </div>
-              <ul className="pricing-feature-list">
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Complete coverage across Units 1 through 8</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Ongoing alignment with high school syllabus</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Full College Board past paper timed mock exams</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Google Classroom portal &amp; homework tracking</span>
-                </li>
-                <li className="pricing-feature-item">
-                  <ion-icon name="checkmark-circle"></ion-icon>
-                  <span>Periodic parent progress briefings</span>
-                </li>
-              </ul>
-            </div>
-            <a
-              href={ENROLL_FORM}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hero-cta-btn primary"
-              style={{ textDecoration: 'none', justifyContent: 'center' }}
-            >
-              <span>Enroll for Full Prep</span>
-              <ion-icon name="arrow-forward-outline"></ion-icon>
-            </a>
-          </div>
-
-        </div>
-      </section>
 
       {/* ─────────────────────────────────────────────────────────────────────────────
           SECTION 7: FREQUENTLY ASKED QUESTIONS (Accordion)
@@ -736,8 +582,6 @@ function Home({ activePage }) {
           <button type="button" onClick={() => scrollTo('how-it-works')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>How it Works</button>
           <span>&bull;</span>
           <button type="button" onClick={() => scrollTo('results')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Results</button>
-          <span>&bull;</span>
-          <button type="button" onClick={() => scrollTo('pricing')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>Pricing</button>
           <span>&bull;</span>
           <button type="button" onClick={() => scrollTo('faq')} className="footer-nav-link" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>FAQ</button>
           <span>&bull;</span>
