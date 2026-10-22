@@ -5420,6 +5420,14 @@ main { position: relative; z-index: 1; }
   font-size: var(--fs-7, 13px);
 }
 
+/* Hide sidebar when any modal popup is open */
+body.modal-open .sidebar,
+body:has(.assignment-modal-backdrop) .sidebar,
+body:has(.assignment-modal-card) .sidebar,
+body:has(.parent-pin-modal-backdrop) .sidebar {
+  display: none !important;
+}
+
 /*-----------------------------------*\
   #ASSIGNMENT DETAIL MODAL
 \*-----------------------------------*/
@@ -5427,13 +5435,18 @@ main { position: relative; z-index: 1; }
 .assignment-modal-backdrop {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: modalFadeIn 0.25s ease-out;
 }
 
@@ -5443,17 +5456,19 @@ main { position: relative; z-index: 1; }
 }
 
 .assignment-modal-card {
-  background: var(--eerie-black-1, #181819);
-  border: 1px solid var(--jet, #383838);
+  background: var(--surface, #1e1e24);
+  border: 1px solid var(--line, #383842);
   border-radius: 20px;
   width: 100%;
-  max-width: 680px;
-  max-height: 90vh;
+  max-width: 780px;
+  max-height: 86vh;
+  margin: auto;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7);
   animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  position: relative;
 }
 
 @keyframes modalSlideUp {
@@ -5462,12 +5477,15 @@ main { position: relative; z-index: 1; }
 }
 
 .assignment-modal-header {
+  flex-shrink: 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   padding: 24px 28px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--line, #383842);
+  background: var(--surface, #1e1e24);
+  z-index: 10;
 }
 
 .modal-tag-row {
@@ -5558,11 +5576,41 @@ main { position: relative; z-index: 1; }
 }
 
 .assignment-modal-body {
-  padding: 24px 28px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 24px 28px 32px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* Custom smooth scrollbars for modal */
+.assignment-modal-card::-webkit-scrollbar,
+.assignment-modal-body::-webkit-scrollbar,
+.assignment-modal-backdrop::-webkit-scrollbar {
+  width: 8px;
+}
+
+.assignment-modal-card::-webkit-scrollbar-track,
+.assignment-modal-body::-webkit-scrollbar-track,
+.assignment-modal-backdrop::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+}
+
+.assignment-modal-card::-webkit-scrollbar-thumb,
+.assignment-modal-body::-webkit-scrollbar-thumb,
+.assignment-modal-backdrop::-webkit-scrollbar-thumb {
+  background: var(--line, #383842);
+  border-radius: 999px;
+}
+
+.assignment-modal-card::-webkit-scrollbar-thumb:hover,
+.assignment-modal-body::-webkit-scrollbar-thumb:hover,
+.assignment-modal-backdrop::-webkit-scrollbar-thumb:hover {
+  background: var(--mint, #FF5C5C);
 }
 
 .modal-section-title {

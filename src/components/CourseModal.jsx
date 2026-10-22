@@ -117,9 +117,11 @@ function CourseModal({ courseId, onClose }) {
     }
     window.addEventListener('keydown', handleKeyDown)
     document.body.style.overflow = 'hidden'
+    document.body.classList.add('modal-open')
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = 'unset'
+      document.body.classList.remove('modal-open')
     }
   }, [onClose])
 
@@ -127,10 +129,21 @@ function CourseModal({ courseId, onClose }) {
 
   return (
     <div className="assignment-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="course-modal-title">
-      <div className="assignment-modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '780px', maxHeight: '88vh', overflowY: 'auto' }}>
+      <div
+        className="assignment-modal-card"
+        onClick={e => e.stopPropagation()}
+        style={{
+          maxWidth: '780px',
+          maxHeight: '86vh',
+          display: 'flex',
+          flexDirection: 'column',
+          margin: 'auto',
+          overflow: 'hidden'
+        }}
+      >
         
         {/* Modal Header */}
-        <div className="assignment-modal-header" style={{ position: 'sticky', top: 0, background: 'var(--surface, #1e1e24)', zIndex: 10 }}>
+        <div className="assignment-modal-header" style={{ flexShrink: 0, position: 'sticky', top: 0, background: 'var(--surface, #1e1e24)', zIndex: 10 }}>
           <div>
             <div className="modal-tag-row">
               <span className="modal-topic-tag" style={{ background: 'rgba(255, 92, 92, 0.15)', color: 'var(--mint, #FF5C5C)' }}>
@@ -155,7 +168,18 @@ function CourseModal({ courseId, onClose }) {
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+        <div
+          className="assignment-modal-body"
+          style={{
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflowY: 'auto',
+            padding: '24px 28px 36px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '22px'
+          }}
+        >
           
           {/* Target Audience & Overview */}
           <div style={{ background: 'rgba(255, 92, 92, 0.05)', border: '1px solid var(--line, #383842)', borderRadius: '12px', padding: '16px 20px' }}>
@@ -226,7 +250,7 @@ function CourseModal({ courseId, onClose }) {
           </div>
 
           {/* CTA Row */}
-          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--line, #383842)' }}>
+          <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', paddingTop: '16px', paddingBottom: '16px', borderTop: '1px solid var(--line, #383842)' }}>
             <a
               href="https://docs.google.com/forms/d/e/1FAIpQLSc615afQFRpiaWyfpmTKWOBSGzOYmZDcg95rZZ9u3HKvBbT8g/viewform"
               target="_blank"

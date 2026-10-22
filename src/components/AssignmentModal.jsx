@@ -6,7 +6,13 @@ function AssignmentModal({ assignment, courseName, onClose }) {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('modal-open')
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'unset'
+      document.body.classList.remove('modal-open')
+    }
   }, [onClose])
 
   if (!assignment) return null
