@@ -57,7 +57,7 @@ function Sidebar() {
             </div>
             <div className="contact-info">
               <p className="contact-title">Email</p>
-              <a href="mailto:hello@jivanauttestprep.com" className="contact-link">hello@jivanauttestprep.com</a>
+              <a href="mailto:jivanautprep@gmail.com" className="contact-link">jivanautprep@gmail.com</a>
             </div>
           </li>
 

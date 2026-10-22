@@ -174,7 +174,7 @@ All token combinations exceed WCAG AA requirements (4.5:1 body text, 3.0:1 UI co
 | **Nav Contact** | "Contact" is passive compared to other destinations | **"Book a free call"** styled as a high-contrast Mint button. |
 | **WhatsApp FAB** | "Chat with us" implies live chat agency and uses plural "us" | **"Message on WhatsApp"** or **"Ask a question"**. |
 | **Taglines** | Three conflicting variations in code/metadata | Unify to: **"Explore life science."** |
-| **Email Address** | Free `jivanautprep@gmail.com` damages credibility | **`hello@jivanauttestprep.com`** (fallback forwarding to tutor inbox). |
+| **Email Address** | Free `jivanautprep@gmail.com` damages credibility | **`jivanautprep@gmail.com`** (fallback forwarding to tutor inbox). |
 | **Phone / WhatsApp** | Visible `+91` number raises US time zone reachability questions | Lead with consultation link; state **"Sessions in US time zones."** Keep WhatsApp secondary. |
 
 ---
@@ -197,7 +197,7 @@ All token combinations exceed WCAG AA requirements (4.5:1 body text, 3.0:1 UI co
 - **Logo Presentation:** Remove the 375 px white square background tile; render the vector logo directly on the dark surface or constrained to 160 px.
 - **Contact Rows:** Compact 44 px height rows. Sequence:
   1. Primary Booking Link
-  2. Direct Email (`hello@jivanauttestprep.com`)
+  2. Direct Email (`jivanautprep@gmail.com`)
   3. WhatsApp (`+91 99958 00949` labeled "Direct WhatsApp")
 - **Labels:** Set in Sage (`#A9C2B5`), minimum 13 px.
 
@@ -315,7 +315,7 @@ flowchart TD
    - Post-session parent updates
 8. **Final Call-to-Action & Legal Footer:**
    - Full-width conversion band with consult booking link.
-   - Footer: `hello@jivanauttestprep.com`, privacy policy link, terms of service link, copyright statement.
+   - Footer: `jivanautprep@gmail.com`, privacy policy link, terms of service link, copyright statement.
 
 ### 10.3 Structured Schema Data (`index.html`)
 Add JSON-LD markup for search engine rich snippets:
@@ -447,7 +447,7 @@ gantt
   - Update credentials to: `"Taught by Steena Antony, M.Sc. Zoology, M.Sc. Environmental Science, B.Ed. 11+ years teaching life science."`
   - Update tutor title to: `"AP Biology & USABO Tutor"`.
   - Unify tagline to: `"Explore life science."`
-  - Replace all `jivanautprep@gmail.com` with `hello@jivanauttestprep.com`.
+  - Replace all `jivanautprep@gmail.com` with `jivanautprep@gmail.com`.
   - Nav: `"Student Login"` for classroom, `"Book a free call"` button.
   - WhatsApp: `"Message on WhatsApp"` / `"Ask a question"`.
 - [x] **Task 1.6:** Typewriter animation refactor:
@@ -525,4 +525,4 @@ gantt
 | **5** | Zero layout shift | Cumulative Layout Shift (`CLS = 0`) in the hero | Page 16, 23 | **Passed** |
 | **6** | Mobile performance budget | High performance GPU canvas, zero video decode overhead | Page 16, 23 | **Passed** |
 | **7** | Search crawler visibility | Headline and value proposition present in initial HTML DOM + JSON-LD | Page 16, 23 | **Passed** |
-| **8** | US trust & booking path | Custom domain email (`hello@jivanauttestprep.com`) & US time zone scheduling | Page 11, 19, 23 | **Passed** |
+| **8** | US trust & booking path | Custom domain email (`jivanautprep@gmail.com`) & US time zone scheduling | Page 11, 19, 23 | **Passed** |

@@ -48,12 +48,12 @@ function Contact({ activePage }) {
             </a>
           </li>
           <li>
-            <a href="mailto:hello@jivanauttestprep.com" className="contact-cta-card">
+            <a href="mailto:jivanautprep@gmail.com" className="contact-cta-card">
               <div className="contact-cta-icon">
                 <ion-icon name="mail-outline"></ion-icon>
               </div>
               <h4 className="h4 contact-cta-title">Email Me</h4>
-              <p className="contact-cta-text">hello@jivanauttestprep.com</p>
+              <p className="contact-cta-text">jivanautprep@gmail.com</p>
             </a>
           </li>
           <li>
