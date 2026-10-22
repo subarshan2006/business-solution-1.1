@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import Logo from './Logo'
 
 function Sidebar() {
   const [isActive, setIsActive] = useState(false)
@@ -11,7 +10,11 @@ function Sidebar() {
       <div className="sidebar-info">
 
         <figure className="avatar-box" style={{ background: 'transparent', boxShadow: 'none' }}>
-          <Logo variant="mark" size={76} />
+          <img
+            src={`${import.meta.env.BASE_URL}assets/images/logo-image.png`}
+            alt="Jivanaut Test Prep"
+            style={{ borderRadius: '24px', boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)', objectFit: 'contain' }}
+          />
         </figure>
 
         <div className="info-content">

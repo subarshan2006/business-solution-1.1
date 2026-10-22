@@ -1,5 +1,3 @@
-import Logo from './Logo'
-
 const experience = [
   {
     title: 'Independent Science Mentor — Jivanaut Test Prep',
@@ -97,7 +95,12 @@ function About({ activePage, setActivePage }) {
               flexShrink: 0,
             }}
           >
-            <Logo variant="mark" size={88} />
+            <img
+              src={`${import.meta.env.BASE_URL}assets/images/logo-image.png`}
+              alt="Jivanaut Test Prep"
+              width="180"
+              style={{ width: '180px', height: '180px', borderRadius: '24px', boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)', objectFit: 'contain' }}
+            />
           </div>
 
           <div style={{ maxWidth: '780px', margin: '0 auto' }}>

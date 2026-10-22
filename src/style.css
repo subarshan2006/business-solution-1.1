@@ -462,6 +462,15 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+
+.avatar-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .info-content .name {
@@ -1932,9 +1941,16 @@ textarea.form-input::-webkit-resizer { display: none; }
 
   .sidebar-info { gap: 25px; }
 
-  .avatar-box { border-radius: 30px; }
+  .avatar-box {
+    border-radius: 24px;
+    width: 130px;
+    height: 130px;
+  }
 
-  .avatar-box img { width: 120px; }
+  .avatar-box img {
+    width: 100%;
+    height: 100%;
+  }
 
   .info-content .name { margin-bottom: 15px; }
 
@@ -2443,9 +2459,9 @@ textarea.form-input::-webkit-resizer { display: none; }
   .sidebar-info { flex-direction: column; align-items: center; }
 
   .avatar-box {
-    width: 140px;
-    height: 140px;
-    margin-bottom: 12px;
+    width: 180px;
+    height: 180px;
+    margin-bottom: 16px;
   }
 
   .avatar-box img { 
