@@ -6,11 +6,28 @@ import {
 import {
   getStudentAttempt,
 } from '../services/quizAttemptService'
+import { studentApi } from '../../../services/nxtstepApi'
 
-function StudentQuizList({ auth, onLaunchQuiz, onSignIn }) {
+function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStudentEmail, onStartQuiz }) {
   const [assignedBanks, setAssignedBanks] = useState([])
+  const [backendTests, setBackendTests] = useState([])
 
-  const studentEmail = auth?.user?.email || ''
+  const studentEmail = propStudentEmail || auth?.user?.email || ''
+  const handleLaunch = onStartQuiz || onLaunchQuiz
+
+  useEffect(() => {
+    async function loadBackendTests() {
+      try {
+        const tests = await studentApi.getAssignedTests()
+        if (Array.isArray(tests)) {
+          setBackendTests(tests)
+        }
+      } catch {
+        // Silent fallback to local storage question banks
+      }
+    }
+    loadBackendTests()
+  }, [])
 
   useEffect(() => {
     if (!studentEmail) {
@@ -126,7 +143,7 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn }) {
                     <button
                       type="button"
                       className="btn btn-secondary qb-full-btn"
-                      onClick={() => onLaunchQuiz(bank.id)}
+                      onClick={() => handleLaunch && handleLaunch(bank.id)}
                     >
                       <ion-icon name="eye-outline"></ion-icon>
                       <span>View Results</span>
@@ -135,7 +152,7 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn }) {
                     <button
                       type="button"
                       className="btn btn-primary qb-full-btn"
-                      onClick={() => onLaunchQuiz(bank.id)}
+                      onClick={() => handleLaunch && handleLaunch(bank.id)}
                     >
                       <ion-icon name="play-outline"></ion-icon>
                       <span>Start Quiz</span>
@@ -145,6 +162,39 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn }) {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Backend Assigned Tests Section */}
+      {backendTests.length > 0 && (
+        <div style={{ marginTop: '36px' }}>
+          <h3 className="h3" style={{ marginBottom: '12px', color: '#ffb347' }}>
+            📅 Assigned Course Midterms & Exams (NxtStep Backend)
+          </h3>
+          <div className="qb-grid">
+            {backendTests.map((t) => (
+              <div key={t.testId || t.assignmentId} className="qb-card qb-student-card">
+                <div className="qb-card-header">
+                  <span className="qb-subject-badge">{t.subject || 'Proctored Exam'}</span>
+                  <span className={`qb-attempt-badge ${t.studentStatus === 'SUBMITTED' ? 'completed' : 'pending'}`}>
+                    {t.studentStatus}
+                  </span>
+                </div>
+                <h3 className="qb-card-title">{t.title}</h3>
+                <p className="qb-card-desc">{t.description || `${t.questionCount || 0} Questions • ${t.attemptDurationMinutes || 60} min timer`}</p>
+                <div className="qb-meta-row">
+                  <div className="qb-meta-item">
+                    <ion-icon name="timer-outline"></ion-icon>
+                    <span>{t.attemptDurationMinutes} Minutes</span>
+                  </div>
+                  <div className="qb-meta-item">
+                    <ion-icon name="lock-closed-outline"></ion-icon>
+                    <span>One-Attempt Proctored</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

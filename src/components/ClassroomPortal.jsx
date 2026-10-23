@@ -19,6 +19,7 @@ import {
   MOCK_20_CLASSROOMS,
   MOCK_ASSIGNMENTS,
 } from '../services/classroomApi'
+import { authApi, getStoredSessionToken } from '../services/nxtstepApi'
 import ParentDashboard from './ParentDashboard'
 import AssignmentModal from './AssignmentModal'
 import SessionAnnouncementGenerator from './SessionAnnouncementGenerator'
@@ -32,7 +33,9 @@ function ClassroomPortal() {
   // True account role: strictly 'teacher' ONLY if email is in KNOWN_TEACHERS allow policy
   const isTeacher = Boolean(
     auth &&
-      (auth.isMock ? auth.accountRole === 'teacher' : isTeacherEmail(auth.user?.email))
+      (auth.isMock || auth.isDevAuth
+        ? auth.accountRole === 'teacher' || auth.role === 'teacher'
+        : isTeacherEmail(auth.user?.email))
   )
 
   // Parent role: strictly true if auth was established as parent (via PIN) or preview parent
@@ -107,6 +110,24 @@ function ClassroomPortal() {
     }
   }, [role, activeTab])
 
+  // Ensure NxtStep backend session token is synchronized if user is signed in
+  useEffect(() => {
+    if (auth?.user?.email) {
+      const token = getStoredSessionToken()
+      if (!token) {
+        const syncRole =
+          isTeacher && role === 'teacher' ? 'TEACHER' : role === 'parent' ? 'PARENT' : 'STUDENT'
+        authApi
+          .devLogin({
+            email: auth.user.email,
+            role: syncRole,
+            name: auth.user.name || 'User',
+          })
+          .catch((e) => console.warn('Background session sync note:', e))
+      }
+    }
+  }, [auth, isTeacher, role])
+
   // Load courses when auth or role changes
   useEffect(() => {
     if (!auth) {
@@ -115,7 +136,7 @@ function ClassroomPortal() {
       return
     }
 
-    if (auth.isMock) {
+    if (auth.isMock || auth.isDevAuth) {
       if (role === 'parent' || isParent) {
         setCourses([MOCK_20_CLASSROOMS[1]])
         setSelectedCourse(MOCK_20_CLASSROOMS[1])
@@ -429,6 +450,22 @@ function ClassroomPortal() {
       }
       setAuth(fullAuth)
       saveAuth(fullAuth)
+
+      // Synchronize session token with NxtStep backend server
+      try {
+        await authApi.googleLogin(authData.accessToken)
+      } catch (googleSyncErr) {
+        console.warn('Backend Google login note:', googleSyncErr)
+        try {
+          await authApi.devLogin({
+            email: userEmail,
+            role: finalRole.toUpperCase(),
+            name: authData.user?.name || 'User',
+          })
+        } catch (devFallbackErr) {
+          console.warn('Backend dev-login fallback note:', devFallbackErr)
+        }
+      }
     } catch (err) {
       if (err.message === 'MISSING_CLIENT_ID') {
         setError('OAuth Client ID is missing. Add VITE_GOOGLE_CLIENT_ID in your .env file.')
@@ -457,8 +494,71 @@ function ClassroomPortal() {
     }
   }
 
-  const handleDisconnect = () => {
-    if (auth && !auth.isMock) {
+  const handleDevLogin = async (devRole, devEmail, devName) => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await authApi.devLogin({
+        email: devEmail,
+        role: devRole,
+        name: devName,
+      })
+      const fullAuth = {
+        accessToken: res.token,
+        isMock: false,
+        isDevAuth: true,
+        user: {
+          email: res.user.email,
+          name: res.user.name,
+          role: res.user.role,
+          id: res.user.id,
+          studentId: res.user.studentId,
+          parentId: res.user.parentId,
+        },
+        role: devRole.toLowerCase(),
+        accountRole: devRole.toLowerCase(),
+      }
+      setRole(devRole.toLowerCase())
+      if (devRole.toLowerCase() === 'parent') {
+        setActiveTab('parent')
+      } else {
+        setActiveTab('courses')
+      }
+      setAuth(fullAuth)
+      saveAuth(fullAuth)
+
+      // Synchronize session token with NxtStep backend server
+      try {
+        await authApi.googleLogin(authData.accessToken)
+      } catch (googleSyncErr) {
+        console.warn('Backend Google login note:', googleSyncErr)
+        try {
+          await authApi.devLogin({
+            email: userEmail,
+            role: finalRole.toUpperCase(),
+            name: authData.user?.name || 'User',
+          })
+        } catch (devFallbackErr) {
+          console.warn('Backend dev-login fallback note:', devFallbackErr)
+        }
+      }
+    } catch (err) {
+      console.error('Dev login error:', err)
+      setError(err.message || 'Failed to authenticate via dev login')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDisconnect = async () => {
+    if (auth?.isDevAuth) {
+      try {
+        await authApi.logout()
+      } catch (e) {
+        console.warn('Logout error:', e)
+      }
+      clearAuth()
+    } else if (auth && !auth.isMock) {
       signOutGoogle(auth.accessToken)
     } else {
       clearAuth()
@@ -543,6 +643,42 @@ function ClassroomPortal() {
                 <ion-icon name="lock-closed-outline"></ion-icon>
                 <span>Connect as Parent / Guardian</span>
               </button>
+            </div>
+
+            {/* Quick Local Backend Dev Authentication (Active when backend allows dev auth) */}
+            <div style={{ marginTop: '16px', padding: '12px 16px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#ffb347', fontWeight: 600 }}>
+                ⚡ NxtStep Backend Quick Dev Login
+              </p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleDevLogin('TEACHER', 'teacher@nxtstep.com', 'Alex Teacher')}
+                  disabled={loading}
+                  style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
+                >
+                  Dev Login (Teacher)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleDevLogin('STUDENT', 'student@nxtstep.com', 'Demo Student')}
+                  disabled={loading}
+                  style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
+                >
+                  Dev Login (Student)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleDevLogin('PARENT', 'parent@nxtstep.com', 'Demo Parent')}
+                  disabled={loading}
+                  style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
+                >
+                  Dev Login (Parent)
+                </button>
+              </div>
             </div>
 
             {/* In-Product Privacy Notice (Google Verification Requirement) */}

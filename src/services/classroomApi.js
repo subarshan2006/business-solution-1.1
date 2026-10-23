@@ -16,6 +16,28 @@ export { isParentEmail, KNOWN_PARENTS, getParentClassroom }
 
 const CLASSROOM_BASE = 'https://classroom.googleapis.com/v1'
 
+function hasRosterScope() {
+  try {
+    const raw = sessionStorage.getItem('nxtstep_classroom_auth')
+    if (!raw) return false
+    const parsed = JSON.parse(raw)
+    return Boolean(parsed.scopes && (parsed.scopes.includes('classroom.rosters') || parsed.scopes.includes('classroom.rosters.readonly')))
+  } catch {
+    return false
+  }
+}
+
+function hasTopicsScope() {
+  try {
+    const raw = sessionStorage.getItem('nxtstep_classroom_auth')
+    if (!raw) return false
+    const parsed = JSON.parse(raw)
+    return Boolean(parsed.scopes && (parsed.scopes.includes('classroom.topics') || parsed.scopes.includes('classroom.topics.readonly')))
+  } catch {
+    return false
+  }
+}
+
 /**
  * Fetch wrapper with Authorization Bearer header
  */
@@ -316,18 +338,20 @@ export async function fetchCourseWorkWithSubmissions(courseId, accessToken) {
 
   // 3. Fetch Student Roster if available to map user IDs to names
   const studentMap = {}
-  try {
-    const rosterData = await apiFetch(`/courses/${courseId}/students?pageSize=50`, accessToken)
-    if (rosterData.students) {
-      rosterData.students.forEach((s) => {
-        if (s.userId && s.profile) {
-          studentMap[s.userId] =
-            s.profile.name?.fullName || s.profile.emailAddress || 'Student'
-        }
-      })
+  if (hasRosterScope()) {
+    try {
+      const rosterData = await apiFetch(`/courses/${courseId}/students?pageSize=50`, accessToken)
+      if (rosterData.students) {
+        rosterData.students.forEach((s) => {
+          if (s.userId && s.profile) {
+            studentMap[s.userId] =
+              s.profile.name?.fullName || s.profile.emailAddress || 'Student'
+          }
+        })
+      }
+    } catch (rosterErr) {
+      console.warn('Roster lookup note (non-fatal):', rosterErr)
     }
-  } catch (rosterErr) {
-    console.warn('Roster lookup note (non-fatal):', rosterErr)
   }
 
   // 4. Merge coursework with submissions and marks
@@ -1434,7 +1458,7 @@ export async function listCourseAnnouncements(courseId, accessToken) {
  * List enrolled students in a course
  */
 export async function listCourseStudents(courseId, accessToken) {
-  if (!courseId || !accessToken) return []
+  if (!courseId || !accessToken || !hasRosterScope()) return []
   try {
     const data = await apiFetch(`/courses/${courseId}/students?pageSize=50`, accessToken)
     return data.students || []
@@ -1448,7 +1472,7 @@ export async function listCourseStudents(courseId, accessToken) {
  * List topics defined in a course
  */
 export async function listCourseTopics(courseId, accessToken) {
-  if (!courseId || !accessToken) return []
+  if (!courseId || !accessToken || !hasTopicsScope()) return []
   try {
     const data = await apiFetch(`/courses/${courseId}/topics?pageSize=50`, accessToken)
     return data.topic || []

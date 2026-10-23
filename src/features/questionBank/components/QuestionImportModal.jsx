@@ -6,6 +6,13 @@ import {
 } from '../services/questionParser'
 import { validateQuestions } from '../services/questionValidator'
 import { saveQuestionBank } from '../services/questionBankStorage'
+import {
+  questionBankApi,
+  questionReviewApi,
+  authApi,
+  getStoredSessionToken,
+} from '../../../services/nxtstepApi'
+import { getStoredAuth } from '../../../services/googleAuth'
 
 const SAMPLE_TEXT_TO_IMPORT = `1. What is the primary role of RuBisCO in the Calvin cycle of photosynthesis?
 
@@ -85,6 +92,102 @@ function QuestionImportModal({ bank, onClose, onImported }) {
     } finally {
       setLoading(false)
       setProgressMsg('')
+    }
+  }
+
+  // Handle Backend AI OCR & Vision PDF Processing
+  const handleBackendPdfUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError('')
+    setLoading(true)
+
+    // Ensure backend session token is present before starting upload
+    let token = getStoredSessionToken()
+    if (!token) {
+      setProgressMsg('Syncing authentication with NxtStep backend...')
+      try {
+        const currentAuth = getStoredAuth()
+        const userEmail = currentAuth?.user?.email || 'teacher@nxtstep.com'
+        const userName = currentAuth?.user?.name || 'Lead Teacher'
+        const devRes = await authApi.devLogin({
+          email: userEmail,
+          role: 'TEACHER',
+          name: userName,
+        })
+        token = devRes?.token
+      } catch {
+        setLoading(false)
+        setError('Authentication required: please ensure the NxtStep backend is running and you are signed in.')
+        return
+      }
+    }
+
+    setProgressMsg('Uploading PDF to NxtStep backend server...')
+
+    try {
+      const uploadRes = await questionBankApi.uploadPdf({
+        file,
+        title: bank.title || file.name.replace(/\.[^/.]+$/, ''),
+        subject: bank.subject || 'General',
+        description: bank.description || 'Imported via PDF',
+      })
+
+      const jobId = uploadRes.jobId
+      const questionBankId = uploadRes.questionBankId
+
+      setProgressMsg('PDF uploaded! Processing pages via background queue (OCR & AI vision)...')
+
+      // Poll every 2 seconds (up to 90 seconds)
+      let completed = false
+      let attempts = 0
+      while (!completed && attempts < 45) {
+        await new Promise((r) => setTimeout(r, 2000))
+        attempts++
+        const job = await questionBankApi.getProcessingJob(jobId)
+
+        if (job.status === 'COMPLETED') {
+          completed = true
+          setProgressMsg('Processing complete! Loading extracted questions...')
+          const qRes = await questionReviewApi.listQuestions(questionBankId, { limit: 100 })
+          const backendQuestions = qRes.data || []
+
+          const mapped = backendQuestions.map((bq, idx) => ({
+            id: `Q${String(idx + 1).padStart(3, '0')}`,
+            question: bq.questionText,
+            options: (bq.options || []).map((o) => ({
+              id: o.label,
+              text: o.text || '',
+              imageUrl: o.imageUrl || null,
+            })),
+            correctOption: bq.correctOption || 'A',
+            explanation: bq.explanation || '',
+            image: bq.images?.[0]?.imageUrl || null,
+            confidenceScores: bq.confidenceScores || null,
+            needsReview: bq.needsReview || false,
+          }))
+
+          const validated = validateQuestions(mapped)
+          setValidationResult(validated)
+          setProgressMsg(`Successfully structured ${mapped.length} questions from PDF via backend!`)
+          break
+        } else if (job.status === 'FAILED') {
+          throw new Error(job.error || 'Backend PDF processing failed.')
+        } else {
+          setProgressMsg(
+            `Status: ${job.status} — Step: ${job.currentStep || 'processing'} (${job.progress || 0}% complete)...`
+          )
+        }
+      }
+
+      if (!completed) {
+        throw new Error('Processing job timed out. You can check the job status in processing jobs.')
+      }
+    } catch (err) {
+      console.error('Backend PDF processing failed:', err)
+      setError(err.message || 'Failed to process PDF via NxtStep backend.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -278,20 +381,45 @@ function QuestionImportModal({ bank, onClose, onImported }) {
           {/* Tab 2: PDF Upload */}
           {importMode === 'pdf' && (
             <div className="qb-import-content">
-              <div className="qb-dropzone">
-                <ion-icon name="cloud-upload-outline" class="qb-dropzone-icon"></ion-icon>
-                <h4>Upload Question Bank PDF</h4>
-                <p>The PDF is processed entirely inside your browser. No files are uploaded to any public server.</p>
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handlePdfFile}
-                  disabled={loading}
-                  style={{ marginTop: '14px' }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                <div className="qb-dropzone" style={{ padding: '20px' }}>
+                  <ion-icon name="hardware-chip-outline" class="qb-dropzone-icon" style={{ color: '#ffb347' }}></ion-icon>
+                  <h4>AI OCR & Vision Processing (Backend)</h4>
+                  <p style={{ fontSize: '12px' }}>
+                    Uploads PDF to NxtStep server for deep AI page rendering, question boundary detection, and diagram cropping.
+                  </p>
+                  <label className="btn btn-primary" style={{ marginTop: '12px', display: 'inline-block', cursor: loading ? 'not-allowed' : 'pointer' }}>
+                    {loading ? 'Processing...' : 'Upload for AI Structuring'}
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handleBackendPdfUpload}
+                      disabled={loading}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
+
+                <div className="qb-dropzone" style={{ padding: '20px' }}>
+                  <ion-icon name="flash-outline" class="qb-dropzone-icon" style={{ color: '#4ade80' }}></ion-icon>
+                  <h4>Fast Local Browser Extraction</h4>
+                  <p style={{ fontSize: '12px' }}>
+                    Extracts text immediately in-memory using client-side PDF.js. Zero server upload.
+                  </p>
+                  <label className="btn btn-secondary" style={{ marginTop: '12px', display: 'inline-block', cursor: loading ? 'not-allowed' : 'pointer' }}>
+                    {loading ? 'Extracting...' : 'Extract Locally'}
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={handlePdfFile}
+                      disabled={loading}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                </div>
               </div>
-              <p className="qb-hint-text">
-                Note: Supports standard text-based PDFs. If your PDF is a scanned image, use the Paste Text or JSON/CSV tab.
+              <p className="qb-hint-text" style={{ marginTop: '12px' }}>
+                Tip: Use AI Backend processing for exams containing visual diagrams, formulas, or complex multi-column layouts.
               </p>
             </div>
           )}
