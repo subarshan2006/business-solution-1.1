@@ -28,9 +28,34 @@ export class ApiError extends Error {
 /**
  * Token and User session state helpers
  */
+
+/**
+ * Checks whether a JWT session token is expired or structurally invalid.
+ * Uses a 10-second buffer to proactively prevent requests on expiring tokens.
+ */
+export function isTokenExpired(token) {
+  if (!token || typeof token !== 'string') return true
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return true
+    // base64url decode
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(base64))
+    if (!payload.exp) return false
+    return payload.exp * 1000 <= Date.now() + 10000
+  } catch {
+    return true
+  }
+}
+
 export function getStoredSessionToken() {
   try {
-    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || null
+    const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || null
+    if (token && isTokenExpired(token)) {
+      clearSessionToken()
+      return null
+    }
+    return token
   } catch {
     return null
   }
@@ -136,6 +161,9 @@ async function request(endpoint, options = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearSessionToken()
+    }
     const code = json?.error?.code || 'HTTP_ERROR'
     const message = json?.error?.message || `Request failed with status ${response.status}`
     const details = json?.error?.details || []
@@ -218,6 +246,24 @@ export const authApi = {
       clearSessionToken()
     }
   },
+}
+
+/**
+ * Ensures an active, unexpired session token is available.
+ * If missing or expired, attempts to acquire one via devLogin with provided or fallback credentials.
+ */
+export async function ensureActiveSession(fallbackUser = {}) {
+  const token = getStoredSessionToken()
+  if (token && !isTokenExpired(token)) {
+    return token
+  }
+
+  const email = fallbackUser.email || 'teacher@nxtstep.com'
+  const name = fallbackUser.name || 'Lead Teacher'
+  const role = fallbackUser.role || 'TEACHER'
+
+  const devRes = await authApi.devLogin({ email, role, name })
+  return devRes?.token || null
 }
 
 // -----------------------------------------------------------------------------

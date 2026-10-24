@@ -11,6 +11,8 @@ import {
   questionReviewApi,
   authApi,
   getStoredSessionToken,
+  clearSessionToken,
+  isTokenExpired,
 } from '../../../services/nxtstepApi'
 import { getStoredAuth } from '../../../services/googleAuth'
 
@@ -102,20 +104,25 @@ function QuestionImportModal({ bank, onClose, onImported }) {
     setError('')
     setLoading(true)
 
-    // Ensure backend session token is present before starting upload
-    let token = getStoredSessionToken()
-    if (!token) {
+    // Helper to authenticate or re-authenticate teacher with backend
+    const syncBackendSession = async () => {
       setProgressMsg('Syncing authentication with NxtStep backend...')
+      const currentAuth = getStoredAuth()
+      const userEmail = currentAuth?.user?.email || 'teacher@nxtstep.com'
+      const userName = currentAuth?.user?.name || 'Lead Teacher'
+      const devRes = await authApi.devLogin({
+        email: userEmail,
+        role: 'TEACHER',
+        name: userName,
+      })
+      return devRes?.token
+    }
+
+    // Ensure backend session token is present and valid before starting upload
+    let token = getStoredSessionToken()
+    if (!token || isTokenExpired(token)) {
       try {
-        const currentAuth = getStoredAuth()
-        const userEmail = currentAuth?.user?.email || 'teacher@nxtstep.com'
-        const userName = currentAuth?.user?.name || 'Lead Teacher'
-        const devRes = await authApi.devLogin({
-          email: userEmail,
-          role: 'TEACHER',
-          name: userName,
-        })
-        token = devRes?.token
+        token = await syncBackendSession()
       } catch {
         setLoading(false)
         setError('Authentication required: please ensure the NxtStep backend is running and you are signed in.')
@@ -126,12 +133,32 @@ function QuestionImportModal({ bank, onClose, onImported }) {
     setProgressMsg('Uploading PDF to NxtStep backend server...')
 
     try {
-      const uploadRes = await questionBankApi.uploadPdf({
+      const uploadPayload = {
         file,
         title: bank.title || file.name.replace(/\.[^/.]+$/, ''),
         subject: bank.subject || 'General',
         description: bank.description || 'Imported via PDF',
-      })
+      }
+
+      let uploadRes
+      try {
+        uploadRes = await questionBankApi.uploadPdf(uploadPayload)
+      } catch (uploadErr) {
+        // If session was invalid/expired on backend, clear stale token, refresh session, and retry once
+        if (
+          uploadErr.status === 401 ||
+          uploadErr.code === 'UNAUTHORIZED' ||
+          uploadErr.code === 'INVALID_SESSION'
+        ) {
+          console.warn('Backend session expired during upload, refreshing session and retrying...')
+          clearSessionToken()
+          await syncBackendSession()
+          setProgressMsg('Session renewed. Retrying PDF upload...')
+          uploadRes = await questionBankApi.uploadPdf(uploadPayload)
+        } else {
+          throw uploadErr
+        }
+      }
 
       const jobId = uploadRes.jobId
       const questionBankId = uploadRes.questionBankId
