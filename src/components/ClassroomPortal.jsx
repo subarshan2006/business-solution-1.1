@@ -78,6 +78,18 @@ function ClassroomPortal() {
   const [allCourseWorkError, setAllCourseWorkError] = useState('')
   const [previewBankId, setPreviewBankId] = useState(null)
 
+  // When previewBankId is open, lock scroll and add modal/quiz open classes to body to hide sidebar
+  useEffect(() => {
+    if (previewBankId) {
+      document.body.classList.add('modal-open', 'quiz-open')
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.classList.remove('modal-open', 'quiz-open')
+        document.body.style.overflow = 'unset'
+      }
+    }
+  }, [previewBankId])
+
   // Pre-OAuth 4-Digit Parent PIN Verification Modal states
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinInput, setPinInput] = useState('')

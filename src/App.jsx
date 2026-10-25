@@ -54,7 +54,7 @@ function App() {
       <Routes>
         <Route path="/classroom" element={
           <Layout activePage="classroom" setActivePage={() => {}}
-            showThemeToggle={false}
+            showThemeToggle={true}
             showWhatsAppFab={false}
           >
             <ClassroomPortal />
@@ -62,7 +62,7 @@ function App() {
         } />
         <Route path="/classroom/:courseId" element={
           <Layout activePage="classroom" setActivePage={() => {}}
-            showThemeToggle={false}
+            showThemeToggle={true}
             showWhatsAppFab={false}
           >
             <ClassroomPortal />
@@ -70,7 +70,7 @@ function App() {
         } />
         <Route path="/quiz/:bankId" element={
           <Layout activePage="quiz" setActivePage={() => {}}
-            showThemeToggle={false}
+            showThemeToggle={true}
             showWhatsAppFab={false}
           >
             <QuizRunner />
@@ -78,7 +78,7 @@ function App() {
         } />
         <Route path="/quiz" element={
           <Layout activePage="quiz" setActivePage={() => {}}
-            showThemeToggle={false}
+            showThemeToggle={true}
             showWhatsAppFab={false}
           >
             <QuizRunner />

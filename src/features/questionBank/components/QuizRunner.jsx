@@ -20,11 +20,23 @@ import {
   purgeAllEphemeralImages,
 } from '../services/ephemeralImageService'
 import WatermarkedDiagramCanvas from './WatermarkedDiagramCanvas'
+import ThemeToggle from '../../../components/ThemeToggle'
 
 function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
   const params = useParams()
   const navigate = useNavigate()
   const activeBankId = propBankId || params.bankId
+
+  const [theme, setTheme] = useState(() => {
+    return document.documentElement.getAttribute('data-theme') || localStorage.getItem('theme') || 'dark'
+  })
+
+  const handleToggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    setTheme(nextTheme)
+    document.documentElement.setAttribute('data-theme', nextTheme)
+    localStorage.setItem('theme', nextTheme)
+  }
 
   const [auth, setAuth] = useState(() => getStoredAuth())
   const [bank, setBank] = useState(null)
@@ -48,13 +60,35 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const [timedOutNotice, setTimedOutNotice] = useState(false)
   const timerIntervalRef = useRef(null)
 
-  // 1. Cleanup ephemeral image blobs when unmounting or leaving quiz
+  // 1. Cleanup ephemeral image blobs when unmounting or leaving quiz & hide sidebar
   useEffect(() => {
+    document.body.classList.add('modal-open', 'quiz-open')
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
       purgeAllEphemeralImages()
+      document.body.classList.remove('modal-open', 'quiz-open')
     }
   }, [])
+
+  const handleExitQuiz = useCallback(() => {
+    purgeAllEphemeralImages()
+    if (onClosePreview) {
+      onClosePreview()
+    } else {
+      navigate('/classroom')
+    }
+  }, [onClosePreview, navigate])
+
+  // Escape key closes quiz when opened inside classroom overlay
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onClosePreview) {
+        handleExitQuiz()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onClosePreview, handleExitQuiz])
 
   // 2. Load Bank metadata ONLY
   useEffect(() => {
@@ -250,7 +284,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             <ion-icon name="alert-circle-outline" class="qb-empty-icon"></ion-icon>
             <h3>Question Bank Not Found</h3>
             <p>The requested question bank ID does not exist or has been removed.</p>
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/classroom')}>
+            <button type="button" className="btn btn-primary" onClick={handleExitQuiz}>
               Return to Portal
             </button>
           </div>
@@ -288,14 +322,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
           <button
             type="button"
             className="qb-quiz-back-btn"
-            onClick={() => {
-              purgeAllEphemeralImages()
-              if (isPreview && onClosePreview) {
-                onClosePreview()
-              } else {
-                navigate('/classroom')
-              }
-            }}
+            onClick={handleExitQuiz}
           >
             <ion-icon name="arrow-back-outline"></ion-icon>
             <span>{isPreview ? 'Close Preview' : 'Back to Portal'}</span>
@@ -330,6 +357,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               </button>
             </div>
           ) : null}
+          <ThemeToggle theme={theme} toggleTheme={handleToggleTheme} />
         </div>
       </header>
 
@@ -388,7 +416,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               <button type="button" className="btn btn-secondary" onClick={handleSignOut}>
                 Switch Google Account
               </button>
-              <button type="button" className="btn btn-primary" onClick={() => navigate('/classroom')}>
+              <button type="button" className="btn btn-primary" onClick={handleExitQuiz}>
                 Return to Dashboard
               </button>
             </div>
@@ -426,7 +454,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               </div>
             )}
 
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/classroom')}>
+            <button type="button" className="btn btn-primary" onClick={handleExitQuiz}>
               Back to Dashboard
             </button>
           </div>
@@ -724,14 +752,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             <button
               type="button"
               className="btn btn-primary qb-hero-btn"
-              onClick={() => {
-                purgeAllEphemeralImages()
-                if (isPreview && onClosePreview) {
-                  onClosePreview()
-                } else {
-                  navigate('/classroom')
-                }
-              }}
+              onClick={handleExitQuiz}
             >
               Back to Dashboard
             </button>
