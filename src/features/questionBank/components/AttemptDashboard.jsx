@@ -158,6 +158,7 @@ function AttemptDashboard({ bank, onClose }) {
                     <th>Status</th>
                     <th>Score</th>
                     <th>Percentage</th>
+                    <th>Fullscreen Integrity</th>
                     <th>Completed At</th>
                     <th>Actions</th>
                   </tr>
@@ -176,6 +177,21 @@ function AttemptDashboard({ bank, onClose }) {
                       </td>
                       <td className="font-mono">{row.scoreDisplay}</td>
                       <td className="font-mono font-bold">{row.percentageDisplay}</td>
+                      <td>
+                        {row.attempt ? (
+                          row.attempt.fullscreenViolations > 0 ? (
+                            <span style={{ color: '#EF4444', fontWeight: 600, fontSize: '12px' }}>
+                              ⚠️ {row.attempt.fullscreenViolations} exit(s)
+                            </span>
+                          ) : (
+                            <span style={{ color: '#10B981', fontWeight: 600, fontSize: '12px' }}>
+                              ✓ Fullscreen (0 exits)
+                            </span>
+                          )
+                        ) : (
+                          <span style={{ color: 'var(--text-2, #A1A1AA)', fontSize: '12px' }}>—</span>
+                        )}
+                      </td>
                       <td className="qb-time-cell">{row.completedDateDisplay}</td>
                       <td>
                         {row.attempt && (

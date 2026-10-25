@@ -12991,3 +12991,241 @@ body:has(.qb-quiz-overlay-modal) .sidebar {
 [data-theme='light'] .qb-meta-item ion-icon {
   color: var(--mint, #DC2626);
 }
+
+
+/* ==========================================================================
+   THREE PILLARS: PROCTORED FULLSCREEN, TIMING EXPIRY & EMAIL RESULT STYLES
+   ========================================================================== */
+
+/* Fullscreen Content Blur (Pillar 2) */
+.qb-content-blurred {
+  filter: blur(24px) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  transition: filter 0.3s ease;
+}
+
+/* Proctored Fullscreen Blocker Overlay */
+.qb-fullscreen-blocker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(10, 10, 15, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: qbFadeIn 0.25s ease-out;
+}
+
+.qb-fullscreen-blocker-card {
+  background: var(--surface, #1e1e24);
+  border: 2px solid #EF4444;
+  border-radius: 22px;
+  padding: 38px 30px;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 30px rgba(239, 68, 68, 0.2);
+  animation: qbScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.qb-fullscreen-blocker-card h2 {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-1, #FFFFFF);
+  margin: 0 0 12px 0;
+}
+
+.qb-fullscreen-blocker-card p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-2, #A1A1AA);
+  margin: 0 0 20px 0;
+}
+
+.qb-blocker-icon-pulse {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 2px solid rgba(239, 68, 68, 0.4);
+  color: #EF4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  margin: 0 auto 20px auto;
+  animation: qbPulseRing 1.8s infinite ease-in-out;
+}
+
+@keyframes qbPulseRing {
+  0% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 14px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.96);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.qb-blocker-warning-tag {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #F59E0B;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.qb-blocker-warning-tag ion-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.qb-blocker-resume-btn {
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 92, 92, 0.35);
+}
+
+/* Pillar 3: Student Email Result Isolation Chip */
+.qb-email-record-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 92, 92, 0.08);
+  border: 1px solid rgba(255, 92, 92, 0.25);
+  color: var(--mint, #FF5C5C);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 14px 0 8px 0;
+}
+
+.qb-email-record-chip ion-icon {
+  font-size: 18px;
+}
+
+.qb-email-record-chip strong {
+  color: var(--text-1, #FFFFFF);
+}
+
+/* Pillar 2: Fullscreen Integrity Proctoring Status Badge */
+.qb-integrity-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.qb-integrity-status-pill.clean {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #10B981;
+}
+
+.qb-integrity-status-pill.warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #F59E0B;
+}
+
+/* Status Pill: Expired (Pillar 1) */
+.qb-status-pill.expired {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #EF4444;
+}
+
+/* ==========================================================================
+   LIGHT MODE OVERRIDES FOR THREE PILLARS
+   ========================================================================== */
+
+[data-theme='light'] .qb-fullscreen-blocker-overlay {
+  background: rgba(250, 249, 246, 0.92);
+}
+
+[data-theme='light'] .qb-fullscreen-blocker-card {
+  background: #FFFFFF;
+  border-color: #EF4444;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15), 0 0 25px rgba(239, 68, 68, 0.15);
+}
+
+[data-theme='light'] .qb-fullscreen-blocker-card h2 {
+  color: var(--text, #18181B);
+}
+
+[data-theme='light'] .qb-fullscreen-blocker-card p {
+  color: var(--text-2, #52525B);
+}
+
+[data-theme='light'] .qb-blocker-warning-tag {
+  background: #FEF3C7;
+  border-color: #FCD34D;
+  color: #B45309;
+}
+
+[data-theme='light'] .qb-email-record-chip {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  color: var(--mint, #DC2626);
+}
+
+[data-theme='light'] .qb-email-record-chip strong {
+  color: var(--text, #18181B);
+}
+
+[data-theme='light'] .qb-integrity-status-pill.clean {
+  background: #ECFDF5;
+  border-color: #A7F3D0;
+  color: #065F46;
+}
+
+[data-theme='light'] .qb-integrity-status-pill.warning {
+  background: #FEF3C7;
+  border-color: #FCD34D;
+  color: #B45309;
+}
+
+[data-theme='light'] .qb-status-pill.expired {
+  background: #FEF2F2;
+  border-color: #FECACA;
+  color: #DC2626;
+}
+
+@keyframes qbFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qbScaleUp {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

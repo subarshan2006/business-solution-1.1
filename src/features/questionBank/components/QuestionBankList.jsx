@@ -125,6 +125,14 @@ function QuestionBankList({ onLaunchQuiz }) {
                     <ion-icon name="people-outline"></ion-icon>
                     <span>{studentCount} Students</span>
                   </div>
+                  <div className="qb-meta-item">
+                    <ion-icon name="timer-outline"></ion-icon>
+                    <span>{bank.settings?.timeLimitMinutes ? `${bank.settings.timeLimitMinutes}m` : 'Untimed'}</span>
+                  </div>
+                  <div className="qb-meta-item" title="After 3 hours, question diagrams & screenshots auto-shred permanently">
+                    <ion-icon name="trash-bin-outline" style={{ color: 'var(--mint, #FF5C5C)' }}></ion-icon>
+                    <span>{bank.settings?.quizEndingHours || 3}h Auto-Delete</span>
+                  </div>
                   {bank.settings?.oneAttempt && (
                     <div className="qb-meta-item" title="1-attempt per student">
                       <ion-icon name="lock-closed-outline"></ion-icon>

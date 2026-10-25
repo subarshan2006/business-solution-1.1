@@ -5,6 +5,7 @@
  */
 
 import unit1QuizData from '../../../data/unit1_chemistry_of_life_quiz.json'
+import { purgeAllEphemeralImages } from './ephemeralImageService'
 
 const STORAGE_KEY = 'nxtstep_question_banks'
 
@@ -30,6 +31,7 @@ export const INITIAL_QUESTION_BANKS = [
       showExplanation: true,
       questionsPerAttempt: null, // all questions
       timeLimitMinutes: 20,
+      quizEndingHours: 3,
     },
     questions: [
       {
@@ -219,9 +221,70 @@ export function createQuestionBank({
       oneAttempt: true,
       showExplanation: true,
       questionsPerAttempt: null,
+      timeLimitMinutes: 20,
+      quizEndingHours: 3,
       ...settings,
     },
   }
+}
+
+/**
+ * Calculate the expiry ending timestamp (in ms) for a question bank.
+ * Default: 3 hours from creation/publication.
+ */
+export function getQuizEndingTimestamp(bank) {
+  if (!bank) return null
+  const endingHours = Number(bank.settings?.quizEndingHours) || 3
+  const baseTime = bank.publishedAt || bank.createdAt || new Date().toISOString()
+  const baseMs = new Date(baseTime).getTime()
+  return baseMs + (endingHours * 60 * 60 * 1000)
+}
+
+/**
+ * Check if the quiz ending time has elapsed
+ */
+export function isQuizExpired(bank) {
+  if (!bank) return false
+  if (bank.isExpired) return true
+  const expiryMs = getQuizEndingTimestamp(bank)
+  if (!expiryMs) return false
+  return Date.now() >= expiryMs
+}
+
+/**
+ * Permanently shred all question screenshots and diagrams when quiz ending time is reached
+ */
+export function purgeExpiredQuizAssets(bankId) {
+  if (!bankId) return false
+  const banks = getQuestionBanks()
+  const bank = banks.find((b) => b.id === bankId)
+  if (!bank) return false
+
+  let shreddedCount = 0
+  const cleanedQuestions = (bank.questions || []).map((q) => {
+    if (q.image) {
+      shreddedCount++
+      return {
+        ...q,
+        image: null,
+        isPurged: true,
+        purgedAt: new Date().toISOString(),
+      }
+    }
+    return q
+  })
+
+  const updatedBank = {
+    ...bank,
+    isExpired: true,
+    assetsPurgedAt: new Date().toISOString(),
+    questions: cleanedQuestions,
+  }
+
+  saveQuestionBank(updatedBank)
+  purgeAllEphemeralImages()
+  console.info(`[AutoDelete] Shredded ${shreddedCount} proprietary question screenshots/diagrams for expired bank: ${bankId}`)
+  return true
 }
 
 /**

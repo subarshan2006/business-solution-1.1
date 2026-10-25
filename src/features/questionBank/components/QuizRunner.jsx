@@ -8,6 +8,8 @@ import {
 import {
   getQuestionBankById,
   isStudentAuthorized,
+  isQuizExpired,
+  purgeExpiredQuizAssets,
 } from '../services/questionBankStorage'
 import {
   getStudentAttempt,
@@ -60,24 +62,60 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const [timedOutNotice, setTimedOutNotice] = useState(false)
   const timerIntervalRef = useRef(null)
 
+  // Proctored Fullscreen & Anti-Cheating states (Pillar 2)
+  const [isFullscreenBlocked, setIsFullscreenBlocked] = useState(false)
+  const [fullscreenViolations, setFullscreenViolations] = useState(0)
+
+  // Fullscreen controller utility
+  const enterFullscreen = useCallback(async () => {
+    try {
+      const docEl = document.documentElement
+      if (docEl.requestFullscreen) {
+        await docEl.requestFullscreen()
+      } else if (docEl.webkitRequestFullscreen) {
+        await docEl.webkitRequestFullscreen()
+      } else if (docEl.msRequestFullscreen) {
+        await docEl.msRequestFullscreen()
+      }
+    } catch (err) {
+      console.warn('Fullscreen entry prevented:', err)
+    } finally {
+      setIsFullscreenBlocked(false)
+    }
+  }, [])
+
+  const exitFullscreenSafe = useCallback(() => {
+    try {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen()
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen()
+        }
+      }
+    } catch {}
+  }, [])
+
   // 1. Cleanup ephemeral image blobs when unmounting or leaving quiz & hide sidebar
   useEffect(() => {
     document.body.classList.add('modal-open', 'quiz-open')
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
       purgeAllEphemeralImages()
+      exitFullscreenSafe()
       document.body.classList.remove('modal-open', 'quiz-open')
     }
-  }, [])
+  }, [exitFullscreenSafe])
 
   const handleExitQuiz = useCallback(() => {
     purgeAllEphemeralImages()
+    exitFullscreenSafe()
     if (onClosePreview) {
       onClosePreview()
     } else {
       navigate('/classroom')
     }
-  }, [onClosePreview, navigate])
+  }, [onClosePreview, navigate, exitFullscreenSafe])
 
   // Escape key closes quiz when opened inside classroom overlay
   useEffect(() => {
@@ -97,7 +135,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     setBank(b)
   }, [activeBankId])
 
-  // 3. Perform Authorization Gate check
+  // 3. Perform Authorization Gate check & Pillar 1 Quiz Expiry
   useEffect(() => {
     if (!bank) return
 
@@ -121,6 +159,19 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     const authorized = isStudentAuthorized(bank, studentEmail)
     if (!authorized) {
       setStage('access_denied')
+      return
+    }
+
+    // Check Pillar 1: Quiz Ending Time (e.g. 3 hours) Expiry & Auto-Delete
+    if (isQuizExpired(bank)) {
+      purgeExpiredQuizAssets(bank.id)
+      const priorAttempt = getStudentAttempt(bank.id, studentEmail)
+      if (priorAttempt && priorAttempt.status === 'completed') {
+        setCompletedAttemptData(priorAttempt)
+        setStage('already_completed')
+      } else {
+        setStage('quiz_expired')
+      }
       return
     }
 
@@ -163,7 +214,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     setStage('checking_auth')
   }
 
-  // Finish and Record Attempt (Auto-purges images immediately)
+  // Finish and Record Attempt (Auto-purges images immediately & records strictly under student email)
   const handleFinishQuiz = useCallback(
     (isTimeout = false) => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
@@ -177,11 +228,13 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
       }
 
       if (!isPreview && auth?.user?.email && bank) {
+        // Pillar 3: Record attempt strictly partitioned by student email with proctoring stats
         const saved = recordCompletedAttempt(bank.id, auth.user.email, {
           score: correctCount,
           totalQuestions: preparedQuestions.length,
           answers: studentAnswers,
           studentName: auth.user.name || auth.user.email,
+          fullscreenViolations,
         })
         setCompletedAttemptData(saved)
       }
@@ -196,19 +249,30 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
       setStage('completed')
     },
-    [studentAnswers, isPreview, auth, bank, preparedQuestions.length]
+    [studentAnswers, isPreview, auth, bank, preparedQuestions.length, fullscreenViolations]
   )
 
-  // Timer countdown effect
+  // Pillar 1 & Duration: Timer countdown & periodic 3h ending window check
   useEffect(() => {
     if (stage !== 'in_progress') {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
       return
     }
 
+    // Periodic check for Pillar 1 quiz ending expiry (3-hour auto-shred)
+    const checkExpiryInterval = setInterval(() => {
+      if (!isPreview && bank && isQuizExpired(bank)) {
+        purgeExpiredQuizAssets(bank.id)
+        clearInterval(checkExpiryInterval)
+        handleFinishQuiz(true)
+      }
+    }, 5000)
+
     const timeLimitMins = bank?.settings?.timeLimitMinutes
     if (!timeLimitMins || Number(timeLimitMins) <= 0) {
-      return // Untimed quiz
+      return () => {
+        clearInterval(checkExpiryInterval)
+      }
     }
 
     const totalSeconds = Number(timeLimitMins) * 60
@@ -227,17 +291,58 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     }, 1000)
 
     return () => {
+      clearInterval(checkExpiryInterval)
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
     }
-  }, [stage, bank, handleFinishQuiz])
+  }, [stage, bank, isPreview, handleFinishQuiz])
 
-  // Start Quiz
-  const handleStartQuiz = () => {
+  // Pillar 2: Proctored Fullscreen & Anti-Cheating Lockdown Monitor
+  useEffect(() => {
+    if (stage !== 'in_progress' || isPreview) return
+
+    const checkLockdown = () => {
+      const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+      const isShrunk = isMobile
+        ? window.innerHeight < 360
+        : window.innerWidth < 760 || window.innerHeight < 460
+
+      if (!isFs || isShrunk) {
+        setIsFullscreenBlocked(true)
+        setFullscreenViolations((prev) => prev + 1)
+      } else {
+        setIsFullscreenBlocked(false)
+      }
+    }
+
+    document.addEventListener('fullscreenchange', checkLockdown)
+    document.addEventListener('webkitfullscreenchange', checkLockdown)
+    window.addEventListener('resize', checkLockdown)
+
+    // Initial check after delay to allow fullscreen transition to complete
+    const initialCheck = setTimeout(checkLockdown, 800)
+
+    return () => {
+      clearTimeout(initialCheck)
+      document.removeEventListener('fullscreenchange', checkLockdown)
+      document.removeEventListener('webkitfullscreenchange', checkLockdown)
+      window.removeEventListener('resize', checkLockdown)
+    }
+  }, [stage, isPreview])
+
+  // Start Quiz (Triggers Desktop & Mobile Fullscreen Lockdown)
+  const handleStartQuiz = async () => {
     setCurrentIndex(0)
     setSelectedOptionId('')
     setIsAnswerSubmitted(false)
     setStudentAnswers([])
     setTimedOutNotice(false)
+    setFullscreenViolations(0)
+    setIsFullscreenBlocked(false)
+
+    if (!isPreview) {
+      await enterFullscreen()
+    }
     setStage('in_progress')
   }
 
@@ -361,8 +466,35 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         </div>
       </header>
 
+      {/* Pillar 2: Proctored Fullscreen Security Blocker Overlay */}
+      {stage === 'in_progress' && isFullscreenBlocked && !isPreview && (
+        <div className="qb-fullscreen-blocker-overlay">
+          <div className="qb-fullscreen-blocker-card">
+            <div className="qb-blocker-icon-pulse">
+              <ion-icon name="scan-outline"></ion-icon>
+            </div>
+            <h2>Fullscreen Mode Required</h2>
+            <p>
+              Quiz view is locked. You must maintain fullscreen mode and an unminimized window during this proctored test.
+            </p>
+            <div className="qb-blocker-warning-tag">
+              <ion-icon name="warning-outline"></ion-icon>
+              <span>Exiting fullscreen or shrinking the screen is recorded on your official test attempt.</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary qb-blocker-resume-btn"
+              onClick={enterFullscreen}
+            >
+              <ion-icon name="expand-outline"></ion-icon>
+              <span>Return to Fullscreen</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Container */}
-      <main className="qb-quiz-main-container">
+      <main className={`qb-quiz-main-container${stage === 'in_progress' && isFullscreenBlocked && !isPreview ? ' qb-content-blurred' : ''}`}>
         {/* ========================================================= */}
         {/* VIEW 1: SIGN IN REQUIRED                                 */}
         {/* ========================================================= */}
@@ -390,6 +522,31 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             <p className="qb-auth-note">
               No Classroom permissions required. We only verify your email address against the instructor&rsquo;s authorized roster.
             </p>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* VIEW: QUIZ ENDING WINDOW EXPIRED (Pillar 1: 3h Auto-Purge)*/}
+        {/* ========================================================= */}
+        {stage === 'quiz_expired' && (
+          <div className="qb-quiz-card text-center">
+            <div className="qb-card-icon-hero danger">
+              <ion-icon name="hourglass-outline"></ion-icon>
+            </div>
+            <h2 className="qb-hero-title">Quiz Ending Window Expired</h2>
+            <p className="qb-hero-desc">
+              The <strong>{bank.settings?.quizEndingHours || 3}-hour ending window</strong> for <em>&ldquo;{bank.title}&rdquo;</em> has expired.
+            </p>
+            <div className="qb-info-banner" style={{ textAlign: 'left', marginBottom: '24px' }}>
+              <ion-icon name="trash-bin-outline"></ion-icon>
+              <div>
+                <strong>Proprietary Question Assets Deleted</strong>
+                <p>As per the exam timer policy, all proprietary question screenshots and diagrams have been permanently deleted and cannot be opened.</p>
+              </div>
+            </div>
+            <button type="button" className="btn btn-primary" onClick={handleExitQuiz}>
+              Return to Classroom
+            </button>
           </div>
         )}
 
@@ -478,21 +635,38 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 </div>
               </div>
 
-              {bank.settings?.timeLimitMinutes && (
-                <div className="qb-rule-item">
-                  <ion-icon name="timer-outline"></ion-icon>
-                  <div>
-                    <strong>Time Limit: {bank.settings.timeLimitMinutes} Minutes</strong>
-                    <span>A countdown timer will run during the quiz. The exam auto-submits when time expires.</span>
-                  </div>
+              {/* Pillar 1: Dual Timings (Attempt Duration + Ending/Auto-Delete Window) */}
+              <div className="qb-rule-item">
+                <ion-icon name="timer-outline"></ion-icon>
+                <div>
+                  <strong>Quiz Timing 1: {bank.settings?.timeLimitMinutes ? `${bank.settings.timeLimitMinutes} Minutes Duration` : 'Untimed Attempt'}</strong>
+                  <span>{bank.settings?.timeLimitMinutes ? 'A countdown timer will run during the quiz and auto-submits when time expires.' : 'Take your time to complete all questions.'}</span>
                 </div>
-              )}
+              </div>
 
               <div className="qb-rule-item">
-                <ion-icon name="shield-checkmark-outline"></ion-icon>
+                <ion-icon name="hourglass-outline"></ion-icon>
                 <div>
-                  <strong>Authorized Account: {isPreview ? 'Teacher Preview' : auth?.user?.email}</strong>
-                  <span>Your student authorization is confirmed.</span>
+                  <strong>Quiz Timing 2: {bank.settings?.quizEndingHours || 3}-Hour Auto-Delete Window</strong>
+                  <span>Proprietary question screenshots and diagrams are permanently auto-deleted once this 3-hour window ends.</span>
+                </div>
+              </div>
+
+              {/* Pillar 2: Proctored Fullscreen Lockdown */}
+              <div className="qb-rule-item highlight-warn">
+                <ion-icon name="scan-outline"></ion-icon>
+                <div>
+                  <strong>Proctored Fullscreen Mode</strong>
+                  <span>Quiz starts in fullscreen on desktop and mobile. Minimizing or shrinking the window will block the question text until restored.</span>
+                </div>
+              </div>
+
+              {/* Pillar 3: Student Email Result Isolation */}
+              <div className="qb-rule-item">
+                <ion-icon name="mail-outline"></ion-icon>
+                <div>
+                  <strong>Grade Destination: {isPreview ? 'Teacher Preview' : auth?.user?.email}</strong>
+                  <span>Your test score and audit marks will be strictly saved and partitioned under your student email.</span>
                 </div>
               </div>
 
@@ -514,8 +688,8 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 onClick={handleStartQuiz}
                 disabled={preparedQuestions.length === 0}
               >
-                <span>Start Timed Quiz</span>
-                <ion-icon name="arrow-forward-outline"></ion-icon>
+                <span>Start Proctored Fullscreen Quiz</span>
+                <ion-icon name="expand-outline"></ion-icon>
               </button>
             </div>
           </div>
@@ -723,6 +897,18 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   <ion-icon name="close-circle-outline"></ion-icon>
                   <span>{preparedQuestions.length - finalScore} Incorrect</span>
                 </div>
+              </div>
+
+              {/* Pillar 3: Student Email Result Isolation Record */}
+              <div className="qb-email-record-chip">
+                <ion-icon name="mail-outline"></ion-icon>
+                <span>Result permanently saved to: <strong>{auth?.user?.email || studentEmail}</strong></span>
+              </div>
+
+              {/* Pillar 2: Proctored Fullscreen Integrity Status */}
+              <div className={`qb-integrity-status-pill ${fullscreenViolations === 0 ? 'clean' : 'warning'}`}>
+                <ion-icon name={fullscreenViolations === 0 ? 'shield-checkmark-outline' : 'warning-outline'}></ion-icon>
+                <span>Fullscreen Integrity: {fullscreenViolations === 0 ? 'Proctored Clean (0 exits)' : `${fullscreenViolations} window exit(s) recorded`}</span>
               </div>
 
               <p className="qb-completed-date-stamp">

@@ -30,6 +30,9 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(
     bank?.settings?.timeLimitMinutes || '20'
   )
+  const [quizEndingHours, setQuizEndingHours] = useState(
+    bank?.settings?.quizEndingHours ? String(bank.settings.quizEndingHours) : '3'
+  )
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -49,6 +52,7 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
 
     const qCount = questionsPerAttempt ? parseInt(questionsPerAttempt, 10) : null
     const tLimit = timeLimitMinutes ? parseInt(timeLimitMinutes, 10) : null
+    const endHours = quizEndingHours ? parseFloat(quizEndingHours) : 3
     const settings = {
       randomizeQuestions,
       randomizeOptions,
@@ -56,6 +60,7 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
       showExplanation,
       questionsPerAttempt: qCount && qCount > 0 ? qCount : null,
       timeLimitMinutes: tLimit && tLimit > 0 ? tLimit : null,
+      quizEndingHours: endHours && endHours > 0 ? endHours : 3,
     }
 
     let saved
@@ -139,7 +144,10 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
             </div>
 
             <div className="qb-form-group">
-              <label className="qb-form-label">Time Limit (Minutes)</label>
+              <label className="qb-form-label">
+                <ion-icon name="timer-outline" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}></ion-icon>
+                1. Quiz Duration (Minutes)
+              </label>
               <input
                 type="number"
                 min="1"
@@ -148,6 +156,28 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
                 onChange={(e) => setTimeLimitMinutes(e.target.value)}
                 placeholder="e.g. 20 (leave blank for untimed)"
               />
+              <span className="qb-form-hint" style={{ fontSize: '11px', color: 'var(--text-2, #A1A1AA)', marginTop: '4px', display: 'block' }}>
+                Time limit for student once quiz is started
+              </span>
+            </div>
+
+            <div className="qb-form-group">
+              <label className="qb-form-label">
+                <ion-icon name="trash-bin-outline" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px', color: 'var(--mint, #FF5C5C)' }}></ion-icon>
+                2. Quiz Ending Time (Hours)
+              </label>
+              <input
+                type="number"
+                min="0.5"
+                step="0.5"
+                className="qb-form-input"
+                value={quizEndingHours}
+                onChange={(e) => setQuizEndingHours(e.target.value)}
+                placeholder="e.g. 3 (Default: 3 Hours)"
+              />
+              <span className="qb-form-hint" style={{ fontSize: '11px', color: 'var(--mint, #FF5C5C)', marginTop: '4px', display: 'block' }}>
+                After 3 hrs, question screenshots and diagrams auto-delete permanently
+              </span>
             </div>
           </div>
 

@@ -5,6 +5,7 @@
  */
 
 const ATTEMPTS_STORAGE_KEY = 'nxtstep_quiz_attempts'
+const STUDENT_RESULTS_PREFIX = 'nxtstep_student_results_'
 
 /**
  * Retrieve all attempt records
@@ -25,11 +26,49 @@ export function getAllAttempts() {
 }
 
 /**
+ * Retrieve all marks and attempts stored strictly under a student's verified email partition
+ */
+export function getStudentEmailPartitionResults(studentEmail) {
+  if (!studentEmail) return []
+  const cleanEmail = String(studentEmail).trim().toLowerCase()
+  try {
+    const studentPartitionKey = `${STUDENT_RESULTS_PREFIX}${cleanEmail}`
+    const raw = localStorage.getItem(studentPartitionKey)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    }
+  } catch (e) {
+    console.warn('Error reading student email partition:', e)
+  }
+  // Fallback to filtering master attempts by verified student email
+  const attempts = getAllAttempts()
+  return attempts.filter((a) => a.studentEmail === cleanEmail)
+}
+
+/**
  * Get a specific student's attempt for a question bank
  */
 export function getStudentAttempt(bankId, studentEmail) {
   if (!bankId || !studentEmail) return null
   const cleanEmail = String(studentEmail).trim().toLowerCase()
+  
+  // 1. Check isolated email partition first
+  try {
+    const partitionKey = `${STUDENT_RESULTS_PREFIX}${cleanEmail}`
+    const raw = localStorage.getItem(partitionKey)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        const found = parsed.find((a) => a.bankId === bankId && a.studentEmail === cleanEmail)
+        if (found) return found
+      }
+    }
+  } catch (e) {
+    console.warn('Partition lookup error:', e)
+  }
+
+  // 2. Fallback to master attempts list
   const attempts = getAllAttempts()
   return attempts.find((a) => a.bankId === bankId && a.studentEmail === cleanEmail) || null
 }
@@ -43,13 +82,14 @@ export function hasCompletedAttempt(bankId, studentEmail) {
 }
 
 /**
- * Save / Record a student's completed quiz attempt
+ * Save / Record a student's completed quiz attempt strictly under student email
  */
 export function recordCompletedAttempt(bankId, studentEmail, {
   score = 0,
   totalQuestions = 0,
   answers = [],
   studentName = '',
+  fullscreenViolations = 0,
 } = {}) {
   if (!bankId || !studentEmail) return null
 
@@ -69,9 +109,29 @@ export function recordCompletedAttempt(bankId, studentEmail, {
     percentage,
     completedAt: now,
     answers,
+    fullscreenViolations: Number(fullscreenViolations) || 0,
+    verifiedEmailOwner: cleanEmail,
   }
 
-  // Replace existing or append
+  // 1. Strictly store under student's personal email partition key
+  try {
+    const studentPartitionKey = `${STUDENT_RESULTS_PREFIX}${cleanEmail}`
+    const existingRaw = localStorage.getItem(studentPartitionKey)
+    const studentAttempts = existingRaw ? JSON.parse(existingRaw) : []
+    const idx = studentAttempts.findIndex((a) => a.bankId === bankId)
+    let updatedStudentAttempts
+    if (idx >= 0) {
+      updatedStudentAttempts = [...studentAttempts]
+      updatedStudentAttempts[idx] = newAttempt
+    } else {
+      updatedStudentAttempts = [newAttempt, ...studentAttempts]
+    }
+    localStorage.setItem(studentPartitionKey, JSON.stringify(updatedStudentAttempts))
+  } catch (err) {
+    console.warn('Failed to save to student email partition:', err)
+  }
+
+  // 2. Store in master list for teacher auditing
   const existingIndex = attempts.findIndex((a) => a.bankId === bankId && a.studentEmail === cleanEmail)
   let updated
   if (existingIndex >= 0) {
@@ -105,6 +165,21 @@ export function listBankAttempts(bankId) {
 export function resetStudentAttempt(bankId, studentEmail) {
   if (!bankId || !studentEmail) return false
   const cleanEmail = String(studentEmail).trim().toLowerCase()
+  
+  // 1. Remove from student partition
+  try {
+    const studentPartitionKey = `${STUDENT_RESULTS_PREFIX}${cleanEmail}`
+    const existingRaw = localStorage.getItem(studentPartitionKey)
+    if (existingRaw) {
+      const studentAttempts = JSON.parse(existingRaw)
+      const filtered = studentAttempts.filter((a) => a.bankId !== bankId)
+      localStorage.setItem(studentPartitionKey, JSON.stringify(filtered))
+    }
+  } catch (e) {
+    console.warn('Partition reset error:', e)
+  }
+
+  // 2. Remove from master attempts
   const attempts = getAllAttempts()
   const filtered = attempts.filter((a) => !(a.bankId === bankId && a.studentEmail === cleanEmail))
   try {

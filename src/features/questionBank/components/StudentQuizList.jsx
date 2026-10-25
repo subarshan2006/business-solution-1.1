@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   getQuestionBanks,
   isStudentAuthorized,
+  isQuizExpired,
 } from '../services/questionBankStorage'
 import {
   getStudentAttempt,
@@ -42,10 +43,12 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
 
     const listWithAttempts = authorized.map((b) => {
       const att = getStudentAttempt(b.id, studentEmail)
+      const isExp = isQuizExpired(b)
       return {
         ...b,
         attempt: att || null,
         isCompleted: Boolean(att && att.status === 'completed'),
+        isExpired: isExp,
       }
     })
 
@@ -104,6 +107,10 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                     <span className="qb-attempt-badge completed">
                       ✓ Completed ({attempt.score}/{attempt.totalQuestions})
                     </span>
+                  ) : bank.isExpired ? (
+                    <span className="qb-attempt-badge" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#EF4444', borderColor: 'rgba(239, 68, 68, 0.35)' }}>
+                      3h Window Expired
+                    </span>
                   ) : (
                     <span className="qb-attempt-badge pending">
                       ● Ready to Take
@@ -119,10 +126,18 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                     <ion-icon name="help-circle-outline"></ion-icon>
                     <span>{questionCount} Questions</span>
                   </div>
+                  <div className="qb-meta-item">
+                    <ion-icon name="timer-outline"></ion-icon>
+                    <span>{bank.settings?.timeLimitMinutes ? `${bank.settings.timeLimitMinutes}m` : 'Untimed'}</span>
+                  </div>
+                  <div className="qb-meta-item" title="After 3 hours, question diagrams auto-delete permanently">
+                    <ion-icon name="trash-bin-outline" style={{ color: 'var(--mint, #FF5C5C)' }}></ion-icon>
+                    <span>{bank.settings?.quizEndingHours || 3}h Window</span>
+                  </div>
                   {bank.settings?.oneAttempt && (
                     <div className="qb-meta-item">
                       <ion-icon name="lock-closed-outline"></ion-icon>
-                      <span>1 Attempt Limit</span>
+                      <span>1 Attempt</span>
                     </div>
                   )}
                 </div>
@@ -147,6 +162,16 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                     >
                       <ion-icon name="eye-outline"></ion-icon>
                       <span>View Results</span>
+                    </button>
+                  ) : bank.isExpired ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary qb-full-btn"
+                      disabled
+                      style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                    >
+                      <ion-icon name="lock-closed-outline"></ion-icon>
+                      <span>Quiz Window Closed</span>
                     </button>
                   ) : (
                     <button
