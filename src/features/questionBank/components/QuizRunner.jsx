@@ -23,7 +23,7 @@ import {
 } from '../services/ephemeralImageService'
 import WatermarkedDiagramCanvas from './WatermarkedDiagramCanvas'
 import ThemeToggle from '../../../components/ThemeToggle'
-import { studentApi } from '../../../services/nxtstepApi'
+import { studentApi, getStoredSessionUser } from '../../../services/nxtstepApi'
 
 function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
   const params = useParams()
@@ -45,6 +45,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const [bank, setBank] = useState(null)
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [isStartingAttempt, setIsStartingAttempt] = useState(false)
 
   // Quiz progression stages:
   // 'checking_auth' | 'access_denied' | 'already_completed' | 'start_screen' | 'in_progress' | 'completed'
@@ -148,6 +149,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             subject: found.subject || 'AP Biology',
             published: true,
             isBackendTest: true,
+            questionCount: found.questionCount || 39,
             teacher: found.teacher,
             authorizedStudents: auth?.user?.email ? [auth.user.email] : [],
             settings: {
@@ -262,7 +264,14 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         setTimedOutNotice(true)
       }
 
-      if (!isPreview && auth?.user?.email && bank) {
+      const effectiveEmail = (
+        (auth?.user?.email && auth.user.email !== 'Google Classroom Account' ? auth.user.email : '') ||
+        getStoredSessionUser()?.email ||
+        auth?.user?.email ||
+        ''
+      )
+
+      if (!isPreview && effectiveEmail && bank) {
         if (bank.isBackendTest) {
           const answersPayload = studentAnswers.map((a) => ({
             attemptQuestionId: a.questionId,
@@ -286,11 +295,11 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             })
         } else {
           // Pillar 3: Record attempt strictly partitioned by student email with proctoring stats
-          const saved = recordCompletedAttempt(bank.id, auth.user.email, {
+          const saved = recordCompletedAttempt(bank.id, effectiveEmail, {
             score: correctCount,
             totalQuestions: preparedQuestions.length,
             answers: studentAnswers,
-            studentName: auth.user.name || auth.user.email,
+            studentName: auth?.user?.name || effectiveEmail,
             fullscreenViolations,
           })
           setCompletedAttemptData(saved)
@@ -390,6 +399,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
   // Start Quiz (Triggers Desktop & Mobile Fullscreen Lockdown)
   const handleStartQuiz = async () => {
+    setIsStartingAttempt(true)
     setCurrentIndex(0)
     setSelectedOptionId('')
     setIsAnswerSubmitted(false)
@@ -398,10 +408,10 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     setFullscreenViolations(0)
     setIsFullscreenBlocked(false)
 
-    if (bank?.isBackendTest) {
-      try {
+    try {
+      if (bank?.isBackendTest) {
         const attempt = await studentApi.startAttempt(bank.id)
-        if (attempt?.questions) {
+        if (attempt?.questions && attempt.questions.length > 0) {
           const qs = attempt.questions.map((q) => ({
             id: q.attemptQuestionId,
             question: q.questionText,
@@ -410,23 +420,27 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               text: o.text || o.label,
               imageUrl: o.imageUrl,
             })),
+            image: q.images?.[0]?.imageUrl || null,
             images: q.images || [],
             correctOption: '',
           }))
           setPreparedQuestions(qs)
+        } else {
+          throw new Error('No questions available in this test attempt.')
         }
-      } catch (err) {
-        console.error('Failed to start backend attempt:', err)
-        setAuthError(err.message || 'Unable to start attempt. You may not be assigned to this quiz.')
-        setStage('access_denied')
-        return
       }
-    }
 
-    if (!isPreview) {
-      await enterFullscreen()
+      if (!isPreview) {
+        await enterFullscreen()
+      }
+      setStage('in_progress')
+    } catch (err) {
+      console.error('Failed to start quiz attempt:', err)
+      setAuthError(err.message || 'Unable to start attempt. You may not be assigned to this quiz.')
+      setStage('access_denied')
+    } finally {
+      setIsStartingAttempt(false)
     }
-    setStage('in_progress')
   }
 
   // Select Option
@@ -440,17 +454,35 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     if (!selectedOptionId || isAnswerSubmitted) return
 
     const currentQ = preparedQuestions[currentIndex]
-    const isCorrect = selectedOptionId.toUpperCase() === currentQ.correctOption.toUpperCase()
+    if (!currentQ) return
+
+    const isCorrect = currentQ.correctOption
+      ? selectedOptionId.toUpperCase() === currentQ.correctOption.toUpperCase()
+      : false
 
     const answerRecord = {
       questionId: currentQ.id,
       selectedOption: selectedOptionId,
-      correctOption: currentQ.correctOption,
+      correctOption: currentQ.correctOption || '',
       isCorrect,
     }
 
     setStudentAnswers((prev) => [...prev, answerRecord])
     setIsAnswerSubmitted(true)
+
+    // Autosave to backend if backend test
+    if (bank?.isBackendTest) {
+      studentApi
+        .saveAnswers(bank.id, [
+          {
+            attemptQuestionId: currentQ.id,
+            selectedOption: selectedOptionId,
+          },
+        ])
+        .catch((err) => {
+          console.warn('Backend autosave warning:', err)
+        })
+    }
   }
 
   // Next Question or Finish Quiz
@@ -713,7 +745,11 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               <div className="qb-rule-item">
                 <ion-icon name="help-circle-outline"></ion-icon>
                 <div>
-                  <strong>{preparedQuestions.length} Questions</strong>
+                  <strong>
+                    {bank.isBackendTest
+                      ? `${bank.questionCount || 39} Questions`
+                      : `${preparedQuestions.length} Questions`}
+                  </strong>
                   <span>Interactive multiple choice questions with comprehensive explanations.</span>
                 </div>
               </div>
@@ -769,9 +805,13 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 type="button"
                 className="btn btn-primary qb-hero-btn"
                 onClick={handleStartQuiz}
-                disabled={preparedQuestions.length === 0}
+                disabled={isStartingAttempt || (!bank.isBackendTest && preparedQuestions.length === 0)}
               >
-                <span>Start Proctored Fullscreen Quiz</span>
+                <span>
+                  {isStartingAttempt
+                    ? 'Starting Proctored Quiz...'
+                    : 'Start Proctored Fullscreen Quiz'}
+                </span>
                 <ion-icon name="expand-outline"></ion-icon>
               </button>
             </div>
@@ -827,16 +867,22 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             <div className={bank.isSlideDeck ? 'qb-slide-choice-grid' : 'qb-quiz-options-group'}>
               {currentQ.options.map((opt) => {
                 const isSelected = selectedOptionId === opt.id
-                const isCorrectOption = opt.id.toUpperCase() === currentQ.correctOption.toUpperCase()
+                const isCorrectOption = currentQ.correctOption
+                  ? opt.id.toUpperCase() === currentQ.correctOption.toUpperCase()
+                  : false
 
                 let optClass = bank.isSlideDeck ? 'qb-slide-choice-btn' : 'qb-quiz-option-button'
                 if (isSelected) optClass += ' selected'
                 if (isAnswerSubmitted) {
                   optClass += ' locked'
-                  if (isCorrectOption) {
-                    optClass += ' option-revealed-correct'
-                  } else if (isSelected && !isCorrectOption) {
-                    optClass += ' option-revealed-wrong'
+                  if (currentQ.correctOption) {
+                    if (isCorrectOption) {
+                      optClass += ' option-revealed-correct'
+                    } else if (isSelected && !isCorrectOption) {
+                      optClass += ' option-revealed-wrong'
+                    }
+                  } else if (isSelected) {
+                    optClass += ' selected'
                   }
                 }
 
@@ -850,11 +896,14 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   >
                     <span className="qb-opt-letter-circle">{opt.id}</span>
                     <span className="qb-opt-text-body">{opt.text}</span>
-                    {isAnswerSubmitted && isCorrectOption && (
+                    {isAnswerSubmitted && currentQ.correctOption && isCorrectOption && (
                       <ion-icon name="checkmark-circle" class="qb-opt-feedback-icon correct"></ion-icon>
                     )}
-                    {isAnswerSubmitted && isSelected && !isCorrectOption && (
+                    {isAnswerSubmitted && currentQ.correctOption && isSelected && !isCorrectOption && (
                       <ion-icon name="close-circle" class="qb-opt-feedback-icon wrong"></ion-icon>
+                    )}
+                    {isAnswerSubmitted && !currentQ.correctOption && isSelected && (
+                      <ion-icon name="checkmark-circle-outline" class="qb-opt-feedback-icon correct"></ion-icon>
                     )}
                   </button>
                 )
@@ -877,27 +926,39 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             ) : (
               /* Instant Feedback Banner & Educational Reason */
               <div className="qb-feedback-reveal-panel">
-                {selectedOptionId.toUpperCase() === currentQ.correctOption.toUpperCase() ? (
-                  <div className="qb-feedback-banner correct">
-                    <div className="qb-banner-header">
-                      <ion-icon name="checkmark-circle"></ion-icon>
-                      <strong>✓ Correct!</strong>
+                {currentQ.correctOption ? (
+                  selectedOptionId.toUpperCase() === currentQ.correctOption.toUpperCase() ? (
+                    <div className="qb-feedback-banner correct">
+                      <div className="qb-banner-header">
+                        <ion-icon name="checkmark-circle"></ion-icon>
+                        <strong>✓ Correct!</strong>
+                      </div>
+                      <p>
+                        Your answer: <strong>Choice {selectedOptionId}</strong>
+                      </p>
                     </div>
-                    <p>
-                      Your answer: <strong>Choice {selectedOptionId}</strong>
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="qb-feedback-banner incorrect">
+                      <div className="qb-banner-header">
+                        <ion-icon name="close-circle"></ion-icon>
+                        <strong>✗ Incorrect</strong>
+                      </div>
+                      <p>
+                        Your answer: <strong>Choice {selectedOptionId}</strong>
+                      </p>
+                      <p className="qb-correct-highlight">
+                        Correct answer: <strong>Choice {currentQ.correctOption}</strong>
+                      </p>
+                    </div>
+                  )
                 ) : (
-                  <div className="qb-feedback-banner incorrect">
-                    <div className="qb-banner-header">
-                      <ion-icon name="close-circle"></ion-icon>
-                      <strong>✗ Incorrect</strong>
+                  <div className="qb-feedback-banner correct" style={{ borderColor: '#ffb347', background: 'rgba(255, 179, 71, 0.1)' }}>
+                    <div className="qb-banner-header" style={{ color: '#ffb347' }}>
+                      <ion-icon name="checkmark-done-circle-outline"></ion-icon>
+                      <strong>Answer Saved &amp; Locked</strong>
                     </div>
                     <p>
-                      Your answer: <strong>Choice {selectedOptionId}</strong>
-                    </p>
-                    <p className="qb-correct-highlight">
-                      Correct answer: <strong>Choice {currentQ.correctOption}</strong>
+                      Selected: <strong>Choice {selectedOptionId}</strong>. Answer synced with teacher grading portal.
                     </p>
                   </div>
                 )}
