@@ -3,6 +3,7 @@ import {
   saveQuestionBank,
   normalizeEmailList,
 } from '../services/questionBankStorage'
+import { teacherStudentApi } from '../../../services/nxtstepApi'
 
 function StudentAccessModal({ bank, onClose, onSaved }) {
   const [emails, setEmails] = useState(
@@ -74,12 +75,29 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
     }
   }
 
-  const handleSave = () => {
-    const updated = saveQuestionBank({
-      ...bank,
-      authorizedStudents: emails,
-    })
-    onSaved(updated)
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  const handleSave = async () => {
+    setIsSyncing(true)
+    setError('')
+    try {
+      if (emails.length > 0) {
+        try {
+          await teacherStudentApi.addStudents({ studentEmails: emails })
+        } catch (apiErr) {
+          console.warn('Backend teacher-student sync warning (proceeding with local save):', apiErr)
+        }
+      }
+
+      const updated = saveQuestionBank({
+        ...bank,
+        published: true,
+        authorizedStudents: emails,
+      })
+      onSaved(updated)
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   return (
@@ -199,8 +217,8 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button type="button" className="btn btn-primary" onClick={handleSave}>
-              Save Access ({emails.length} Students)
+            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={isSyncing}>
+              {isSyncing ? 'Saving & Syncing...' : `Save Access (${emails.length} Students)`}
             </button>
           </div>
         </div>

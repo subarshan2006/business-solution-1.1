@@ -23,6 +23,7 @@ import {
 } from '../services/ephemeralImageService'
 import WatermarkedDiagramCanvas from './WatermarkedDiagramCanvas'
 import ThemeToggle from '../../../components/ThemeToggle'
+import { studentApi } from '../../../services/nxtstepApi'
 
 function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
   const params = useParams()
@@ -128,16 +129,50 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClosePreview, handleExitQuiz])
 
-  // 2. Load Bank metadata ONLY
+  // 2. Load Bank metadata (Local storage with Backend test fallback)
   useEffect(() => {
     if (!activeBankId) return
     const b = getQuestionBankById(activeBankId)
-    setBank(b)
-  }, [activeBankId])
+    if (b) {
+      setBank(b)
+    } else {
+      studentApi.getAssignedTests().then((tests) => {
+        const found = Array.isArray(tests)
+          ? tests.find((t) => t.testId === activeBankId || t.assignmentId === activeBankId)
+          : null
+        if (found) {
+          setBank({
+            id: found.testId,
+            title: found.title,
+            description: found.description,
+            subject: found.subject || 'AP Biology',
+            published: true,
+            isBackendTest: true,
+            teacher: found.teacher,
+            authorizedStudents: auth?.user?.email ? [auth.user.email] : [],
+            settings: {
+              timeLimitMinutes: found.attemptDurationMinutes || 60,
+              oneAttempt: true,
+              showExplanation: found.showExplanations ?? false,
+            },
+            questions: [],
+          })
+        }
+      }).catch((err) => {
+        console.warn('Failed to load backend test details:', err)
+      })
+    }
+  }, [activeBankId, auth])
 
   // 3. Perform Authorization Gate check & Pillar 1 Quiz Expiry
   useEffect(() => {
     if (!bank) return
+
+    // If backend test, proceed directly to start screen
+    if (bank.isBackendTest) {
+      setStage('start_screen')
+      return
+    }
 
     // If teacher preview mode
     if (isPreview) {
@@ -228,15 +263,38 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
       }
 
       if (!isPreview && auth?.user?.email && bank) {
-        // Pillar 3: Record attempt strictly partitioned by student email with proctoring stats
-        const saved = recordCompletedAttempt(bank.id, auth.user.email, {
-          score: correctCount,
-          totalQuestions: preparedQuestions.length,
-          answers: studentAnswers,
-          studentName: auth.user.name || auth.user.email,
-          fullscreenViolations,
-        })
-        setCompletedAttemptData(saved)
+        if (bank.isBackendTest) {
+          const answersPayload = studentAnswers.map((a) => ({
+            attemptQuestionId: a.questionId,
+            selectedOption: a.selectedOption,
+          }))
+          studentApi
+            .submitAttempt(bank.id, answersPayload)
+            .then((result) => {
+              if (result) {
+                setFinalScore(result.score || 0)
+                setCompletedAttemptData({
+                  score: result.score,
+                  totalQuestions: result.totalQuestions,
+                  percentage: result.percentage,
+                  timeTakenSeconds: result.timeTakenSeconds,
+                })
+              }
+            })
+            .catch((err) => {
+              console.warn('Backend attempt submission warning:', err)
+            })
+        } else {
+          // Pillar 3: Record attempt strictly partitioned by student email with proctoring stats
+          const saved = recordCompletedAttempt(bank.id, auth.user.email, {
+            score: correctCount,
+            totalQuestions: preparedQuestions.length,
+            answers: studentAnswers,
+            studentName: auth.user.name || auth.user.email,
+            fullscreenViolations,
+          })
+          setCompletedAttemptData(saved)
+        }
       }
 
       // EPHEMERAL PURGE: Revoke all image blobs from memory immediately
@@ -339,6 +397,31 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     setTimedOutNotice(false)
     setFullscreenViolations(0)
     setIsFullscreenBlocked(false)
+
+    if (bank?.isBackendTest) {
+      try {
+        const attempt = await studentApi.startAttempt(bank.id)
+        if (attempt?.questions) {
+          const qs = attempt.questions.map((q) => ({
+            id: q.attemptQuestionId,
+            question: q.questionText,
+            options: (q.options || []).map((o) => ({
+              id: o.label,
+              text: o.text || o.label,
+              imageUrl: o.imageUrl,
+            })),
+            images: q.images || [],
+            correctOption: '',
+          }))
+          setPreparedQuestions(qs)
+        }
+      } catch (err) {
+        console.error('Failed to start backend attempt:', err)
+        setAuthError(err.message || 'Unable to start attempt. You may not be assigned to this quiz.')
+        setStage('access_denied')
+        return
+      }
+    }
 
     if (!isPreview) {
       await enterFullscreen()

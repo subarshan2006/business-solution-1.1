@@ -197,7 +197,7 @@ export const authApi = {
   async googleLogin(accessToken) {
     const res = await request('/api/auth/google', {
       method: 'POST',
-      body: JSON.stringify({ accessToken }),
+      body: JSON.stringify({ accessToken, token: accessToken }),
     })
     if (res.data?.token) {
       saveSessionToken(res.data.token)
@@ -454,10 +454,12 @@ export const testManagementApi = {
     attemptDurationMinutes,
     questionIds,
     studentIds,
+    studentEmails,
     randomizeQuestions = false,
     randomizeOptions = false,
     showResults = true,
     showExplanations = true,
+    publishImmediately = false,
   }) {
     const res = await request('/api/tests', {
       method: 'POST',
@@ -470,10 +472,12 @@ export const testManagementApi = {
         attemptDurationMinutes,
         questionIds,
         studentIds,
+        studentEmails,
         randomizeQuestions,
         randomizeOptions,
         showResults,
         showExplanations,
+        publishImmediately,
       }),
     })
     return res.data
@@ -650,6 +654,49 @@ export const parentApi = {
 }
 
 // -----------------------------------------------------------------------------
+// 7. Teacher Student Roster & Connection Management
+// -----------------------------------------------------------------------------
+
+export const teacherStudentApi = {
+  /**
+   * List all students connected to authenticated teacher
+   */
+  async listStudents() {
+    const res = await request('/api/teacher/students', { method: 'GET' })
+    return res.data
+  },
+
+  /**
+   * Add student(s) to teacher roster by ID or email
+   */
+  async addStudents({ studentId, studentEmail, studentIds, studentEmails } = {}) {
+    const res = await request('/api/teacher/students', {
+      method: 'POST',
+      body: JSON.stringify({ studentId, studentEmail, studentIds, studentEmails }),
+    })
+    return res.data
+  },
+
+  /**
+   * Remove student from teacher roster
+   */
+  async removeStudent(studentId) {
+    const res = await request(`/api/teacher/students/${encodeURIComponent(studentId)}`, {
+      method: 'DELETE',
+    })
+    return res.data
+  },
+
+  /**
+   * List all teachers connected to authenticated student
+   */
+  async listTeachers() {
+    const res = await request('/api/student/teachers', { method: 'GET' })
+    return res.data
+  },
+}
+
+// -----------------------------------------------------------------------------
 // 7. Admin Workflows & System Monitoring
 // -----------------------------------------------------------------------------
 
@@ -737,4 +784,5 @@ export default {
   student: studentApi,
   parent: parentApi,
   admin: adminApi,
+  teacherStudents: teacherStudentApi,
 }

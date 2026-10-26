@@ -94,6 +94,7 @@ function ClassroomPortal() {
   const [showPinModal, setShowPinModal] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState('')
+  const [directStudentEmail, setDirectStudentEmail] = useState('subarshan195@gmail.com')
 
   // Escape key closes PIN modal
   useEffect(() => {
@@ -431,14 +432,14 @@ function ClassroomPortal() {
         const roleResult = await determineRole(authData.accessToken, userEmail)
         if (roleResult.role === 'teacher') {
           isTeacherUser = true
-          if (roleResult.userProfile?.emailAddress) {
-            userEmail = roleResult.userProfile.emailAddress
-            authData.user = {
-              ...authData.user,
-              email: userEmail,
-              name: roleResult.userProfile.name?.fullName || authData.user?.name,
-              picture: roleResult.userProfile.photoUrl || authData.user?.picture,
-            }
+        }
+        if (roleResult.userProfile?.emailAddress) {
+          userEmail = roleResult.userProfile.emailAddress
+          authData.user = {
+            ...authData.user,
+            email: userEmail,
+            name: roleResult.userProfile.name?.fullName || authData.user?.name,
+            picture: roleResult.userProfile.photoUrl || authData.user?.picture,
           }
         }
       }
@@ -453,7 +454,7 @@ function ClassroomPortal() {
         finalRole = 'student'
       }
 
-      const fullAuth = { ...authData, role: finalRole, accountRole: finalRole }
+      let fullAuth = { ...authData, role: finalRole, accountRole: finalRole }
       setRole(finalRole)
       if (finalRole === 'parent') {
         setActiveTab('parent')
@@ -465,15 +466,44 @@ function ClassroomPortal() {
 
       // Synchronize session token with NxtStep backend server
       try {
-        await authApi.googleLogin(authData.accessToken)
+        const backendAuth = await authApi.googleLogin(authData.accessToken)
+        if (backendAuth?.user?.email) {
+          userEmail = backendAuth.user.email
+          const updatedUser = {
+            ...authData.user,
+            email: backendAuth.user.email,
+            name: backendAuth.user.name || authData.user?.name,
+            picture: backendAuth.user.picture || authData.user?.picture,
+            studentId: backendAuth.user.studentId,
+            id: backendAuth.user.id,
+          }
+          fullAuth = { ...fullAuth, user: updatedUser }
+          setAuth(fullAuth)
+          saveAuth(fullAuth)
+        }
       } catch (googleSyncErr) {
         console.warn('Backend Google login note:', googleSyncErr)
         try {
-          await authApi.devLogin({
-            email: userEmail,
+          const devLoginEmail = userEmail && userEmail !== 'Google Classroom Account'
+            ? userEmail
+            : 'student@nxtstep.com'
+          const devAuth = await authApi.devLogin({
+            email: devLoginEmail,
             role: finalRole.toUpperCase(),
             name: authData.user?.name || 'User',
           })
+          if (devAuth?.user?.email) {
+            const updatedUser = {
+              ...authData.user,
+              email: devAuth.user.email,
+              name: devAuth.user.name || authData.user?.name,
+              studentId: devAuth.user.studentId,
+              id: devAuth.user.id,
+            }
+            fullAuth = { ...fullAuth, user: updatedUser }
+            setAuth(fullAuth)
+            saveAuth(fullAuth)
+          }
         } catch (devFallbackErr) {
           console.warn('Backend dev-login fallback note:', devFallbackErr)
         }
@@ -538,22 +568,6 @@ function ClassroomPortal() {
       }
       setAuth(fullAuth)
       saveAuth(fullAuth)
-
-      // Synchronize session token with NxtStep backend server
-      try {
-        await authApi.googleLogin(authData.accessToken)
-      } catch (googleSyncErr) {
-        console.warn('Backend Google login note:', googleSyncErr)
-        try {
-          await authApi.devLogin({
-            email: userEmail,
-            role: finalRole.toUpperCase(),
-            name: authData.user?.name || 'User',
-          })
-        } catch (devFallbackErr) {
-          console.warn('Backend dev-login fallback note:', devFallbackErr)
-        }
-      }
     } catch (err) {
       console.error('Dev login error:', err)
       setError(err.message || 'Failed to authenticate via dev login')
@@ -658,19 +672,54 @@ function ClassroomPortal() {
             </div>
 
             {/* Quick Local Backend Dev Authentication (Active when backend allows dev auth) */}
-            <div style={{ marginTop: '16px', padding: '12px 16px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#ffb347', fontWeight: 600 }}>
-                ⚡ NxtStep Backend Quick Dev Login
+                ⚡ Student Email Login (Matches Database Account)
               </p>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                <input
+                  type="email"
+                  value={directStudentEmail}
+                  onChange={(e) => setDirectStudentEmail(e.target.value)}
+                  placeholder="Enter student email (e.g. subarshan195@gmail.com)"
+                  style={{
+                    flex: '1 1 240px',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    background: 'rgba(0,0,0,0.3)',
+                    color: '#fff',
+                    fontSize: '13px',
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleDevLogin('STUDENT', directStudentEmail.trim().toLowerCase(), directStudentEmail.split('@')[0] || 'Student')}
+                  disabled={loading || !directStudentEmail.trim()}
+                  style={{ fontSize: '13px', padding: '8px 16px', borderRadius: '6px' }}
+                >
+                  🚀 Sign In as Student
+                </button>
+              </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => handleDevLogin('TEACHER', 'teacher@nxtstep.com', 'Alex Teacher')}
+                  onClick={() => handleDevLogin('STUDENT', 'subarshan195@gmail.com', 'Subarshan (Student)')}
                   disabled={loading}
                   style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
                 >
-                  Dev Login (Teacher)
+                  🧑‍🎓 Login as subarshan195@gmail.com
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleDevLogin('TEACHER', 'businesswithsubar@gmail.com', 'Subarshan (Teacher)')}
+                  disabled={loading}
+                  style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
+                >
+                  👨‍🏫 Login as businesswithsubar@gmail.com
                 </button>
                 <button
                   type="button"
@@ -679,16 +728,7 @@ function ClassroomPortal() {
                   disabled={loading}
                   style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
                 >
-                  Dev Login (Student)
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => handleDevLogin('PARENT', 'parent@nxtstep.com', 'Demo Parent')}
-                  disabled={loading}
-                  style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
-                >
-                  Dev Login (Parent)
+                  Demo Student
                 </button>
               </div>
             </div>
