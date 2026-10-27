@@ -345,6 +345,17 @@ export const questionBankApi = {
     })
     return res.data
   },
+
+  /**
+   * Assign students directly to a question bank / quiz
+   */
+  async assignStudents(id, { studentEmails = [], studentIds = [] } = {}) {
+    const res = await request(`/api/question-banks/${encodeURIComponent(id)}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ studentEmails, studentIds }),
+    })
+    return res.data
+  },
 }
 
 // -----------------------------------------------------------------------------
@@ -532,10 +543,13 @@ export const testManagementApi = {
   /**
    * Assign additional students to a test
    */
-  async assignStudents(id, studentIds) {
+  async assignStudents(id, { studentEmails = [], studentIds = [] } = {}) {
+    const payload = Array.isArray(arguments[1])
+      ? { studentIds: arguments[1] }
+      : { studentEmails, studentIds }
     const res = await request(`/api/tests/${encodeURIComponent(id)}/assign`, {
       method: 'POST',
-      body: JSON.stringify({ studentIds }),
+      body: JSON.stringify(payload),
     })
     return res.data
   },

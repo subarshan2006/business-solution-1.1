@@ -3,7 +3,11 @@ import {
   saveQuestionBank,
   normalizeEmailList,
 } from '../services/questionBankStorage'
-import { teacherStudentApi } from '../../../services/nxtstepApi'
+import {
+  teacherStudentApi,
+  questionBankApi,
+  testManagementApi,
+} from '../../../services/nxtstepApi'
 
 function StudentAccessModal({ bank, onClose, onSaved }) {
   const [emails, setEmails] = useState(
@@ -81,20 +85,55 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
     setIsSyncing(true)
     setError('')
     try {
+      let resolvedBackendId = bank.backendBankId || (bank.id && !bank.id.startsWith('qb_') ? bank.id : null)
+
       if (emails.length > 0) {
+        // 1. Ensure teacher-student connection on backend
         try {
           await teacherStudentApi.addStudents({ studentEmails: emails })
         } catch (apiErr) {
-          console.warn('Backend teacher-student sync warning (proceeding with local save):', apiErr)
+          console.warn('Backend teacher-student sync warning:', apiErr)
+        }
+
+        // 2. Identify the backend quiz / bank ID and assign students explicitly
+        if (!resolvedBackendId) {
+          try {
+            const backendBanks = await questionBankApi.listQuestionBanks()
+            const match = Array.isArray(backendBanks)
+              ? backendBanks.find((b) => b.id === bank.id || b.title === bank.title)
+              : null
+            if (match?.id) {
+              resolvedBackendId = match.id
+            }
+          } catch (listErr) {
+            console.warn('Failed to query backend question banks:', listErr)
+          }
+        }
+
+        if (resolvedBackendId) {
+          try {
+            await questionBankApi.assignStudents(resolvedBackendId, { studentEmails: emails })
+          } catch (assignErr) {
+            console.warn('Backend question-bank assignment warning:', assignErr)
+          }
+        } else if (bank.testId) {
+          try {
+            await testManagementApi.assignStudents(bank.testId, { studentEmails: emails })
+          } catch (testAssignErr) {
+            console.warn('Backend test assignment warning:', testAssignErr)
+          }
         }
       }
 
       const updated = saveQuestionBank({
         ...bank,
+        backendBankId: resolvedBackendId || bank.backendBankId || undefined,
         published: true,
         authorizedStudents: emails,
       })
       onSaved(updated)
+    } catch (saveErr) {
+      setError(saveErr.message || 'Failed to save student access.')
     } finally {
       setIsSyncing(false)
     }

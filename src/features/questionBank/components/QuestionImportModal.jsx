@@ -61,6 +61,7 @@ function QuestionImportModal({ bank, onClose, onImported }) {
 
   const [validationResult, setValidationResult] = useState(null)
   const [appendMode, setAppendMode] = useState(true)
+  const [importedBackendBankId, setImportedBackendBankId] = useState(bank?.backendBankId || null)
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -162,6 +163,7 @@ function QuestionImportModal({ bank, onClose, onImported }) {
 
       const jobId = uploadRes.jobId
       const questionBankId = uploadRes.questionBankId
+      setImportedBackendBankId(questionBankId)
 
       setProgressMsg('PDF uploaded! Processing pages via background queue (OCR & AI vision)...')
 
@@ -308,6 +310,7 @@ function QuestionImportModal({ bank, onClose, onImported }) {
 
     const updated = saveQuestionBank({
       ...bank,
+      backendBankId: importedBackendBankId || bank.backendBankId || null,
       isSlideDeck: bank.isSlideDeck || hasScreenshots,
       questions: combined,
     })
