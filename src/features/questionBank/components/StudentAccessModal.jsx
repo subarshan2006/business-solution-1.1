@@ -110,15 +110,29 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
           }
         }
 
+        const duration = bank?.settings?.timeLimitMinutes
+          ? parseInt(bank.settings.timeLimitMinutes, 10)
+          : 20
+
         if (resolvedBackendId) {
           try {
-            await questionBankApi.assignStudents(resolvedBackendId, { studentEmails: emails })
+            await questionBankApi.assignStudents(resolvedBackendId, {
+              studentEmails: emails,
+              attemptDurationMinutes: duration,
+              timeLimitMinutes: duration,
+              maxAttempts: bank?.settings?.oneAttempt ? 1 : (bank?.settings?.maxAttempts || 1),
+              randomizeQuestions: Boolean(bank?.settings?.randomizeQuestions),
+              randomizeOptions: Boolean(bank?.settings?.randomizeOptions),
+              showExplanations: Boolean(bank?.settings?.showExplanation),
+            })
           } catch (assignErr) {
             console.warn('Backend question-bank assignment warning:', assignErr)
           }
         } else if (bank.testId) {
           try {
-            await testManagementApi.assignStudents(bank.testId, { studentEmails: emails })
+            await testManagementApi.assignStudents(bank.testId, {
+              studentEmails: emails,
+            })
           } catch (testAssignErr) {
             console.warn('Backend test assignment warning:', testAssignErr)
           }

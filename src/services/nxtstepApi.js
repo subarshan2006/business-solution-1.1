@@ -349,10 +349,16 @@ export const questionBankApi = {
   /**
    * Assign students directly to a question bank / quiz
    */
-  async assignStudents(id, { studentEmails = [], studentIds = [] } = {}) {
+  async assignStudents(id, { studentEmails = [], studentIds = [], attemptDurationMinutes, timeLimitMinutes, ...settings } = {}) {
     const res = await request(`/api/question-banks/${encodeURIComponent(id)}/assign`, {
       method: 'POST',
-      body: JSON.stringify({ studentEmails, studentIds }),
+      body: JSON.stringify({
+        studentEmails,
+        studentIds,
+        attemptDurationMinutes,
+        timeLimitMinutes,
+        ...settings,
+      }),
     })
     return res.data
   },
