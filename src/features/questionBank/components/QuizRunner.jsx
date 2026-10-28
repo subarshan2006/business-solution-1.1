@@ -530,9 +530,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const isTimerWarning = secondsRemaining !== null && secondsRemaining <= 300 // 5 mins
   const isTimerCritical = secondsRemaining !== null && secondsRemaining <= 60 // 1 min
 
-  // Watermark text for diagram
   const studentEmail = auth?.user?.email || 'NxtStep Student'
-  const watermarkLabel = `${studentEmail} • ${bank.title}`
 
   return (
     <div className="qb-quiz-fullscreen-wrapper">
@@ -851,7 +849,6 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               <div className="qb-diagram-section slide-deck-diagram">
                 <WatermarkedDiagramCanvas
                   src={createEphemeralBlob(resolveAssetUrl(currentQ.image || currentQ.imageUrl))}
-                  watermarkText={watermarkLabel}
                   alt={`Question ${currentIndex + 1} Diagram`}
                   maxWidth={820}
                 />
@@ -976,7 +973,6 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                       <div className="qb-explanation-diagram-wrapper" style={{ margin: '14px 0' }}>
                         <WatermarkedDiagramCanvas
                           src={createEphemeralBlob(resolveAssetUrl(currentQ.explanationImage))}
-                          watermarkText={watermarkLabel}
                           alt={`Explanation for Question ${currentIndex + 1}`}
                           maxWidth={820}
                         />
