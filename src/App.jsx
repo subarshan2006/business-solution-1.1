@@ -10,6 +10,7 @@ import Contact from './components/Contact'
 import WhatsAppFab from './components/WhatsAppFab'
 import NotesPage from './components/NotesPage'
 import ClassroomPortal from './components/ClassroomPortal'
+import QuizRunner from './features/questionBank/components/QuizRunner'
 import PrivacyPolicy from './components/PrivacyPolicy'
 import TermsOfService from './components/TermsOfService'
 
@@ -51,7 +52,7 @@ function App() {
       <Routes>
         <Route path="/classroom" element={
           <Layout activePage="classroom" setActivePage={() => {}}
-            showThemeToggle={false}
+            showThemeToggle={true}
             showWhatsAppFab={false}
           >
             <ClassroomPortal />
@@ -59,10 +60,26 @@ function App() {
         } />
         <Route path="/classroom/:courseId" element={
           <Layout activePage="classroom" setActivePage={() => {}}
-            showThemeToggle={false}
+            showThemeToggle={true}
             showWhatsAppFab={false}
           >
             <ClassroomPortal />
+          </Layout>
+        } />
+        <Route path="/quiz/:bankId" element={
+          <Layout activePage="quiz" setActivePage={() => {}}
+            showThemeToggle={true}
+            showWhatsAppFab={false}
+          >
+            <QuizRunner />
+          </Layout>
+        } />
+        <Route path="/quiz" element={
+          <Layout activePage="quiz" setActivePage={() => {}}
+            showThemeToggle={true}
+            showWhatsAppFab={false}
+          >
+            <QuizRunner />
           </Layout>
         } />
         <Route path="/studentrecords/:slug" element={

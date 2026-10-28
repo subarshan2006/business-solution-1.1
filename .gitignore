@@ -18,6 +18,10 @@ dist-ssr
 # Student data (privacy) — only the encrypted .age file is committed
 src/data/students.js
 
+# Protected source question PDFs & local OCR cache
+*.pdf
+scripts/pdf_ocr_cache.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
