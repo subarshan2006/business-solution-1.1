@@ -597,7 +597,7 @@ function Home({ activePage }) {
         </p>
 
         <div>
-          &copy; 2026 Jivanaut Test Prep &mdash; Explore life science. All rights reserved. Primary contact: <a href="mailto:jivanautprep@gmail.com" style={{ color: 'var(--mint, #FF5C5C)', textDecoration: 'underline' }}>jivanautprep@gmail.com</a>
+          &copy; 2026 Jivanaut Test Prep &mdash; Explore life science. All rights reserved. Primary contact: <a href="mailto:jivanautprep@gmail.com" style={{ color: 'var(--mint-hi, #90a955)', textDecoration: 'underline' }}>jivanautprep@gmail.com</a>
         </div>
       </footer>
 

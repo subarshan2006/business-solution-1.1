@@ -43,7 +43,7 @@ function Logo({ variant = 'horizontal', size = 44, className = '' }) {
             fontWeight: 600,
             fontSize: `${Math.max(10, Math.round(size * 0.22))}px`,
             letterSpacing: '0.18em',
-            color: 'var(--mint, #FF5C5C)',
+            color: 'var(--mint-hi, #90a955)',
             textTransform: 'uppercase',
             marginTop: '3px'
           }}

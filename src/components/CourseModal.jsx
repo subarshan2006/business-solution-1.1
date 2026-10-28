@@ -146,7 +146,7 @@ function CourseModal({ courseId, onClose }) {
         <div className="assignment-modal-header" style={{ flexShrink: 0, position: 'sticky', top: 0, background: 'var(--surface, #1e1e24)', zIndex: 10 }}>
           <div>
             <div className="modal-tag-row">
-              <span className="modal-topic-tag" style={{ background: 'rgba(255, 92, 92, 0.15)', color: 'var(--mint, #FF5C5C)' }}>
+              <span className="modal-topic-tag" style={{ background: 'rgba(144, 169, 85, 0.15)', color: 'var(--mint-hi, #90a955)' }}>
                 {course.tag}
               </span>
             </div>
@@ -183,7 +183,7 @@ function CourseModal({ courseId, onClose }) {
           
           {/* Target Audience & Overview */}
           <div style={{ background: 'rgba(255, 92, 92, 0.05)', border: '1px solid var(--line, #383842)', borderRadius: '12px', padding: '16px 20px' }}>
-            <h4 style={{ color: 'var(--mint, #FF5C5C)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
+            <h4 style={{ color: 'var(--mint-hi, #90a955)', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '6px' }}>
               Target Student Profile
             </h4>
             <p style={{ color: 'var(--text, #FFFFFF)', fontSize: '14px', lineHeight: 1.5 }}>
@@ -197,14 +197,14 @@ function CourseModal({ courseId, onClose }) {
           {/* Core Curriculum Units */}
           <div>
             <h3 style={{ fontSize: '17px', color: 'var(--text, #FFFFFF)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ion-icon name="list-outline" style={{ color: 'var(--mint, #FF5C5C)' }}></ion-icon>
+              <ion-icon name="list-outline" style={{ color: 'var(--mint-hi, #90a955)' }}></ion-icon>
               <span>Curriculum Scope &amp; Sequence</span>
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '10px' }}>
               {course.units.map((unit, idx) => (
                 <div key={idx} style={{ background: 'var(--surface, #1e1e24)', border: '1px solid var(--line, #383842)', borderRadius: '10px', padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '11px', fontFamily: 'var(--ff-mono)', color: 'var(--mint, #FF5C5C)', fontWeight: 700 }}>
+                    <span style={{ fontSize: '11px', fontFamily: 'var(--ff-mono)', color: 'var(--mint-hi, #90a955)', fontWeight: 700 }}>
                       {unit.num}
                     </span>
                     <strong style={{ fontSize: '13px', color: 'var(--text, #FFFFFF)' }}>{unit.name}</strong>
@@ -220,13 +220,13 @@ function CourseModal({ courseId, onClose }) {
           {/* FRQ & Rubric Mastery */}
           <div>
             <h3 style={{ fontSize: '17px', color: 'var(--text, #FFFFFF)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ion-icon name="document-text-outline" style={{ color: 'var(--mint, #FF5C5C)' }}></ion-icon>
+              <ion-icon name="document-text-outline" style={{ color: 'var(--mint-hi, #90a955)' }}></ion-icon>
               <span>Targeted Exam Mastery</span>
             </h3>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '4px' }}>
               {course.frqMastery.map((item, idx) => (
                 <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '13px', color: 'var(--text, #FFFFFF)', lineHeight: 1.5 }}>
-                  <ion-icon name="checkmark-circle" style={{ color: 'var(--mint, #FF5C5C)', fontSize: '18px', flexShrink: 0, marginTop: '2px' }}></ion-icon>
+                  <ion-icon name="checkmark-circle" style={{ color: 'var(--mint-hi, #90a955)', fontSize: '18px', flexShrink: 0, marginTop: '2px' }}></ion-icon>
                   <span>{item}</span>
                 </li>
               ))}
@@ -236,7 +236,7 @@ function CourseModal({ courseId, onClose }) {
           {/* Key Student Outcomes */}
           <div>
             <h3 style={{ fontSize: '17px', color: 'var(--text, #FFFFFF)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ion-icon name="ribbon-outline" style={{ color: 'var(--mint, #FF5C5C)' }}></ion-icon>
+              <ion-icon name="ribbon-outline" style={{ color: 'var(--mint-hi, #90a955)' }}></ion-icon>
               <span>Instructional Outcomes</span>
             </h3>
             <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '4px' }}>

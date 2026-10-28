@@ -54,7 +54,7 @@ function TimelineSection({ icon, title, items }) {
 const PillIcon = ({ icon }) => (
   <div
     className="icon-box"
-    style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'rgba(255, 92, 92, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mint, #FF5C5C)' }}
+    style={{ width: '45px', height: '45px', borderRadius: '12px', background: 'rgba(144, 169, 85, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--mint-hi, #90a955)' }}
   >
     <ion-icon name={icon} style={{ fontSize: '1.5rem' }}></ion-icon>
   </div>
@@ -113,7 +113,7 @@ function About({ activePage, setActivePage }) {
                 letterSpacing: '-0.2px',
               }}
             >
-              JIVANAUT &middot; <span style={{ color: 'var(--mint, #FF5C5C)' }}>The Explorer of Life Science</span>
+              JIVANAUT &middot; <span style={{ color: 'var(--mint-hi, #90a955)' }}>The Explorer of Life Science</span>
             </h3>
 
             <p
@@ -133,8 +133,8 @@ function About({ activePage, setActivePage }) {
       {/* My Story */}
       <section className="about-story" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-          <div className="icon-box" style={{ color: 'var(--mint, #FF5C5C)', fontSize: '2rem' }}>
-            <ion-icon name="flask-outline"></ion-icon>
+          <div className="icon-box" style={{ color: 'var(--mint-hi, #90a955)', fontSize: '2rem' }}>
+            <ion-icon name="heart-outline"></ion-icon>
           </div>
           <h3 className="h3" style={{ marginBottom: 0 }}>The Vision Behind Jivanaut</h3>
         </div>
@@ -155,8 +155,8 @@ function About({ activePage, setActivePage }) {
             students must analyse novel experimental data, deduce causal relationships, and
             articulate findings precisely under timed conditions.
           </p>
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', background: 'hsla(0, 0%, 100%, 0.04)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--mint, #FF5C5C)' }}>
-            <ion-icon name="bulb-outline" style={{ fontSize: '2.5rem', color: 'var(--mint, #FF5C5C)' }}></ion-icon>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', background: 'hsla(0, 0%, 100%, 0.04)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--mint, #3a5a40)' }}>
+            <ion-icon name="bulb-outline" style={{ fontSize: '2.5rem', color: 'var(--mint-hi, #90a955)' }}></ion-icon>
             <p className="about-text" style={{ fontSize: '1rem', fontStyle: 'italic', color: 'var(--white-2)' }}>
               My mission is to serve as an academic co-pilot: creating an encouraging, academically
               rigorous space where students transform confusion into confidence, conquer their
@@ -169,8 +169,8 @@ function About({ activePage, setActivePage }) {
       {/* Three Pillars of Instruction */}
       <section className="about-philosophy" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-          <div className="icon-box" style={{ color: 'var(--mint, #FF5C5C)', fontSize: '2rem' }}>
-            <ion-icon name="extension-puzzle-outline"></ion-icon>
+          <div className="icon-box" style={{ color: 'var(--mint-hi, #90a955)', fontSize: '2rem' }}>
+            <ion-icon name="people-outline"></ion-icon>
           </div>
           <h3 className="h3" style={{ marginBottom: 0 }}>Three Pillars of Instruction</h3>
         </div>
@@ -213,9 +213,9 @@ function About({ activePage, setActivePage }) {
       {/* Why 1-on-1 Works */}
       <section className="about-philosophy" style={{ marginBottom: '60px' }}>
         <div className="title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-          <div className="icon-box" style={{ color: 'var(--mint, #FF5C5C)', fontSize: '2rem' }}>
-            <ion-icon name="rocket-outline"></ion-icon>
-          </div>
+        <div className="icon-box" style={{ color: 'var(--mint-hi, #90a955)', fontSize: '2rem' }}>
+          <ion-icon name="ribbon-outline"></ion-icon>
+        </div>
           <h3 className="h3" style={{ marginBottom: 0 }}>Why 1-on-1 Virtual Tutoring Works</h3>
         </div>
 
