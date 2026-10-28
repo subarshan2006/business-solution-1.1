@@ -672,7 +672,7 @@ function ClassroomPortal() {
             </div>
 
             {/* Quick Local Backend Dev Authentication (Active when backend allows dev auth) */}
-            <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+            {/* <div style={{ marginTop: '16px', padding: '16px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
               <p style={{ margin: '0 0 10px', fontSize: '13px', color: '#ffb347', fontWeight: 600 }}>
                 ⚡ Student Email Login (Matches Database Account)
               </p>
@@ -731,7 +731,7 @@ function ClassroomPortal() {
                   Demo Student
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* In-Product Privacy Notice (Google Verification Requirement) */}
             <div className="classroom-privacy-notice-box">
