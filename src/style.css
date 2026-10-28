@@ -483,7 +483,7 @@ main {
 
 .info-content .title {
   color: var(--mint, #FF5C5C);
-  background: rgba(255, 92, 92, 0.12);
+  background: rgba(216, 243, 220, 1);
   border: 1px solid rgba(255, 92, 92, 0.28);
   font-size: 12px;
   font-weight: 600;
@@ -499,29 +499,29 @@ main {
 .status-dot {
   width: 8px;
   height: 8px;
-  background-color: #FF5C5C; /* Red theme indicator */
+  background-color: #588157; /* Green theme indicator */
   border-radius: 50%;
   display: inline-block;
   position: relative;
   flex-shrink: 0;
-  box-shadow: 0 0 0 0 rgba(255, 92, 92, 0.7);
-  animation: pulse-red 2s infinite;
+  box-shadow: 0 0 0 0 rgba(88, 129, 87, 0.7);
+  animation: pulse-green 2s infinite;
 }
 
-@keyframes pulse-red {
+@keyframes pulse-green {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(255, 92, 92, 0.7);
+    box-shadow: 0 0 0 0 rgba(88, 129, 87, 0.7);
   }
   
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(255, 92, 92, 0);
+    box-shadow: 0 0 0 6px rgba(88, 129, 87, 0);
   }
   
   100% {
     transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(255, 92, 92, 0);
+    box-shadow: 0 0 0 0 rgba(88, 129, 87, 0);
   }
 }
 
@@ -711,7 +711,7 @@ main {
   justify-content: center;
   transition: all 0.2s ease;
   white-space: nowrap;
-  box-shadow: 0 2px 10px rgba(255, 92, 92, 0.3);
+  box-shadow: 0 2px 10px rgba(52, 78, 65, 1);
 }
 .navbar-cta-btn:hover {
   background: var(--mint-hi, #FF8585);
@@ -2600,8 +2600,8 @@ textarea.form-input::-webkit-resizer { display: none; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--mint, #FF5C5C);
-  background: rgba(255, 92, 92, 0.12);
-  border: 1px solid rgba(255, 92, 92, 0.3);
+  background: rgba(216, 243, 220, 1);
+  border: 1px solid rgba(52, 78, 65, 1);
   padding: 6px 14px;
   border-radius: 999px;
   margin-bottom: 20px;
@@ -2685,7 +2685,8 @@ textarea.form-input::-webkit-resizer { display: none; }
   background: var(--mint, #FF5C5C);
   color: #FFFFFF !important;
   border: 1px solid var(--mint, #FF5C5C);
-  box-shadow: 0 4px 16px rgba(255, 92, 92, 0.35);
+  box-shadow: 0 4px 16px rgba(88, 129, 87, 1)
+
 }
 
 .hero-cta-btn.primary:hover {
@@ -2693,7 +2694,8 @@ textarea.form-input::-webkit-resizer { display: none; }
   border-color: var(--mint-hi, #FF8585);
   color: #FFFFFF !important;
   transform: translateY(-2px);
-  box-shadow: 0 6px 22px rgba(255, 92, 92, 0.45);
+  box-shadow: 0 6px 22px rgba(88, 129, 87, 1)
+;
 }
 
 .hero-cta-btn.secondary {
@@ -2706,7 +2708,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 .hero-cta-btn.secondary:hover {
   border-color: var(--mint, #FF5C5C);
   color: var(--mint, #FF5C5C);
-  background: rgba(255, 92, 92, 0.12);
+  background: rgba(216, 243, 220, 1);
   transform: translateY(-2px);
 }
 
@@ -3446,7 +3448,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 
   --surface-1: var(--surface);
   --surface-2: #F4F4F5;
-  --surface-3: #FEE2E2;
+  --surface-3: #d8f3dc;
   --hairline: var(--line);
   /* ── Shadows (softer for light backgrounds) ────────────────────────────── */
 
@@ -3514,9 +3516,9 @@ textarea.form-input::-webkit-resizer { display: none; }
 }
 
 [data-theme='light'] .info-content .title {
-  background: var(--surface-3, #FEE2E2);
-  border: 1px solid #FECACA;
-  color: #B91C1C;
+  background: var(--surface-3, #FFFFFF);
+      border: 1px solid rgba(52, 78, 65, 1);
+  color: #344e41;
   font-weight: 600;
 }
 
@@ -3524,13 +3526,13 @@ textarea.form-input::-webkit-resizer { display: none; }
 
 [data-theme='light'] .navbar {
   background: hsla(0, 0%, 100%, 0.86);
-  border-color: var(--award-gold);
+  border: 1px solid rgba(52, 78, 65, 1);
   box-shadow: 0 -2px 20px hsla(0, 40%, 30%, 0.10);
 }
 
 [data-theme='light'] .mobile-hamburger {
   background: hsla(0, 0%, 100%, 0.94);
-  border-color: var(--award-gold);
+  border: 1px solid rgba(52, 78, 65, 1);
 }
 
 [data-theme='light'] .mobile-menu-popup {
@@ -3687,7 +3689,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 [data-theme='light'] .hero-cta-btn.primary,
 [data-theme='light'] .demo-cta-btn,
 [data-theme='light'] .demo-open-btn {
-  box-shadow: 0 4px 18px hsla(0, 90%, 45%, 0.34);
+  
 }
 
 [data-theme='light'] .demo-popover-card {
@@ -4373,9 +4375,9 @@ article,
 .whatsapp-fab:hover {
   transform: translateY(-3px) scale(1.05);
   background: var(--elevated, #26262e);
-  color: var(--mint-hi, #FF8585);
-  border-color: var(--mint-hi, #FF8585);
-  box-shadow: 0 8px 24px rgba(255, 92, 92, 0.3);
+  color: var(--mint-hi, #d8f3dc);
+  border-color: var(--mint-hi, #d8f3dc);
+  box-shadow: 0 8px 24px rgba(52, 78, 65, 1);
 }
 
 .whatsapp-fab:active {
@@ -4388,15 +4390,15 @@ article,
 
 [data-theme='light'] .whatsapp-fab {
   background: #FFFFFF;
-  border-color: #DC2626;
-  color: #DC2626;
+      border-color: #588157;
+    color: #588157;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 [data-theme='light'] .whatsapp-fab:hover {
-  background: #FEF2F2;
-  border-color: #B91C1C;
-  color: #B91C1C;
+  background: #d8f3dc;
+  border-color: #344e41;
+  color: #344e41;
 }
 
 /* ── AWARD THEME · GOLD SEALS & RIBBONS ──────────────────────────────────────── */
@@ -4484,52 +4486,21 @@ article,
 
 /* ── BACKGROUND VIDEO & OVERLAY LAYER ── */
 
-.body-bg-video {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  overflow: hidden;
-  pointer-events: none;
+/* Background colors based on theme */
+body {
   background: var(--bg, #121214);
-}
-
-.body-bg-video-media {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  height: 100%;
-  min-width: 100%;
-  min-height: 100%;
-  object-fit: cover;
-  transform: translate(-50%, -50%);
-  backface-visibility: hidden;
-  will-change: transform;
-  border: 0;
-}
-
-.body-bg-video-tint {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: hsla(0, 0%, 7%, 0.72);
+  transition: background 0.4s ease;
 }
 
 /* Content sits above the background layer */
 main { position: relative; z-index: 1; }
 
-[data-theme='light'] .body-bg-video {
-  background: var(--bg, #FAF9F6);
+[data-theme='light'] body {
+  background: #FFFFFF;
 }
 
-[data-theme='light'] .body-bg-video-tint {
-  background: hsla(0, 0%, 100%, 0.82);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .body-bg-video-media { display: none; }
+[data-theme='dark'] body {
+  background: #121214;
 }
 
 /*-----------------------------------*\
@@ -4883,7 +4854,7 @@ main { position: relative; z-index: 1; }
 .dashboard-tab.active {
   color: var(--surfaces-ink, #04130C);
   background: var(--mint, #FF5C5C);
-  box-shadow: 0 4px 14px rgba(255, 92, 92, 0.35);
+  box-shadow: 0 4px 14px rgba(88, 129, 87, 1);
   font-weight: 600;
 }
 
@@ -6184,7 +6155,7 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
   background: var(--mint, #FF5C5C);
   border-color: var(--mint, #FF5C5C);
   color: var(--surfaces-ink, #04130C);
-  box-shadow: 0 4px 14px rgba(255, 92, 92, 0.3);
+  box-shadow: 0 4px 14px rgba(52, 78, 65, 1);
   font-weight: 600;
 }
 
@@ -7377,8 +7348,8 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
 }
 
 .mr-status-pill.overdue {
-  color: #b91c1c;
-  background: #fee2e2;
+  color: #344e41;
+  background: #FFFFFF;
 }
 
 /* Assessment Grid */
@@ -7905,8 +7876,8 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
   }
 
   .mr-status-pill.overdue {
-    background: #fee2e2 !important;
-    color: #b91c1c !important;
+    background: #FFFFFF !important;
+    color: #344e41 !important;
   }
 
   /* Backwards compatibility for official-report-card */
@@ -10017,7 +9988,7 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
   font-family: var(--ff-mono, 'IBM Plex Mono', monospace);
   font-size: 11px;
   font-weight: 600;
-  background: rgba(255, 92, 92, 0.12);
+  background: rgba(216, 243, 220, 1);
   color: var(--mint, #FF5C5C);
   padding: 3px 8px;
   border-radius: 6px;
@@ -10091,7 +10062,7 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
   font-family: var(--ff-mono, 'IBM Plex Mono', monospace);
   font-size: 40px;
   font-weight: 900;
-  color: rgba(255, 92, 92, 0.12);
+  color: rgba(216, 243, 220, 1);
   line-height: 1;
 }
 
@@ -10099,7 +10070,7 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: rgba(255, 92, 92, 0.12);
+  background: rgba(216, 243, 220, 1);
   color: var(--mint, #FF5C5C);
   display: flex;
   align-items: center;
@@ -10166,8 +10137,8 @@ body:has(.parent-pin-modal-backdrop) .sidebar {
   font-size: 12px;
   font-weight: 600;
   color: var(--mint, #FF5C5C);
-  background: rgba(255, 92, 92, 0.12);
-  border: 1px solid rgba(255, 92, 92, 0.3);
+  background: rgba(216, 243, 220, 1);
+  border: 1px solid rgba(52, 78, 65, 1);
   padding: 4px 12px;
   border-radius: var(--radius-pill, 999px);
 }

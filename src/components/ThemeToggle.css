@@ -36,7 +36,7 @@
 }
 
 [data-theme='light'] .theme-toggle-header-btn:hover {
-  background: #FEE2E2;
+  background: #FFFFFF;
   border-color: var(--mint, #DC2626);
-  color: var(--mint-hi, #B91C1C);
+  color: var(--mint-hi, #344e41);
 }

@@ -7,7 +7,6 @@ import Home from './components/Home'
 import About from './components/About'
 import Services from './components/Services'
 import Contact from './components/Contact'
-import BackgroundVideo from './components/BackgroundVideo'
 import WhatsAppFab from './components/WhatsAppFab'
 import NotesPage from './components/NotesPage'
 import ClassroomPortal from './components/ClassroomPortal'
@@ -30,8 +29,7 @@ function Layout({ activePage, setActivePage, children, showThemeToggle = true, s
 
   return (
     <main>
-      <BackgroundVideo />
-      {showWhatsAppFab && <WhatsAppFab />}
+      <WhatsAppFab />
       <Sidebar />
       <div className="main-content" id="main-content">
         <Navbar
