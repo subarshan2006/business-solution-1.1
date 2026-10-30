@@ -14040,3 +14040,84 @@ body:has(.qb-quiz-overlay-modal) .sidebar {
   from { transform: scale(0.92); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* ==========================================================================
+   STUDENT QUIZ THREE SECURITY PROTECTIONS (CSS RULES)
+   ========================================================================== */
+
+/* 1. Prevent text selection & image dragging during student quiz */
+.qb-quiz-protected {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.qb-quiz-protected img,
+.qb-quiz-protected canvas {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}
+
+/* 2. Print prevention: obscure quiz if print is initiated */
+@media print {
+  body,
+  .qb-quiz-fullscreen-wrapper,
+  .qb-quiz-overlay-modal {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+
+/* 3. Screen Obscured Shield when window loses focus or tab is switched */
+.qb-screen-obscured-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999998;
+  background: rgba(12, 12, 18, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: #FFFFFF;
+  text-align: center;
+  padding: 24px;
+  animation: qbFadeIn 0.2s ease-out;
+  cursor: pointer;
+}
+
+.qb-screen-obscured-overlay ion-icon {
+  font-size: 64px;
+  color: #F59E0B;
+}
+
+.qb-screen-obscured-overlay h3 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+  color: #FFFFFF;
+}
+
+.qb-screen-obscured-overlay p {
+  font-size: 14px;
+  color: #A1A1AA;
+  max-width: 440px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+[data-theme='light'] .qb-screen-obscured-overlay {
+  background: rgba(244, 244, 248, 0.96);
+  color: #18181B;
+}
+
+[data-theme='light'] .qb-screen-obscured-overlay h3 {
+  color: #18181B;
+}
+
+[data-theme='light'] .qb-screen-obscured-overlay p {
+  color: #52525B;
+}

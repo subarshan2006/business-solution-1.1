@@ -58,6 +58,8 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const [studentAnswers, setStudentAnswers] = useState([]) // array of { questionId, selectedOption, correctOption, isCorrect }
   const [finalScore, setFinalScore] = useState(0)
   const [completedAttemptData, setCompletedAttemptData] = useState(null)
+  const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false)
+  const [isScreenObscured, setIsScreenObscured] = useState(false)
 
   // Timer states
   const [secondsRemaining, setSecondsRemaining] = useState(null)
@@ -397,6 +399,101 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     }
   }, [stage, isPreview])
 
+  // Security Protection 1: Block Right-Click and Developer Inspect Access (Students only)
+  useEffect(() => {
+    if (stage !== 'in_progress' || isPreview) return
+
+    const blockContextMenu = (e) => {
+      e.preventDefault()
+      return false
+    }
+
+    const blockDevToolsShortcuts = (e) => {
+      // F12
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault()
+        return false
+      }
+      // Ctrl+Shift+I / Cmd+Option+I (Inspect)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+        e.preventDefault()
+        return false
+      }
+      // Ctrl+Shift+J / Cmd+Option+J (Console)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+        e.preventDefault()
+        return false
+      }
+      // Ctrl+Shift+C / Cmd+Option+C (Inspect Element)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+        e.preventDefault()
+        return false
+      }
+      // Ctrl+U / Cmd+Option+U (View Source)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+        e.preventDefault()
+        return false
+      }
+      // Ctrl+S / Cmd+S (Save Page)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) {
+        e.preventDefault()
+        return false
+      }
+      // PrintScreen Key
+      if (e.key === 'PrintScreen' || e.keyCode === 44) {
+        e.preventDefault()
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText('')
+          }
+        } catch {}
+        return false
+      }
+    }
+
+    document.addEventListener('contextmenu', blockContextMenu)
+    window.addEventListener('keydown', blockDevToolsShortcuts)
+
+    return () => {
+      document.removeEventListener('contextmenu', blockContextMenu)
+      window.removeEventListener('keydown', blockDevToolsShortcuts)
+    }
+  }, [stage, isPreview])
+
+  // Security Protection 3: Tab-Switch & Window Blur Obfuscation (Screenshot/Recording Shield)
+  useEffect(() => {
+    if (stage !== 'in_progress' || isPreview) {
+      setIsScreenObscured(false)
+      return
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setIsScreenObscured(true)
+      } else {
+        setIsScreenObscured(false)
+      }
+    }
+
+    const handleWindowBlur = () => {
+      setIsScreenObscured(true)
+    }
+
+    const handleWindowFocus = () => {
+      setIsScreenObscured(false)
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('blur', handleWindowBlur)
+    window.addEventListener('focus', handleWindowFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('blur', handleWindowBlur)
+      window.removeEventListener('focus', handleWindowFocus)
+    }
+  }, [stage, isPreview])
+
   // Start Quiz (Triggers Desktop & Mobile Fullscreen Lockdown)
   const handleStartQuiz = async () => {
     setIsStartingAttempt(true)
@@ -410,7 +507,22 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
     try {
       if (bank?.isBackendTest) {
-        const attempt = await studentApi.startAttempt(bank.id)
+        let attempt = null
+        try {
+          attempt = await studentApi.startAttempt(bank.id)
+        } catch (err) {
+          // If attempt already in progress, resume it cleanly!
+          if (
+            err.code === 'ATTEMPT_ALREADY_EXISTS' ||
+            err.status === 409 ||
+            (err.message && err.message.includes('already started'))
+          ) {
+            attempt = await studentApi.getActiveAttempt(bank.id)
+          } else {
+            throw err
+          }
+        }
+
         if (attempt?.questions && attempt.questions.length > 0) {
           const qs = attempt.questions.map((q) => ({
             id: q.attemptQuestionId,
@@ -422,9 +534,18 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             })),
             image: q.images?.[0]?.imageUrl || null,
             images: q.images || [],
-            correctOption: '',
+            correctOption: q.correctOption || '',
+            explanation: q.explanation || '',
+            selectedOption: q.selectedOption || null,
+            isCorrect: q.isCorrect ?? null,
           }))
           setPreparedQuestions(qs)
+
+          // If first question was already answered, populate selection and submitted state
+          if (qs[0] && qs[0].selectedOption) {
+            setSelectedOptionId(qs[0].selectedOption)
+            setIsAnswerSubmitted(true)
+          }
         } else {
           throw new Error('No questions available in this test attempt.')
         }
@@ -445,52 +566,88 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
   // Select Option
   const handleSelectOption = (optId) => {
-    if (isAnswerSubmitted) return // Locked!
+    if (isAnswerSubmitted || isSubmittingAnswer) return // Locked!
     setSelectedOptionId(optId)
   }
 
-  // Submit Answer (Locks immediately and reveals instant feedback)
-  const handleSubmitAnswer = () => {
-    if (!selectedOptionId || isAnswerSubmitted) return
+  // Submit Answer (Locks immediately, checks answer, and reveals instant practice feedback + reason)
+  const handleSubmitAnswer = async () => {
+    if (!selectedOptionId || isAnswerSubmitted || isSubmittingAnswer) return
 
     const currentQ = preparedQuestions[currentIndex]
     if (!currentQ) return
 
-    const isCorrect = currentQ.correctOption
+    setIsSubmittingAnswer(true)
+
+    let isCorrect = currentQ.correctOption
       ? selectedOptionId.toUpperCase() === currentQ.correctOption.toUpperCase()
       : false
+    let correctOption = currentQ.correctOption || ''
+    let explanation = currentQ.explanation || ''
+
+    // If backend test, interactively check answer via backend to get correctness, correctOption, and explanation
+    if (bank?.isBackendTest) {
+      try {
+        const feedback = await studentApi.checkPracticeAnswer(bank.id, currentQ.id, selectedOptionId)
+        if (feedback) {
+          isCorrect = Boolean(feedback.isCorrect)
+          correctOption = feedback.correctOption || ''
+          explanation = feedback.explanation || ''
+
+          // update current question in preparedQuestions so the option buttons & explanation panel reveal the answer & rationale
+          setPreparedQuestions((prev) => {
+            const next = [...prev]
+            if (next[currentIndex]) {
+              next[currentIndex] = {
+                ...next[currentIndex],
+                correctOption,
+                explanation,
+                isCorrect,
+                selectedOption: selectedOptionId,
+              }
+            }
+            return next
+          })
+        }
+      } catch (err) {
+        console.warn('Backend practice check error:', err)
+        studentApi
+          .saveAnswers(bank.id, [
+            {
+              attemptQuestionId: currentQ.id,
+              selectedOption: selectedOptionId,
+            },
+          ])
+          .catch(() => {})
+      }
+    }
 
     const answerRecord = {
       questionId: currentQ.id,
       selectedOption: selectedOptionId,
-      correctOption: currentQ.correctOption || '',
+      correctOption,
       isCorrect,
+      explanation,
     }
 
     setStudentAnswers((prev) => [...prev, answerRecord])
     setIsAnswerSubmitted(true)
-
-    // Autosave to backend if backend test
-    if (bank?.isBackendTest) {
-      studentApi
-        .saveAnswers(bank.id, [
-          {
-            attemptQuestionId: currentQ.id,
-            selectedOption: selectedOptionId,
-          },
-        ])
-        .catch((err) => {
-          console.warn('Backend autosave warning:', err)
-        })
-    }
+    setIsSubmittingAnswer(false)
   }
 
   // Next Question or Finish Quiz
   const handleNextQuestion = () => {
     if (currentIndex < preparedQuestions.length - 1) {
-      setCurrentIndex((prev) => prev + 1)
-      setSelectedOptionId('')
-      setIsAnswerSubmitted(false)
+      const nextIndex = currentIndex + 1
+      setCurrentIndex(nextIndex)
+      const nextQ = preparedQuestions[nextIndex]
+      if (nextQ && nextQ.selectedOption) {
+        setSelectedOptionId(nextQ.selectedOption)
+        setIsAnswerSubmitted(true)
+      } else {
+        setSelectedOptionId('')
+        setIsAnswerSubmitted(false)
+      }
     } else {
       handleFinishQuiz(false)
     }
@@ -533,7 +690,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const studentEmail = auth?.user?.email || 'NxtStep Student'
 
   return (
-    <div className="qb-quiz-fullscreen-wrapper">
+    <div className={`qb-quiz-fullscreen-wrapper ${!isPreview && stage === 'in_progress' ? 'qb-quiz-protected' : ''}`}>
       {/* Quiz Top Navigation Bar */}
       <header className="qb-quiz-nav">
         <div className="qb-quiz-nav-left">
@@ -603,6 +760,21 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               <span>Return to Fullscreen</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Security Protection 3: Screen Obscured Shield on Window Blur / Tab Switch */}
+      {stage === 'in_progress' && isScreenObscured && !isPreview && (
+        <div
+          className="qb-screen-obscured-overlay"
+          onClick={() => setIsScreenObscured(false)}
+          title="Click to resume quiz"
+        >
+          <ion-icon name="shield-half-outline"></ion-icon>
+          <h3>Security Shield Active</h3>
+          <p>
+            Quiz questions are hidden while your browser window or tab is not active. Click anywhere to resume practicing.
+          </p>
         </div>
       )}
 
@@ -850,6 +1022,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 <WatermarkedDiagramCanvas
                   src={createEphemeralBlob(resolveAssetUrl(currentQ.image || currentQ.imageUrl))}
                   alt={`Question ${currentIndex + 1} Diagram`}
+                  watermarkText={!isPreview ? (auth?.user?.email || studentEmail) : ''}
                   maxWidth={820}
                 />
               </div>
@@ -889,7 +1062,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                     type="button"
                     className={optClass}
                     onClick={() => handleSelectOption(opt.id)}
-                    disabled={isAnswerSubmitted}
+                    disabled={isAnswerSubmitted || isSubmittingAnswer}
                   >
                     <span className="qb-opt-letter-circle">{opt.id}</span>
                     <span className="qb-opt-text-body">{opt.text}</span>
@@ -914,10 +1087,19 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   type="button"
                   className="btn btn-primary qb-submit-btn"
                   onClick={handleSubmitAnswer}
-                  disabled={!selectedOptionId}
+                  disabled={!selectedOptionId || isSubmittingAnswer}
                 >
-                  <ion-icon name="checkmark-outline"></ion-icon>
-                  <span>Submit Answer</span>
+                  {isSubmittingAnswer ? (
+                    <>
+                      <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                      <span>Checking Answer...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ion-icon name="checkmark-outline"></ion-icon>
+                      <span>Submit Answer</span>
+                    </>
+                  )}
                 </button>
               </div>
             ) : (

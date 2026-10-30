@@ -605,6 +605,27 @@ export const studentApi = {
   },
 
   /**
+   * Retrieve active attempt for the current student
+   */
+  async getActiveAttempt(testId) {
+    const res = await request(`/api/student/tests/${encodeURIComponent(testId)}/attempt`, {
+      method: 'GET',
+    })
+    return res.data
+  },
+
+  /**
+   * Interactively check and save a practice answer, receiving instant feedback & explanation
+   */
+  async checkPracticeAnswer(testId, attemptQuestionId, selectedOption) {
+    const res = await request(`/api/student/tests/${encodeURIComponent(testId)}/check-answer`, {
+      method: 'POST',
+      body: JSON.stringify({ attemptQuestionId, selectedOption }),
+    })
+    return res.data
+  },
+
+  /**
    * Autosave or submit intermediate answers during a test
    */
   async saveAnswers(testId, answers) {
