@@ -63,6 +63,7 @@ const PillIcon = ({ icon }) => (
 function About({ activePage, setActivePage }) {
   return (
     <article className={`about${activePage === 'about' ? ' active' : ''}`} data-page="about">
+      <br /><br />
 
       <header>
         <h2 className="h2 article-title">About Me</h2>
