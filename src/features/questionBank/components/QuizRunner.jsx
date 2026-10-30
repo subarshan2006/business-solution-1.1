@@ -157,7 +157,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             settings: {
               timeLimitMinutes: found.attemptDurationMinutes || 60,
               oneAttempt: true,
-              showExplanation: found.showExplanations ?? false,
+              showExplanation: true,
             },
             questions: [],
           })
@@ -1143,29 +1143,31 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 )}
 
                 {/* Detailed Educational Reason & Visual Solution */}
-                {bank.settings?.showExplanation !== false && (
-                  <div className="qb-quiz-explanation-box">
-                    <div className="qb-exp-label">
-                      <ion-icon name="bulb-outline"></ion-icon>
-                      <span>Reason &amp; Solution Rationale:</span>
-                    </div>
-
-                    {/* Stitched Explanation & Distractor Slide */}
-                    {currentQ.explanationImage && (
-                      <div className="qb-explanation-diagram-wrapper" style={{ margin: '14px 0' }}>
-                        <WatermarkedDiagramCanvas
-                          src={createEphemeralBlob(resolveAssetUrl(currentQ.explanationImage))}
-                          alt={`Explanation for Question ${currentIndex + 1}`}
-                          maxWidth={820}
-                        />
-                      </div>
-                    )}
-
-                    {currentQ.explanation && (
-                      <p className="qb-exp-content" style={{ whiteSpace: 'pre-line' }}>{currentQ.explanation}</p>
-                    )}
+                <div className="qb-quiz-explanation-box">
+                  <div className="qb-exp-label">
+                    <ion-icon name="bulb-outline"></ion-icon>
+                    <span>Reason &amp; Solution Rationale:</span>
                   </div>
-                )}
+
+                  {/* Stitched Explanation & Distractor Slide */}
+                  {currentQ.explanationImage && (
+                    <div className="qb-explanation-diagram-wrapper" style={{ margin: '14px 0' }}>
+                      <WatermarkedDiagramCanvas
+                        src={createEphemeralBlob(resolveAssetUrl(currentQ.explanationImage))}
+                        alt={`Explanation for Question ${currentIndex + 1}`}
+                        watermarkText={!isPreview ? (auth?.user?.email || studentEmail) : ''}
+                        maxWidth={820}
+                      />
+                    </div>
+                  )}
+
+                  <p className="qb-exp-content" style={{ whiteSpace: 'pre-line' }}>
+                    {currentQ.explanation ||
+                      (currentQ.correctOption
+                        ? `Choice ${currentQ.correctOption} is the correct verified answer for this question.`
+                        : 'Review this question solution with your instructor.')}
+                  </p>
+                </div>
 
                 {/* Next Question Button */}
                 <div className="qb-quiz-action-row" style={{ marginTop: '20px' }}>
