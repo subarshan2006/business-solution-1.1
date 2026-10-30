@@ -158,13 +158,33 @@ function Home({ activePage }) {
             </div>
 
             {/* H1 Value Proposition */}
-            <h1 className="hero-h1" aria-label="AP Biology, taught one-on-one.">
-              <span className="hero-h1-static">AP Biology,</span>{' '}
+            <h1 className="hero-h1" aria-label="AP LifeScience, taught one-on-one.">
+              <span className="hero-h1-static">AP LifeScience,</span>{' '}
               <span className="hero-h1-highlight">
                 {typedText}
                 {!typingComplete && <span className="typewriter-cursor">|</span>}
               </span>
             </h1>
+
+            {/* Subject Chips */}
+            <div className="hero-course-chips" aria-label="Target Subjects">
+              <button type="button" onClick={() => setSelectedCourseId('ap-biology')} className="hero-course-chip">
+                <ion-icon name="leaf-outline"></ion-icon>
+                <span>AP Biology</span>
+              </button>
+              <button type="button" onClick={() => setSelectedCourseId('apes')} className="hero-course-chip">
+                <ion-icon name="earth-outline"></ion-icon>
+                <span>APES</span>
+              </button>
+              <button type="button" onClick={() => setSelectedCourseId('ap-psychology')} className="hero-course-chip">
+                <ion-icon name="bulb-outline"></ion-icon>
+                <span>AP Psychology</span>
+              </button>
+              <button type="button" onClick={() => setSelectedCourseId('usabo')} className="hero-course-chip">
+                <ion-icon name="trophy-outline"></ion-icon>
+                <span>USABO</span>
+              </button>
+            </div>
 
             {/* Subline */}
             <p className="hero-subline">
@@ -200,26 +220,6 @@ function Home({ activePage }) {
               <span className="proof-item"><strong>100% custom</strong> FRQ prep</span>
               <span className="proof-dot">·</span>
               <span className="proof-item"><strong>ET · CT · MT · PT</strong></span>
-            </div>
-
-            {/* Subject Chips */}
-            <div className="hero-course-chips" aria-label="Target Subjects">
-              <button type="button" onClick={() => setSelectedCourseId('ap-biology')} className="hero-course-chip">
-                <ion-icon name="leaf-outline"></ion-icon>
-                <span>AP Biology</span>
-              </button>
-              <button type="button" onClick={() => setSelectedCourseId('apes')} className="hero-course-chip">
-                <ion-icon name="earth-outline"></ion-icon>
-                <span>APES</span>
-              </button>
-              <button type="button" onClick={() => setSelectedCourseId('ap-psychology')} className="hero-course-chip">
-                <ion-icon name="bulb-outline"></ion-icon>
-                <span>AP Psychology</span>
-              </button>
-              <button type="button" onClick={() => setSelectedCourseId('usabo')} className="hero-course-chip">
-                <ion-icon name="trophy-outline"></ion-icon>
-                <span>USABO</span>
-              </button>
             </div>
           </div>
         </div>

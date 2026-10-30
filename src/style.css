@@ -485,9 +485,9 @@ main {
 }
 
 .info-content .title {
-  color: var(--mint, #FF5C5C);
-  background: rgba(216, 243, 220, 1);
-  border: 1px solid rgba(255, 92, 92, 0.28);
+  color: #344e41;
+  background: #FFFFFF;
+  border: 1px solid rgba(52, 78, 65, 0.35);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -2599,12 +2599,12 @@ textarea.form-input::-webkit-resizer { display: none; }
   gap: 8px;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--mint, #FF5C5C);
-  background: rgba(216, 243, 220, 1);
-  border: 1px solid rgba(52, 78, 65, 1);
+  color: #344e41;
+  background: #FFFFFF;
+  border: 1px solid rgba(52, 78, 65, 0.35);
   padding: 6px 14px;
   border-radius: 999px;
   margin-bottom: 20px;
@@ -2612,7 +2612,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 
 .hero-eyebrow ion-icon {
   font-size: 16px;
-  color: var(--mint, #FF5C5C);
+  color: #344e41;
 }
 
 .hero-h1 {
@@ -2709,9 +2709,9 @@ textarea.form-input::-webkit-resizer { display: none; }
 }
 
 .hero-cta-btn.secondary:hover {
-  border-color: var(--mint, #FF5C5C);
-  color: var(--mint, #FF5C5C);
-  background: rgba(216, 243, 220, 1);
+  border-color: #FFFFFF;
+  color: #121214;
+  background: #FFFFFF;
   transform: translateY(-2px);
 }
 
@@ -2841,35 +2841,45 @@ textarea.form-input::-webkit-resizer { display: none; }
 .hero-course-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 4px;
+  margin-bottom: 22px;
 }
 
 .hero-course-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   background: var(--surface, #1e1e24);
   border: 1px solid var(--line, #383842);
   color: var(--text, #FFFFFF);
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 6px 14px;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 8px 18px;
   border-radius: 999px;
   text-decoration: none;
+  cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .hero-course-chip:hover {
   background: var(--elevated, #26262e);
   border-color: var(--mint, #FF5C5C);
   color: var(--mint, #FF5C5C);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
 .hero-course-chip ion-icon {
-  font-size: 14px;
+  font-size: 18px;
   color: var(--mint, #FF5C5C);
+  transition: transform 0.2s ease;
+}
+
+.hero-course-chip:hover ion-icon {
+  transform: scale(1.1);
 }
 
 @media (max-width: 860px) {
@@ -2905,6 +2915,21 @@ textarea.form-input::-webkit-resizer { display: none; }
     padding: 12px 18px;
     font-size: 14px;
     justify-content: center;
+  }
+
+  .hero-course-chips {
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .hero-course-chip {
+    font-size: 14px;
+    padding: 7px 14px;
+    gap: 7px;
+  }
+
+  .hero-course-chip ion-icon {
+    font-size: 16px;
   }
 
   .hero-proof-strip {
@@ -3847,6 +3872,46 @@ textarea.form-input::-webkit-resizer { display: none; }
 [data-theme='light'] .sessions-table th,
 [data-theme='light'] .sessions-table td {
   border-bottom-color: var(--color-subtitle);
+}
+
+[data-theme='light'] .hero-eyebrow {
+  background: rgba(216, 243, 220, 1);
+  border-color: rgba(52, 78, 65, 1);
+  color: #344e41;
+}
+
+[data-theme='light'] .hero-eyebrow ion-icon {
+  color: #344e41;
+}
+
+[data-theme='light'] .hero-cta-btn.secondary:hover {
+  background: rgba(216, 243, 220, 1);
+  border-color: #344e41;
+  color: #344e41;
+}
+
+[data-theme='light'] .course-unit-pill {
+  background: rgba(216, 243, 220, 1);
+  color: #344e41;
+}
+
+[data-theme='light'] .step-num-watermark {
+  color: rgba(216, 243, 220, 1);
+}
+
+[data-theme='light'] .step-icon-wrap {
+  background: rgba(216, 243, 220, 1);
+  color: #344e41;
+}
+
+[data-theme='light'] .tutor-bio-badge {
+  background: rgba(216, 243, 220, 1);
+  border-color: rgba(52, 78, 65, 1);
+  color: #344e41;
+}
+
+[data-theme='light'] .tutor-bio-badge ion-icon {
+  color: #344e41;
 }
 
 /* ── Global smooth transitions on theme switch ──────────────────────────────── */
@@ -10304,8 +10369,8 @@ article:has(.parent-pin-modal-backdrop) {
   font-family: var(--ff-mono, 'IBM Plex Mono', monospace);
   font-size: 11px;
   font-weight: 600;
-  background: rgba(216, 243, 220, 1);
-  color: var(--mint, #FF5C5C);
+  background: #FFFFFF;
+  color: #344e41;
   padding: 3px 8px;
   border-radius: 6px;
 }
@@ -10378,7 +10443,7 @@ article:has(.parent-pin-modal-backdrop) {
   font-family: var(--ff-mono, 'IBM Plex Mono', monospace);
   font-size: 40px;
   font-weight: 900;
-  color: rgba(216, 243, 220, 1);
+  color: rgba(255, 255, 255, 0.12);
   line-height: 1;
 }
 
@@ -10386,8 +10451,8 @@ article:has(.parent-pin-modal-backdrop) {
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: rgba(216, 243, 220, 1);
-  color: var(--mint, #FF5C5C);
+  background: #FFFFFF;
+  color: #344e41;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -10452,15 +10517,16 @@ article:has(.parent-pin-modal-backdrop) {
   font-family: var(--ff-mono, 'IBM Plex Mono', monospace);
   font-size: 12px;
   font-weight: 600;
-  color: var(--mint, #FF5C5C);
-  background: rgba(216, 243, 220, 1);
-  border: 1px solid rgba(52, 78, 65, 1);
+  color: #344e41;
+  background: #FFFFFF;
+  border: 1px solid rgba(52, 78, 65, 0.35);
   padding: 4px 12px;
   border-radius: var(--radius-pill, 999px);
 }
 
 .tutor-bio-badge ion-icon {
   font-size: 14px;
+  color: #344e41;
 }
 
 .tutor-credentials-chips {
