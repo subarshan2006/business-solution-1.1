@@ -151,6 +151,9 @@ function Home({ activePage }) {
       <section className="hero-section hero-scrim home-section">
         <div className="hero-split">
           <div className="hero-content-col">
+            {/* Brand Heading */}
+            <h2 className="hero-brand-heading">Jivanaut Test Prep</h2>
+
             {/* Mono Eyebrow */}
             <div className="hero-eyebrow" aria-label="Schedule and coverage">
               <ion-icon name="school-outline"></ion-icon>
