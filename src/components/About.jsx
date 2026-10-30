@@ -155,7 +155,7 @@ function About({ activePage, setActivePage }) {
             students must analyse novel experimental data, deduce causal relationships, and
             articulate findings precisely under timed conditions.
           </p>
-          <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', background: 'hsla(0, 0%, 100%, 0.04)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--mint, #3a5a40)' }}>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start', background: 'hsla(0, 0%, 100%, 0.04)', padding: '20px', borderRadius: '12px', borderLeft: '4px solid var(--mint, #90a955)' }}>
             <ion-icon name="bulb-outline" style={{ fontSize: '2.5rem', color: 'var(--mint-hi, #90a955)' }}></ion-icon>
             <p className="about-text" style={{ fontSize: '1rem', fontStyle: 'italic', color: 'var(--white-2)' }}>
               My mission is to serve as an academic co-pilot: creating an encouraging, academically

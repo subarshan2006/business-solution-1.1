@@ -19,7 +19,7 @@
   position: absolute;
   top: -999px;
   left: 20px;
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   color: #FFFFFF;
   font-weight: 700;
   padding: 12px 20px;
@@ -64,7 +64,7 @@
   --text-2: #A1A1AA;
 
   /* Actions & Accents - Green Theme */
-  --mint: #3a5a40;
+  --mint: #90a955;
   --mint-hi: #90a955;
   --on-mint: #FFFFFF;
   --amber: #F59E0B;
@@ -126,13 +126,13 @@
     135deg,
     #d9ed92 0%,
     #90a955 45%,
-    #3a5a40 100%
+    #90a955 100%
   );
   --gradient-award: linear-gradient(
     135deg,
     #d9ed92 0%,
     var(--award-gold) 42%,
-    #3a5a40 100%
+    #90a955 100%
   );
   --glow-award: 0 0 0 1px var(--line),
                 0 4px 14px rgba(0, 0, 0, 0.35);
@@ -688,7 +688,7 @@ main {
   left: 8px;
   right: 8px;
   height: 2px;
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   border-radius: 2px;
 }
 
@@ -702,7 +702,7 @@ main {
 }
 
 .navbar-cta-btn {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   color: #FFFFFF !important;
   font-size: 13px;
   font-weight: 600;
@@ -2685,7 +2685,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 }
 
 .hero-cta-btn.primary {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   color: #FFFFFF !important;
   border: 1px solid var(--mint, #FF5C5C);
   box-shadow: 0 4px 16px rgba(88, 129, 87, 1)
@@ -2749,7 +2749,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 
 /* Primary Button (Dark Mode default) */
 .btn-primary {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   color: #FFFFFF !important;
   border: 1px solid var(--mint, #FF5C5C);
   box-shadow: 0 4px 14px rgba(255, 92, 92, 0.35);
@@ -3473,7 +3473,7 @@ textarea.form-input::-webkit-resizer { display: none; }
   --line: #E4E4E7;
   --text: #18181B;
   --text-2: #52525B;
-  --mint: #3a5a40;
+  --mint: #90a955;
   --mint-hi: #90a955;
   --on-mint: #FFFFFF;
   --amber: #D97706;
@@ -3497,7 +3497,7 @@ textarea.form-input::-webkit-resizer { display: none; }
   --gradient-hero-highlight: linear-gradient(
     135deg,
     #d9ed92 0%,
-    #3a5a40 100%
+    #90a955 100%
   );
 
   /* ── Override all gradient / colour tokens ─────────────────────────────── */
@@ -5154,7 +5154,7 @@ main { position: relative; z-index: 1; }
 
 .dashboard-tab.active {
   color: var(--surfaces-ink, #04130C);
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   box-shadow: 0 4px 14px rgba(88, 129, 87, 1);
   font-weight: 600;
 }
@@ -5558,7 +5558,7 @@ main { position: relative; z-index: 1; }
 }
 
 .view-assignment-btn:hover {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   border-color: var(--mint, #FF5C5C);
   color: var(--surfaces-ink, #04130C);
 }
@@ -5897,7 +5897,7 @@ article:has(.parent-pin-modal-backdrop) {
 .assignment-modal-card::-webkit-scrollbar-thumb:hover,
 .assignment-modal-body::-webkit-scrollbar-thumb:hover,
 .assignment-modal-backdrop::-webkit-scrollbar-thumb:hover {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
 }
 
 .modal-section-title {
@@ -6468,7 +6468,7 @@ article:has(.parent-pin-modal-backdrop) {
 }
 
 .parent-tab-btn.active {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   border-color: var(--mint, #FF5C5C);
   color: var(--surfaces-ink, #04130C);
   box-shadow: 0 4px 14px rgba(52, 78, 65, 1);
@@ -7958,7 +7958,7 @@ article:has(.parent-pin-modal-backdrop) {
 }
 
 .filter-chip.active {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   border-color: var(--mint, #FF5C5C);
   color: var(--surfaces-ink, #04130C);
   font-weight: 600;
@@ -8006,7 +8006,7 @@ article:has(.parent-pin-modal-backdrop) {
 }
 
 .card-action-btn.primary:hover {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   color: var(--surfaces-ink, #04130C);
 }
 
@@ -10350,7 +10350,7 @@ article:has(.parent-pin-modal-backdrop) {
 }
 
 .course-feature-card:hover .course-card-btn {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   border-color: var(--mint, #FF5C5C);
   color: var(--on-mint, #FFFFFF);
 }
@@ -12027,7 +12027,7 @@ article:has(.parent-pin-modal-backdrop) {
 }
 
 .qb-q-badge {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   color: #FFFFFF;
   padding: 4px 10px;
   border-radius: 8px;
@@ -12623,7 +12623,7 @@ body:has(.qb-quiz-overlay-modal) .sidebar {
 }
 
 .qb-quiz-option-button.selected .qb-opt-letter-circle {
-  background: var(--mint, #FF5C5C);
+  background: var(--mint-hi, #FF8585);
   color: #FFFFFF !important;
   border-color: var(--mint, #FF5C5C);
 }
