@@ -3896,7 +3896,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 }
 
 [data-theme='light'] .step-num-watermark {
-  color: rgba(216, 243, 220, 1);
+  color: rgb(73, 114, 79);
 }
 
 [data-theme='light'] .step-icon-wrap {
@@ -10443,7 +10443,7 @@ article:has(.parent-pin-modal-backdrop) {
   font-family: var(--ff-mono, 'IBM Plex Mono', monospace);
   font-size: 40px;
   font-weight: 900;
-  color: rgba(255, 255, 255, 0.12);
+  color: #90a955;
   line-height: 1;
 }
 
