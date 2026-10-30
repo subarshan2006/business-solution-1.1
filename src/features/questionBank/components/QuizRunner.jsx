@@ -180,7 +180,24 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
     // If teacher preview mode
     if (isPreview) {
-      const qs = prepareQuizQuestions(bank.questions, bank.settings)
+      const qs = prepareQuizQuestions(
+        (bank.questions || []).map((q) => {
+          const questionImg =
+            q.images?.find((img) => img.role === 'QUESTION')?.imageUrl || q.image || q.imageUrl || null
+          const choicesImg =
+            q.images?.find((img) => img.role === 'CHOICES')?.imageUrl || q.choicesImage || null
+          const explanationImg =
+            q.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || q.explanationImage || null
+
+          return {
+            ...q,
+            image: questionImg,
+            choicesImage: choicesImg,
+            explanationImage: explanationImg,
+          }
+        }),
+        bank.settings,
+      )
       setPreparedQuestions(qs)
       setStage('start_screen')
       return
@@ -524,21 +541,32 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         }
 
         if (attempt?.questions && attempt.questions.length > 0) {
-          const qs = attempt.questions.map((q) => ({
-            id: q.attemptQuestionId,
-            question: q.questionText,
-            options: (q.options || []).map((o) => ({
-              id: o.label,
-              text: o.text || o.label,
-              imageUrl: o.imageUrl,
-            })),
-            image: q.images?.[0]?.imageUrl || null,
-            images: q.images || [],
-            correctOption: q.correctOption || '',
-            explanation: q.explanation || '',
-            selectedOption: q.selectedOption || null,
-            isCorrect: q.isCorrect ?? null,
-          }))
+          const qs = attempt.questions.map((q) => {
+            const questionImg =
+              q.images?.find((img) => img.role === 'QUESTION')?.imageUrl || q.images?.[0]?.imageUrl || null
+            const choicesImg =
+              q.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null
+            const explanationImg =
+              q.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null
+
+            return {
+              id: q.attemptQuestionId,
+              question: q.questionText,
+              options: (q.options || []).map((o) => ({
+                id: o.label,
+                text: o.text || o.label,
+                imageUrl: o.imageUrl,
+              })),
+              image: questionImg,
+              choicesImage: choicesImg,
+              explanationImage: explanationImg,
+              images: q.images || [],
+              correctOption: q.correctOption || '',
+              explanation: q.explanation || '',
+              selectedOption: q.selectedOption || null,
+              isCorrect: q.isCorrect ?? null,
+            }
+          })
           setPreparedQuestions(qs)
 
           // If first question was already answered, populate selection and submitted state
@@ -593,6 +621,8 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
           isCorrect = Boolean(feedback.isCorrect)
           correctOption = feedback.correctOption || ''
           explanation = feedback.explanation || ''
+          const explanationImage =
+            feedback.explanationImageUrl || currentQ.explanationImage || null
 
           // update current question in preparedQuestions so the option buttons & explanation panel reveal the answer & rationale
           setPreparedQuestions((prev) => {
@@ -602,6 +632,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 ...next[currentIndex],
                 correctOption,
                 explanation,
+                explanationImage,
                 isCorrect,
                 selectedOption: selectedOptionId,
               }
@@ -1028,20 +1059,32 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               </div>
             )}
 
-            {/* If NOT a slide deck, display text prompt */}
-            {!bank.isSlideDeck && (
+            {/* Ephemeral Question Choices Slide Screenshot (if separate choices slide) */}
+            {currentQ.choicesImage && (
+              <div className="qb-diagram-section slide-deck-diagram" style={{ marginTop: '14px' }}>
+                <WatermarkedDiagramCanvas
+                  src={createEphemeralBlob(resolveAssetUrl(currentQ.choicesImage))}
+                  alt={`Question ${currentIndex + 1} Choices`}
+                  watermarkText={!isPreview ? (auth?.user?.email || studentEmail) : ''}
+                  maxWidth={820}
+                />
+              </div>
+            )}
+
+            {/* If NOT a slide deck and no choices image, display text prompt */}
+            {!bank.isSlideDeck && !currentQ.choicesImage && currentQ.question && (
               <h2 className="qb-active-question-prompt">{currentQ.question}</h2>
             )}
 
             {/* Multiple Choice Options Selector */}
-            <div className={bank.isSlideDeck ? 'qb-slide-choice-grid' : 'qb-quiz-options-group'}>
+            <div className={bank.isSlideDeck || currentQ.choicesImage || currentQ.image ? 'qb-slide-choice-grid' : 'qb-quiz-options-group'}>
               {currentQ.options.map((opt) => {
                 const isSelected = selectedOptionId === opt.id
                 const isCorrectOption = currentQ.correctOption
                   ? opt.id.toUpperCase() === currentQ.correctOption.toUpperCase()
                   : false
 
-                let optClass = bank.isSlideDeck ? 'qb-slide-choice-btn' : 'qb-quiz-option-button'
+                let optClass = bank.isSlideDeck || currentQ.choicesImage || currentQ.image ? 'qb-slide-choice-btn' : 'qb-quiz-option-button'
                 if (isSelected) optClass += ' selected'
                 if (isAnswerSubmitted) {
                   optClass += ' locked'
@@ -1056,6 +1099,15 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   }
                 }
 
+                // If choices are displayed visually on screenshot, display clean "Choice A", "Choice B", etc.
+                const hasDetailedText =
+                  opt.text &&
+                  opt.text.trim().length > 0 &&
+                  opt.text !== `Option ${opt.id}` &&
+                  opt.text !== opt.id
+                const displayLabel =
+                  hasDetailedText && !currentQ.choicesImage ? opt.text : `Choice ${opt.id}`
+
                 return (
                   <button
                     key={opt.id}
@@ -1065,7 +1117,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                     disabled={isAnswerSubmitted || isSubmittingAnswer}
                   >
                     <span className="qb-opt-letter-circle">{opt.id}</span>
-                    <span className="qb-opt-text-body">{opt.text}</span>
+                    <span className="qb-opt-text-body" style={{ fontWeight: 600 }}>{displayLabel}</span>
                     {isAnswerSubmitted && currentQ.correctOption && isCorrectOption && (
                       <ion-icon name="checkmark-circle" class="qb-opt-feedback-icon correct"></ion-icon>
                     )}
