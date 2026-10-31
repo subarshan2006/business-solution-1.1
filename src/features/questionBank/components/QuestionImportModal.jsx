@@ -11,6 +11,7 @@ import {
   questionReviewApi,
   authApi,
   getStoredSessionToken,
+  getStoredSessionUser,
   clearSessionToken,
   isTokenExpired,
 } from '../../../services/nxtstepApi'
@@ -114,7 +115,7 @@ function QuestionImportModal({ bank, onClose, onImported }) {
 
       if (currentAuth?.accessToken && !currentAuth.isMock && !currentAuth.isDevAuth) {
         try {
-          const res = await authApi.googleLogin(currentAuth.accessToken)
+          const res = await authApi.googleLogin(currentAuth.accessToken, 'TEACHER')
           if (res?.token) return res.token
         } catch (gErr) {
           console.warn('Google session sync note, proceeding to devLogin:', gErr)
@@ -129,9 +130,10 @@ function QuestionImportModal({ bank, onClose, onImported }) {
       return devRes?.token
     }
 
-    // Ensure backend session token is present and valid before starting upload
+    // Ensure backend session token is present, valid, and has TEACHER role
     let token = getStoredSessionToken()
-    if (!token || isTokenExpired(token)) {
+    const storedUser = getStoredSessionUser()
+    if (!token || isTokenExpired(token) || storedUser?.role !== 'TEACHER') {
       try {
         token = await syncBackendSession()
       } catch {
@@ -155,16 +157,18 @@ function QuestionImportModal({ bank, onClose, onImported }) {
       try {
         uploadRes = await questionBankApi.uploadPdf(uploadPayload)
       } catch (uploadErr) {
-        // If session was invalid/expired on backend, clear stale token, refresh session, and retry once
+        // If session was invalid, expired, or had insufficient role, refresh session and retry once
         if (
           uploadErr.status === 401 ||
+          uploadErr.status === 403 ||
           uploadErr.code === 'UNAUTHORIZED' ||
+          uploadErr.code === 'INSUFFICIENT_ROLE' ||
           uploadErr.code === 'INVALID_SESSION'
         ) {
-          console.warn('Backend session expired during upload, refreshing session and retrying...')
+          console.warn('Backend session insufficient or expired during upload, refreshing teacher session and retrying...')
           clearSessionToken()
           await syncBackendSession()
-          setProgressMsg('Session renewed. Retrying PDF upload...')
+          setProgressMsg('Teacher session renewed. Retrying PDF upload...')
           uploadRes = await questionBankApi.uploadPdf(uploadPayload)
         } else {
           throw uploadErr

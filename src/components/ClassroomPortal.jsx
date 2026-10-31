@@ -133,7 +133,7 @@ function ClassroomPortal() {
         const performSync = async () => {
           if (auth.accessToken && !auth.isMock && !auth.isDevAuth) {
             try {
-              await authApi.googleLogin(auth.accessToken)
+              await authApi.googleLogin(auth.accessToken, syncRole)
               return
             } catch (googleSyncErr) {
               console.warn('Google session sync note, proceeding to devLogin fallback:', googleSyncErr)
@@ -475,7 +475,7 @@ function ClassroomPortal() {
 
       // Synchronize session token with NxtStep backend server
       try {
-        const backendAuth = await authApi.googleLogin(authData.accessToken)
+        const backendAuth = await authApi.googleLogin(authData.accessToken, finalRole.toUpperCase())
         if (backendAuth?.user?.email) {
           userEmail = backendAuth.user.email
           const updatedUser = {

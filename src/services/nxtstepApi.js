@@ -194,10 +194,12 @@ export const authApi = {
   /**
    * Exchange Google OAuth GIS Access Token
    */
-  async googleLogin(accessToken) {
+  async googleLogin(accessToken, role = null) {
+    const payload = { accessToken, token: accessToken }
+    if (role) payload.role = role
     const res = await request('/api/auth/google', {
       method: 'POST',
-      body: JSON.stringify({ accessToken, token: accessToken }),
+      body: JSON.stringify(payload),
     })
     if (res.data?.token) {
       saveSessionToken(res.data.token)
