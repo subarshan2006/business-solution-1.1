@@ -130,13 +130,22 @@ function ClassroomPortal() {
       if (!token) {
         const syncRole =
           isTeacher && role === 'teacher' ? 'TEACHER' : role === 'parent' ? 'PARENT' : 'STUDENT'
-        authApi
-          .devLogin({
+        const performSync = async () => {
+          if (auth.accessToken && !auth.isMock && !auth.isDevAuth) {
+            try {
+              await authApi.googleLogin(auth.accessToken)
+              return
+            } catch (googleSyncErr) {
+              console.warn('Google session sync note, proceeding to devLogin fallback:', googleSyncErr)
+            }
+          }
+          await authApi.devLogin({
             email: auth.user.email,
             role: syncRole,
             name: auth.user.name || 'User',
           })
-          .catch((e) => console.warn('Background session sync note:', e))
+        }
+        performSync().catch((e) => console.warn('Background session sync note:', e))
       }
     }
   }, [auth, isTeacher, role])

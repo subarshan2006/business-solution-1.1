@@ -111,6 +111,16 @@ function QuestionImportModal({ bank, onClose, onImported }) {
       const currentAuth = getStoredAuth()
       const userEmail = currentAuth?.user?.email || 'teacher@nxtstep.com'
       const userName = currentAuth?.user?.name || 'Lead Teacher'
+
+      if (currentAuth?.accessToken && !currentAuth.isMock && !currentAuth.isDevAuth) {
+        try {
+          const res = await authApi.googleLogin(currentAuth.accessToken)
+          if (res?.token) return res.token
+        } catch (gErr) {
+          console.warn('Google session sync note, proceeding to devLogin:', gErr)
+        }
+      }
+
       const devRes = await authApi.devLogin({
         email: userEmail,
         role: 'TEACHER',
