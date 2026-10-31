@@ -476,6 +476,11 @@ main {
   object-fit: contain;
 }
 
+.info-content {
+  min-width: 0;
+  flex: 1;
+}
+
 .info-content .name {
   color: var(--white-2);
   font-size: var(--fs-3);
@@ -491,7 +496,9 @@ main {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.02em;
-  width: max-content;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 4px 12px;
   border-radius: var(--r-pill, 999px);
   display: flex;
@@ -2548,6 +2555,52 @@ textarea.form-input::-webkit-resizer { display: none; }
 }
 
 @media (max-width: 580px) {
+  .sidebar {
+    max-height: 125px;
+  }
+
+  .sidebar-info {
+    gap: 12px;
+  }
+
+  .avatar-box {
+    width: 76px;
+    height: 76px;
+    border-radius: 16px;
+    padding: 4px;
+  }
+
+  .info-content {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .info-content .name {
+    font-size: clamp(16px, 4.2vw, 19px);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .info-content .title {
+    font-size: clamp(9px, 2.6vw, 11px);
+    padding: 3px 8px;
+    gap: 5px;
+    width: fit-content;
+    max-width: 100%;
+    white-space: nowrap;
+    letter-spacing: 0;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+  }
+
   .no-advance-payment-card {
     grid-column: span 1;
   }

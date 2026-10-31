@@ -191,8 +191,7 @@ function Home({ activePage }) {
 
             {/* Subline */}
             <p className="hero-subline">
-              Diagnostic-first coaching built around your target exam date and score gaps. Master cellular energetics, molecular genetics, and experimental design FRQs with confidence.
-            </p>
+Full-curriculum 1-on-1 instruction tailored to your student’s path. Whether they are self-studying independently or reinforcing their school coursework , we teach every unit thoroughly from start to finish combining complete syllabus coverage with rigorous, ongoing AP exam preparation.            </p>
 
             {/* Dual CTAs above the fold */}
             <div className="hero-cta-wrapper">
