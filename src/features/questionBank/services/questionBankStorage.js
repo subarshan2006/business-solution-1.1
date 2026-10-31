@@ -224,6 +224,24 @@ export function deleteQuestionBank(id) {
 }
 
 /**
+ * Permanently purge all question banks from local browser storage
+ */
+export function purgeAllLocalStorageBanks() {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  try {
+    const banks = getQuestionBanks()
+    const deleted = getDeletedBankIds()
+    banks.forEach((b) => {
+      if (!deleted.includes(b.id)) deleted.push(b.id)
+    })
+    localStorage.setItem(DELETED_BANKS_KEY, JSON.stringify(deleted))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
+  } catch (err) {
+    console.warn('Failed to purge local storage banks:', err)
+  }
+}
+
+/**
  * Factory to create a new Question Bank with defaults
  */
 export function createQuestionBank({

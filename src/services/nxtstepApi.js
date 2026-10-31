@@ -372,6 +372,16 @@ export const questionBankApi = {
     })
     return res.data
   },
+
+  /**
+   * Permanently purge all quizzes, questions, and screenshots from MongoDB
+   */
+  async purgeAllQuizzesAndScreenshots() {
+    const res = await request('/api/question-banks/purge-all', {
+      method: 'POST',
+    })
+    return res.data
+  },
 }
 
 // -----------------------------------------------------------------------------

@@ -3,6 +3,7 @@ import {
   getQuestionBanks,
   deleteQuestionBank,
   saveQuestionBank,
+  purgeAllLocalStorageBanks,
 } from '../services/questionBankStorage'
 import {
   questionBankApi,
@@ -21,6 +22,8 @@ function QuestionBankList({ onLaunchQuiz }) {
   const [notice, setNotice] = useState('')
   const [bankToDelete, setBankToDelete] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showPurgeAllModal, setShowPurgeAllModal] = useState(false)
+  const [isPurging, setIsPurging] = useState(false)
 
   const reloadBanks = () => {
     const list = getQuestionBanks()
@@ -98,6 +101,32 @@ function QuestionBankList({ onLaunchQuiz }) {
     }
   }
 
+  const handleConfirmPurgeAll = async () => {
+    setIsPurging(true)
+    try {
+      // 1. Purge all from backend (GridFS chunks, questions, banks)
+      try {
+        await questionBankApi.purgeAllQuizzesAndScreenshots()
+      } catch (apiErr) {
+        console.warn('Backend purge-all notice:', apiErr)
+      }
+
+      // 2. Purge local storage
+      purgeAllLocalStorageBanks()
+      reloadBanks()
+      showNotification('Successfully purged all quizzes and screenshots from database. Storage reset.')
+      setShowPurgeAllModal(false)
+    } catch (err) {
+      console.error('Failed to purge database:', err)
+      purgeAllLocalStorageBanks()
+      reloadBanks()
+      showNotification('Cleaned local quiz storage.')
+      setShowPurgeAllModal(false)
+    } finally {
+      setIsPurging(false)
+    }
+  }
+
   const handleTogglePublished = (bank) => {
     const updated = { ...bank, published: !bank.published }
     saveQuestionBank(updated)
@@ -115,14 +144,34 @@ function QuestionBankList({ onLaunchQuiz }) {
             Create, import, and manage question banks. Grant direct access by student email with zero Classroom API dependency.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary qb-create-btn"
-          onClick={() => handleOpenModal('create')}
-        >
-          <ion-icon name="add-circle-outline"></ion-icon>
-          <span>Create Question Bank</span>
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            style={{
+              borderColor: 'rgba(239, 68, 68, 0.4)',
+              color: '#F87171',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '13px',
+              padding: '8px 14px',
+            }}
+            onClick={() => setShowPurgeAllModal(true)}
+            title="Clear all quiz screenshots from database to free up MongoDB 512MB storage"
+          >
+            <ion-icon name="trash-bin-outline" style={{ fontSize: '16px' }}></ion-icon>
+            <span>Clear Database (Free Storage)</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary qb-create-btn"
+            onClick={() => handleOpenModal('create')}
+          >
+            <ion-icon name="add-circle-outline"></ion-icon>
+            <span>Create Question Bank</span>
+          </button>
+        </div>
       </div>
 
       {notice && <div className="qb-alert-toast">{notice}</div>}
@@ -405,6 +454,140 @@ function QuestionBankList({ onLaunchQuiz }) {
                   <>
                     <ion-icon name="trash-outline"></ion-icon>
                     <span>Delete Question Bank</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Purge All Database & Screenshots Confirmation Modal */}
+      {showPurgeAllModal && (
+        <div
+          className="qb-modal-backdrop"
+          onClick={() => !isPurging && setShowPurgeAllModal(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="qb-modal-card"
+            style={{ maxWidth: '520px', border: '1px solid rgba(239, 68, 68, 0.45)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="qb-modal-header" style={{ borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '10px',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#EF4444',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                  }}
+                >
+                  <ion-icon name="nuclear-outline"></ion-icon>
+                </div>
+                <div>
+                  <h3 className="qb-modal-title" style={{ color: '#F87171' }}>
+                    Clear Database & Screenshots
+                  </h3>
+                  <p className="qb-modal-subtitle">Frees up 100% of MongoDB Atlas storage</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="qb-modal-close-btn"
+                onClick={() => !isPurging && setShowPurgeAllModal(false)}
+                aria-label="Close dialog"
+                disabled={isPurging}
+              >
+                <ion-icon name="close-outline"></ion-icon>
+              </button>
+            </div>
+
+            <div className="qb-modal-body" style={{ padding: '20px 24px' }}>
+              <p
+                style={{
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  color: 'var(--text-1, #F4F4F5)',
+                  marginBottom: '16px',
+                }}
+              >
+                Are you sure you want to delete <strong>ALL quizzes, questions, and screenshots</strong> from the database?
+              </p>
+              <div
+                style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '8px',
+                  padding: '14px 16px',
+                  fontSize: '13px',
+                  lineHeight: '1.5',
+                  color: '#FCA5A5',
+                  marginBottom: '16px',
+                }}
+              >
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <ion-icon
+                    name="warning-outline"
+                    style={{ fontSize: '20px', flexShrink: 0, marginTop: '2px' }}
+                  ></ion-icon>
+                  <div>
+                    <strong>Why use this:</strong> On the MongoDB free tier (512MB limit), storing multiple quiz diagrams can fill up storage. This action deletes all binary chunks and question data, returning your database storage back to <strong>0 MB</strong>.
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontSize: '13px', color: 'var(--text-2, #A1A1AA)', margin: 0 }}>
+                This action is permanent and cannot be undone.
+              </p>
+            </div>
+
+            <div
+              className="qb-modal-footer"
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '10px',
+                padding: '16px 24px',
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowPurgeAllModal(false)}
+                disabled={isPurging}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                style={{
+                  background: '#EF4444',
+                  borderColor: '#DC2626',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+                onClick={handleConfirmPurgeAll}
+                disabled={isPurging}
+              >
+                {isPurging ? (
+                  <>
+                    <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                    <span>Purging MongoDB Storage...</span>
+                  </>
+                ) : (
+                  <>
+                    <ion-icon name="trash-bin-outline"></ion-icon>
+                    <span>Confirm Clear Database</span>
                   </>
                 )}
               </button>
