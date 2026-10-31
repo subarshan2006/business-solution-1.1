@@ -362,6 +362,16 @@ export const questionBankApi = {
     })
     return res.data
   },
+
+  /**
+   * Permanently delete question bank
+   */
+  async deleteQuestionBank(id) {
+    const res = await request(`/api/question-banks/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    })
+    return res.data
+  },
 }
 
 // -----------------------------------------------------------------------------
@@ -556,6 +566,16 @@ export const testManagementApi = {
     const res = await request(`/api/tests/${encodeURIComponent(id)}/assign`, {
       method: 'POST',
       body: JSON.stringify(payload),
+    })
+    return res.data
+  },
+
+  /**
+   * Permanently delete a test
+   */
+  async deleteTest(id) {
+    const res = await request(`/api/tests/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     })
     return res.data
   },

@@ -73,10 +73,15 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
     setEmails(emails.filter((e) => e !== emailToRemove))
   }
 
+  const [showConfirmClear, setShowConfirmClear] = useState(false)
+
   const handleClearAll = () => {
-    if (window.confirm('Remove all authorized student emails from this question bank?')) {
-      setEmails([])
+    if (!showConfirmClear) {
+      setShowConfirmClear(true)
+      return
     }
+    setEmails([])
+    setShowConfirmClear(false)
   }
 
   const [isSyncing, setIsSyncing] = useState(false)
@@ -231,13 +236,26 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
                 Authorized Students (<strong>{emails.length}</strong>)
               </span>
               {emails.length > 0 && (
-                <button
-                  type="button"
-                  className="qb-text-btn-danger"
-                  onClick={handleClearAll}
-                >
-                  Clear All
-                </button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {showConfirmClear && (
+                    <button
+                      type="button"
+                      className="qb-text-btn-secondary"
+                      style={{ fontSize: '11px', color: 'var(--text-2, #A1A1AA)' }}
+                      onClick={() => setShowConfirmClear(false)}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="qb-text-btn-danger"
+                    style={showConfirmClear ? { fontWeight: 700, color: '#EF4444' } : {}}
+                    onClick={handleClearAll}
+                  >
+                    {showConfirmClear ? 'Confirm Clear All?' : 'Clear All'}
+                  </button>
+                </div>
               )}
             </div>
 

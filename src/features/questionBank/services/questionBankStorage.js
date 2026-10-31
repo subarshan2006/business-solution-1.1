@@ -8,6 +8,30 @@ import unit1QuizData from '../../../data/unit1_chemistry_of_life_quiz.json'
 import { purgeAllEphemeralImages } from './ephemeralImageService'
 
 const STORAGE_KEY = 'nxtstep_question_banks'
+const DELETED_BANKS_KEY = 'nxtstep_deleted_question_banks'
+
+export function getDeletedBankIds() {
+  if (typeof window === 'undefined' || !window.localStorage) return []
+  try {
+    const raw = localStorage.getItem(DELETED_BANKS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+export function recordDeletedBankId(id) {
+  if (!id || typeof window === 'undefined' || !window.localStorage) return
+  try {
+    const deleted = getDeletedBankIds()
+    if (!deleted.includes(id)) {
+      deleted.push(id)
+      localStorage.setItem(DELETED_BANKS_KEY, JSON.stringify(deleted))
+    }
+  } catch (err) {
+    console.warn('Failed to record deleted bank ID:', err)
+  }
+}
 
 // Initial seed question bank for immediate demonstration & testing
 export const INITIAL_QUESTION_BANKS = [
@@ -107,28 +131,36 @@ export function getQuestionBanks() {
     return INITIAL_QUESTION_BANKS
   }
   try {
+    const deletedIds = getDeletedBankIds()
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_QUESTION_BANKS))
-      return INITIAL_QUESTION_BANKS
+      const initial = INITIAL_QUESTION_BANKS.filter((b) => !deletedIds.includes(b.id))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(initial))
+      return initial
     }
     const banks = JSON.parse(raw)
     if (!Array.isArray(banks)) {
-      return INITIAL_QUESTION_BANKS
+      const initial = INITIAL_QUESTION_BANKS.filter((b) => !deletedIds.includes(b.id))
+      return initial
     }
 
-    // Ensure preloaded Unit 1 bank exists in list with latest in-memory data
+    // Ensure preloaded Unit 1 bank exists in list with latest in-memory data ONLY IF NOT DELETED
     const unit1Idx = banks.findIndex((b) => b.id === unit1QuizData.id)
-    if (unit1Idx === -1) {
+    if (unit1Idx === -1 && !deletedIds.includes(unit1QuizData.id)) {
       banks.unshift(unit1QuizData)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(banks))
-    } else if (banks[unit1Idx]?.questions?.[0]?.image?.includes('assets/quiz-images/')) {
+    } else if (unit1Idx !== -1 && banks[unit1Idx]?.questions?.[0]?.image?.includes('assets/quiz-images/')) {
       // Upgrade legacy static image bank to dynamic in-memory data
       banks[unit1Idx] = unit1QuizData
       localStorage.setItem(STORAGE_KEY, JSON.stringify(banks))
     }
 
-    return banks
+    // Ensure deleted banks never leak into list
+    const sanitized = banks.filter((b) => !deletedIds.includes(b.id))
+    if (sanitized.length !== banks.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized))
+    }
+    return sanitized
   } catch (err) {
     console.error('Failed to load question banks from localStorage:', err)
     return INITIAL_QUESTION_BANKS
@@ -179,6 +211,7 @@ export function saveQuestionBank(bank) {
  */
 export function deleteQuestionBank(id) {
   if (!id) return false
+  recordDeletedBankId(id)
   const banks = getQuestionBanks()
   const filtered = banks.filter((b) => b.id !== id)
   try {

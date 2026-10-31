@@ -68,15 +68,20 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
     setEditedQuestion({ ...editedQuestion, options: updatedOpts })
   }
 
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+
   const handleDeleteQuestion = () => {
-    if (window.confirm('Delete this question from the bank?')) {
-      const updated = questions.filter((_, idx) => idx !== currentIndex)
-      setQuestions(updated)
-      if (currentIndex >= updated.length) {
-        setCurrentIndex(Math.max(0, updated.length - 1))
-      }
-      setIsEditing(false)
+    if (!showConfirmDelete) {
+      setShowConfirmDelete(true)
+      return
     }
+    const updated = questions.filter((_, idx) => idx !== currentIndex)
+    setQuestions(updated)
+    if (currentIndex >= updated.length) {
+      setCurrentIndex(Math.max(0, updated.length - 1))
+    }
+    setIsEditing(false)
+    setShowConfirmDelete(false)
   }
 
   const handleAddNewQuestion = () => {
@@ -336,14 +341,34 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
                         <ion-icon name="create-outline"></ion-icon>
                         <span>Edit</span>
                       </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary qb-small-btn qb-danger-btn"
-                        onClick={handleDeleteQuestion}
-                      >
-                        <ion-icon name="trash-outline"></ion-icon>
-                        <span>Delete</span>
-                      </button>
+                      {showConfirmDelete ? (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary qb-small-btn"
+                            onClick={() => setShowConfirmDelete(false)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-danger qb-small-btn"
+                            style={{ background: '#EF4444', color: '#fff', borderColor: '#DC2626' }}
+                            onClick={handleDeleteQuestion}
+                          >
+                            Confirm Delete?
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-secondary qb-small-btn qb-danger-btn"
+                          onClick={handleDeleteQuestion}
+                        >
+                          <ion-icon name="trash-outline"></ion-icon>
+                          <span>Delete</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 

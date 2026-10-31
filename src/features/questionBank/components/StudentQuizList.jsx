@@ -1,10 +1,45 @@
 import { useState, useEffect } from 'react'
 import { studentApi, getStoredSessionUser } from '../../../services/nxtstepApi'
+import { getQuestionBanks } from '../services/questionBankStorage'
+import { listBankAttempts } from '../services/quizAttemptService'
+
+function formatRemainingCountdown(endTime, currentMs) {
+  if (!endTime) return null
+  const endMs = new Date(endTime).getTime()
+  if (isNaN(endMs)) return null
+  const diffMs = endMs - currentMs
+  if (diffMs <= 0) return null
+
+  const totalSecs = Math.floor(diffMs / 1000)
+  const hours = Math.floor(totalSecs / 3600)
+  const minutes = Math.floor((totalSecs % 3600) / 60)
+  const seconds = totalSecs % 60
+
+  if (hours >= 2) {
+    return `${hours}h remaining`
+  }
+  if (hours === 1) {
+    return minutes > 0 ? `1h ${minutes}m remaining` : `1h remaining`
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s remaining`
+  }
+  return `${seconds}s remaining`
+}
 
 function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStudentEmail, onStartQuiz }) {
   const [assignedTests, setAssignedTests] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [currentTime, setCurrentTime] = useState(Date.now())
+
+  // Dynamic real-time timer ticker
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setCurrentTime(Date.now())
+    }, 1000)
+    return () => clearInterval(timerId)
+  }, [])
 
   const sessionUser = getStoredSessionUser()
   const studentEmail = (
@@ -26,15 +61,69 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
     setLoading(true)
     setError('')
     try {
-      const tests = await studentApi.getAssignedTests()
-      if (Array.isArray(tests)) {
-        setAssignedTests(tests)
-      } else {
-        setAssignedTests([])
+      let combined = []
+
+      // 1. Fetch assigned tests from backend
+      try {
+        const tests = await studentApi.getAssignedTests()
+        if (Array.isArray(tests)) {
+          combined = [...tests]
+        }
+      } catch (err) {
+        console.warn('Backend getAssignedTests note:', err)
       }
+
+      // 2. Merge local authorized question banks (if published and student is authorized)
+      try {
+        const localBanks = getQuestionBanks()
+        if (Array.isArray(localBanks)) {
+          localBanks.forEach((b) => {
+            if (!b.published) return
+            const authorized = Array.isArray(b.authorizedStudents)
+              ? b.authorizedStudents.map((s) => String(s).toLowerCase().trim())
+              : []
+            if (!authorized.includes(studentEmail)) return
+
+            // Check if already in combined list
+            const exists = combined.some(
+              (t) => t.testId === b.id || t.assignmentId === b.id || t.title === b.title
+            )
+            if (!exists) {
+              const quizEndingHours = Number(b.settings?.quizEndingHours || 3)
+              const createdMs = b.createdAt ? new Date(b.createdAt).getTime() : Date.now()
+              const endIso = new Date(createdMs + quizEndingHours * 60 * 60 * 1000).toISOString()
+
+              // Check if completed locally
+              const localAttempts = listBankAttempts(b.id)
+              const myAttempt = localAttempts.find(
+                (a) => a.studentEmail?.toLowerCase() === studentEmail
+              )
+
+              combined.push({
+                testId: b.id,
+                assignmentId: b.id,
+                title: b.title,
+                description: b.description,
+                subject: b.subject || 'AP Biology',
+                startTime: b.createdAt || new Date().toISOString(),
+                endTime: endIso,
+                attemptDurationMinutes: b.settings?.timeLimitMinutes || 20,
+                maxAttempts: b.settings?.oneAttempt ? 1 : 1,
+                questionCount: Array.isArray(b.questions) ? b.questions.length : 0,
+                studentStatus: myAttempt ? 'SUBMITTED' : 'READY',
+                isLocalBank: true,
+              })
+            }
+          })
+        }
+      } catch (storageErr) {
+        console.warn('Local question bank merge note:', storageErr)
+      }
+
+      setAssignedTests(combined)
     } catch (err) {
-      console.warn('Failed to load assigned tests from backend:', err)
-      setError(err.message || 'Unable to load assigned quizzes from server.')
+      console.warn('Failed to load assigned tests:', err)
+      setError(err.message || 'Unable to load assigned quizzes.')
       setAssignedTests([])
     } finally {
       setLoading(false)
@@ -44,6 +133,18 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
   useEffect(() => {
     loadBackendTests()
   }, [studentEmail])
+
+  // Vanish expired quizzes: Exclude quizzes past endTime or marked isPast
+  const visibleQuizzes = assignedTests.filter((t) => {
+    if (t.isPast) return false
+    if (t.endTime) {
+      const endMs = new Date(t.endTime).getTime()
+      if (!isNaN(endMs) && endMs <= currentTime) {
+        return false // Automatically vanishes when window timing expires
+      }
+    }
+    return true
+  })
 
   if (!auth || !studentEmail) {
     return (
@@ -89,15 +190,15 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
           <h3>Loading Assigned Quizzes...</h3>
           <p>Connecting to server to retrieve quizzes assigned to <strong>{studentEmail}</strong>.</p>
         </div>
-      ) : assignedTests.length === 0 ? (
+      ) : visibleQuizzes.length === 0 ? (
         <div className="qb-student-empty-card">
           <ion-icon name="book-outline" class="qb-empty-icon"></ion-icon>
           <h3>No Quizzes Assigned</h3>
           <p>
-            You are signed in as <strong>{studentEmail}</strong>. No quizzes are currently assigned to your account.
+            You are signed in as <strong>{studentEmail}</strong>. No quizzes are currently assigned or active quiz windows have concluded.
           </p>
           <span className="qb-hint-badge">
-            When your teacher assigns a quiz to your email address, it will automatically appear here.
+            When your teacher assigns a quiz to your email address, it will automatically appear here with a live countdown timer.
           </span>
           {error && (
             <p style={{ marginTop: '12px', fontSize: '12px', color: '#EF4444' }}>
@@ -107,13 +208,13 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
         </div>
       ) : (
         <div className="qb-grid">
-          {assignedTests.map((t) => {
+          {visibleQuizzes.map((t) => {
             const quizId = t.testId || t.assignmentId
             const isSubmitted = t.studentStatus === 'SUBMITTED'
             const isStarted = t.studentStatus === 'STARTED'
-            const isPast = Boolean(t.isPast)
             const duration = t.attemptDurationMinutes || 60
             const qCount = t.questionCount || 0
+            const remainingCountdown = formatRemainingCountdown(t.endTime, currentTime)
 
             return (
               <div key={quizId} className="qb-card qb-student-card">
@@ -129,6 +230,30 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                   {t.description || `${qCount} Questions • ${duration} min timer`}
                 </p>
 
+                {/* Dynamic Real-time Countdown Timer Badge */}
+                {remainingCountdown && (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '16px',
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      color: '#FBBF24',
+                      fontWeight: 600,
+                      fontSize: '12px',
+                      marginBottom: '12px',
+                      width: 'fit-content',
+                    }}
+                    title="Active Quiz Window Countdown"
+                  >
+                    <ion-icon name="time-outline" style={{ fontSize: '15px' }}></ion-icon>
+                    <span>{remainingCountdown}</span>
+                  </div>
+                )}
+
                 <div className="qb-meta-row">
                   <div className="qb-meta-item">
                     <ion-icon name="help-circle-outline"></ion-icon>
@@ -138,10 +263,12 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                     <ion-icon name="timer-outline"></ion-icon>
                     <span>{duration} Minutes</span>
                   </div>
-                  <div className="qb-meta-item">
-                    <ion-icon name="lock-closed-outline"></ion-icon>
-                    <span>{t.maxAttempts ? `${t.maxAttempts} Attempt` : '1 Attempt'}</span>
-                  </div>
+                  {remainingCountdown && (
+                    <div className="qb-meta-item" style={{ color: '#FBBF24', fontWeight: 600 }}>
+                      <ion-icon name="hourglass-outline"></ion-icon>
+                      <span>{remainingCountdown}</span>
+                    </div>
+                  )}
                   {t.teacher && (
                     <div className="qb-meta-item" style={{ color: '#38bdf8' }}>
                       <ion-icon name="person-outline"></ion-icon>
@@ -159,16 +286,6 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                     >
                       <ion-icon name="eye-outline"></ion-icon>
                       <span>View Results</span>
-                    </button>
-                  ) : isPast ? (
-                    <button
-                      type="button"
-                      className="btn btn-secondary qb-full-btn"
-                      disabled
-                      style={{ opacity: 0.6, cursor: 'not-allowed' }}
-                    >
-                      <ion-icon name="lock-closed-outline"></ion-icon>
-                      <span>Quiz Window Closed</span>
                     </button>
                   ) : (
                     <button

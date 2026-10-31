@@ -4,6 +4,10 @@ import {
   deleteQuestionBank,
   saveQuestionBank,
 } from '../services/questionBankStorage'
+import {
+  questionBankApi,
+  testManagementApi,
+} from '../../../services/nxtstepApi'
 import CreateQuestionBankModal from './CreateQuestionBankModal'
 import StudentAccessModal from './StudentAccessModal'
 import QuestionImportModal from './QuestionImportModal'
@@ -15,6 +19,8 @@ function QuestionBankList({ onLaunchQuiz }) {
   const [activeModal, setActiveModal] = useState(null) // 'create' | 'access' | 'import' | 'review' | 'attempts'
   const [selectedBank, setSelectedBank] = useState(null)
   const [notice, setNotice] = useState('')
+  const [bankToDelete, setBankToDelete] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const reloadBanks = () => {
     const list = getQuestionBanks()
@@ -41,11 +47,54 @@ function QuestionBankList({ onLaunchQuiz }) {
     reloadBanks()
   }
 
-  const handleDelete = (bank) => {
-    if (window.confirm(`Are you sure you want to delete the question bank "${bank.title}"?`)) {
-      deleteQuestionBank(bank.id)
+  const handleConfirmDelete = async () => {
+    if (!bankToDelete) return
+    setIsDeleting(true)
+    try {
+      // 1. Try deleting from backend if matching bank exists
+      const targetId = bankToDelete.backendBankId || (bankToDelete.id && !bankToDelete.id.startsWith('qb_') ? bankToDelete.id : null)
+      if (targetId) {
+        try {
+          await questionBankApi.deleteQuestionBank(targetId)
+        } catch (apiErr) {
+          console.warn('Backend question-bank delete notice:', apiErr)
+        }
+      } else {
+        try {
+          const remoteBanks = await questionBankApi.listQuestionBanks()
+          const match = Array.isArray(remoteBanks)
+            ? remoteBanks.find((b) => b.id === bankToDelete.id || b.title === bankToDelete.title)
+            : null
+          if (match?.id) {
+            await questionBankApi.deleteQuestionBank(match.id)
+          }
+        } catch (matchErr) {
+          console.warn('Backend question-bank query notice:', matchErr)
+        }
+      }
+
+      // 2. Try deleting matching test if testId exists
+      if (bankToDelete.testId) {
+        try {
+          await testManagementApi.deleteTest(bankToDelete.testId)
+        } catch (testErr) {
+          console.warn('Backend test delete notice:', testErr)
+        }
+      }
+
+      // 3. Delete from localStorage
+      deleteQuestionBank(bankToDelete.id)
       reloadBanks()
-      showNotification(`Deleted "${bank.title}"`)
+      showNotification(`Deleted "${bankToDelete.title}" successfully.`)
+      setBankToDelete(null)
+    } catch (err) {
+      console.error('Failed to delete question bank:', err)
+      deleteQuestionBank(bankToDelete.id)
+      reloadBanks()
+      showNotification(`Deleted "${bankToDelete.title}".`)
+      setBankToDelete(null)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -200,7 +249,7 @@ function QuestionBankList({ onLaunchQuiz }) {
                   <button
                     type="button"
                     className="qb-action-btn qb-delete-btn"
-                    onClick={() => handleDelete(bank)}
+                    onClick={() => setBankToDelete(bank)}
                     title="Delete question bank"
                   >
                     <ion-icon name="trash-outline"></ion-icon>
@@ -209,6 +258,158 @@ function QuestionBankList({ onLaunchQuiz }) {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Delete Confirmation Popup Card Modal */}
+      {bankToDelete && (
+        <div
+          className="qb-modal-backdrop"
+          onClick={() => !isDeleting && setBankToDelete(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="qb-modal-card"
+            style={{ maxWidth: '480px', border: '1px solid rgba(239, 68, 68, 0.35)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="qb-modal-header" style={{ borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#EF4444',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '22px',
+                  }}
+                >
+                  <ion-icon name="trash-outline"></ion-icon>
+                </div>
+                <div>
+                  <h3 className="qb-modal-title" style={{ color: '#F87171' }}>
+                    Delete Question Bank
+                  </h3>
+                  <p className="qb-modal-subtitle">Permanent action — cannot be undone</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="qb-modal-close-btn"
+                onClick={() => !isDeleting && setBankToDelete(null)}
+                aria-label="Close dialog"
+                disabled={isDeleting}
+              >
+                <ion-icon name="close-outline"></ion-icon>
+              </button>
+            </div>
+
+            <div className="qb-modal-body" style={{ padding: '20px 24px' }}>
+              <p
+                style={{
+                  fontSize: '14px',
+                  lineHeight: '1.6',
+                  color: 'var(--text-1, #F4F4F5)',
+                  marginBottom: '16px',
+                }}
+              >
+                Are you sure you want to delete <strong style={{ color: '#fff' }}>&ldquo;{bankToDelete.title}&rdquo;</strong>?
+              </p>
+              <div
+                style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  fontSize: '13px',
+                  lineHeight: '1.5',
+                  color: '#FCA5A5',
+                  marginBottom: '16px',
+                }}
+              >
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <ion-icon
+                    name="warning-outline"
+                    style={{ fontSize: '18px', flexShrink: 0, marginTop: '1px' }}
+                  ></ion-icon>
+                  <div>
+                    This will permanently delete the quiz, all questions, diagram screenshots, and student attempt scores for both teacher and enrolled students.
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="qb-meta-row"
+                style={{ marginTop: '8px', color: 'var(--text-2, #A1A1AA)', fontSize: '13px' }}
+              >
+                <div className="qb-meta-item">
+                  <ion-icon name="help-circle-outline"></ion-icon>
+                  <span>
+                    {Array.isArray(bankToDelete.questions) ? bankToDelete.questions.length : 0} Questions
+                  </span>
+                </div>
+                <div className="qb-meta-item">
+                  <ion-icon name="people-outline"></ion-icon>
+                  <span>
+                    {Array.isArray(bankToDelete.authorizedStudents)
+                      ? bankToDelete.authorizedStudents.length
+                      : 0}{' '}
+                    Students
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="qb-modal-footer"
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '10px',
+                padding: '16px 24px',
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setBankToDelete(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                style={{
+                  background: '#EF4444',
+                  borderColor: '#DC2626',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <ion-icon name="sync-outline" style={{ animation: 'spin 1s linear infinite' }}></ion-icon>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <ion-icon name="trash-outline"></ion-icon>
+                    <span>Delete Question Bank</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
