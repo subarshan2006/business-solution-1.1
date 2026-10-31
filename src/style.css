@@ -2632,13 +2632,13 @@ textarea.form-input::-webkit-resizer { display: none; }
 
 .hero-h1 {
   font-family: 'Sora', 'Manrope', system-ui, sans-serif;
-  font-size: clamp(2.1rem, 4.4vw, 3.4rem);
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-size: clamp(1.4rem, 2.5vw, 2.05rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
   color: var(--text, #FFFFFF);
   margin-bottom: 16px;
-  min-height: 2.3em;
+  min-height: 2.2em;
 }
 
 .hero-h1-static {
@@ -2856,22 +2856,22 @@ textarea.form-input::-webkit-resizer { display: none; }
 .hero-course-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 4px;
-  margin-bottom: 22px;
+  gap: 12px 14px;
+  margin-top: 6px;
+  margin-bottom: 24px;
 }
 
 .hero-course-chip {
   display: inline-flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   background: var(--surface, #1e1e24);
   border: 1px solid var(--line, #383842);
   color: var(--text, #FFFFFF);
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 19px;
   font-weight: 600;
-  padding: 8px 18px;
+  padding: 11px 22px;
   border-radius: 999px;
   text-decoration: none;
   cursor: pointer;
@@ -2888,7 +2888,7 @@ textarea.form-input::-webkit-resizer { display: none; }
 }
 
 .hero-course-chip ion-icon {
-  font-size: 18px;
+  font-size: 22px;
   color: var(--mint, #FF5C5C);
   transition: transform 0.2s ease;
 }
@@ -2920,7 +2920,7 @@ textarea.form-input::-webkit-resizer { display: none; }
   }
 
   .hero-h1 {
-    font-size: clamp(1.65rem, 7vw, 2.2rem);
+    font-size: clamp(1.2rem, 5vw, 1.55rem);
     min-height: auto;
   }
 
@@ -2938,18 +2938,18 @@ textarea.form-input::-webkit-resizer { display: none; }
   }
 
   .hero-course-chips {
-    gap: 8px;
-    margin-bottom: 18px;
+    gap: 8px 10px;
+    margin-bottom: 20px;
   }
 
   .hero-course-chip {
-    font-size: 14px;
-    padding: 7px 14px;
-    gap: 7px;
+    font-size: 16px;
+    padding: 9px 18px;
+    gap: 8px;
   }
 
   .hero-course-chip ion-icon {
-    font-size: 16px;
+    font-size: 19px;
   }
 
   .hero-proof-strip {
