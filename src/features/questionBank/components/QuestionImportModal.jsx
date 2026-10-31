@@ -191,14 +191,13 @@ function QuestionImportModal({ bank, onClose, onImported }) {
         createdAt: bank.createdAt || new Date().toISOString(),
       }
       saveQuestionBank(initialBank)
-      if (onImported) onImported(initialBank)
 
       setProgressMsg('PDF uploaded! Processing pages via background queue (OCR & AI vision)...')
 
-      // Poll every 2.5 seconds (up to 480 attempts = 20 minutes for large 100-page exams)
+      // Poll every 2.5 seconds (up to 1500 attempts = ~62 minutes for large 100-page exams)
       let completed = false
       let attempts = 0
-      while (!completed && attempts < 480) {
+      while (!completed && attempts < 1500) {
         await new Promise((r) => setTimeout(r, 2500))
         attempts++
         const job = await questionBankApi.getProcessingJob(jobId)
@@ -241,7 +240,7 @@ function QuestionImportModal({ bank, onClose, onImported }) {
             questionCount: mapped.length,
           }
           saveQuestionBank(finishedBank)
-          if (onImported) onImported(finishedBank)
+          if (onImported) onImported(finishedBank, mapped.length)
 
           setProgressMsg(`Successfully structured and saved ${mapped.length} questions from PDF!`)
           break
@@ -258,7 +257,6 @@ function QuestionImportModal({ bank, onClose, onImported }) {
             processingStep: job.currentStep || 'processing',
           }
           saveQuestionBank(inProgress)
-          if (onImported) onImported(inProgress)
 
           setProgressMsg(
             `Status: ${job.status} — Step: ${job.currentStep || 'processing'} (${job.progress || 0}% complete)...`
@@ -398,7 +396,19 @@ function QuestionImportModal({ bank, onClose, onImported }) {
 
         <div className="qb-modal-body">
           {error && <div className="qb-alert-error">{error}</div>}
-          {progressMsg && <div className="qb-alert-info">{progressMsg}</div>}
+          {progressMsg && (
+            <div className="qb-alert-info" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {loading && <ion-icon name="sync-outline" style={{ animation: "spin 1s linear infinite", fontSize: "16px" }}></ion-icon>}
+                <span>{progressMsg}</span>
+              </div>
+              {loading && (
+                <div style={{ fontSize: "12px", color: "var(--text-color-muted, #a1a1aa)", marginTop: "2px" }}>
+                  💡 <strong>Server Processing:</strong> You can safely keep this window open or close it. The cloud server will continue processing in the background, and the quiz will automatically update on your dashboard.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Mode Tabs */}
           <div className="qb-import-tabs">

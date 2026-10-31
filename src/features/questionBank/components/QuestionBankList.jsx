@@ -384,7 +384,7 @@ function QuestionBankList({ onLaunchQuiz }) {
                     <button
                       type="button"
                       className="qb-action-btn qb-preview-btn"
-                      onClick={() => onLaunchQuiz(bank.id)}
+                      onClick={() => onLaunchQuiz(bank.backendBankId || bank.id)}
                       title="Preview student quiz"
                     >
                       <ion-icon name="play-outline"></ion-icon>

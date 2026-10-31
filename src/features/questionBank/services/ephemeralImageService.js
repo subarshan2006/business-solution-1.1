@@ -11,6 +11,14 @@ const activeBlobs = new Set()
  * Resolve an asset relative path to account for base URL (e.g. GitHub Pages or root)
  */
 export function resolveAssetUrl(path) {
+  if (!path) return ""
+
+  // Ensure backend file downloads always point to backend origin
+  if (typeof path === "string" && path.includes("/api/files/download/")) {
+    const apiBase = (import.meta.env.VITE_API_BASE_URL || "https://backend-jivant.onrender.com").replace(/\/+$/, "")
+    const downloadPart = path.substring(path.indexOf("/api/files/download/"))
+    return `${apiBase}${downloadPart}`
+  }
   if (!path) return ''
   if (
     path.startsWith('data:') ||

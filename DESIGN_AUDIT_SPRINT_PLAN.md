@@ -168,7 +168,7 @@ All token combinations exceed WCAG AA requirements (4.5:1 body text, 3.0:1 UI co
 | **Hero Subline** | No target audience, subject, or concrete outcome | **"Targeted coaching for AP Biology and USABO, built around your exam date and your gaps."** |
 | **Hero Pill Badge** | "Global 1:1 Online Mentorship \| US Curricula (EST · CST · PST) & Global" (repeated "Global", missing MST, EST winter-only) | **"1:1 Online Tutoring · ET · CT · MT · PT"** (set in mono eyebrow above H1) |
 | **Credentials Line** | "Guided by an educator with a MSc Zoology, MSc Environmental Science, B.Ed..." ("a MSc" grammatical error, tutor anonymous) | **"Taught by Steena Antony, M.Sc. Zoology, M.Sc. Environmental Science, B.Ed. 11+ years teaching life science."** |
-| **Tutor Role** | "AP Life Science Mentor" is vague and non-searchable | **"AP Biology & USABO Tutor"** |
+| **Tutor Role** | "AP Life Science Mentor" is vague and non-searchable | **"Life science tutor and AP specialist"** |
 | **Sidebar Title** | "Jivanaut Test Prep" at 40 px duplicates wordmark | **Replace with tutor name "Steena Antony" and title.** |
 | **Nav Classroom** | "Classroom" is unclear to first-time parents | **"Student Login"** as quiet right-aligned text link. |
 | **Nav Contact** | "Contact" is passive compared to other destinations | **"Book a free call"** styled as a high-contrast Mint button. |
@@ -445,7 +445,7 @@ gantt
 - [x] **Task 1.4:** Add hero proof strip under CTAs: `11+ yrs teaching · Scores of 4 & 5 · 100% custom FRQ prep`.
 - [x] **Task 1.5:** Microcopy corrections across codebase:
   - Update credentials to: `"Taught by Steena Antony, M.Sc. Zoology, M.Sc. Environmental Science, B.Ed. 11+ years teaching life science."`
-  - Update tutor title to: `"AP Biology & USABO Tutor"`.
+  - Update tutor title to: `"Life science tutor and AP specialist"`.
   - Unify tagline to: `"Explore life science."`
   - Replace all `jivanautprep@gmail.com` with `jivanautprep@gmail.com`.
   - Nav: `"Student Login"` for classroom, `"Book a free call"` button.

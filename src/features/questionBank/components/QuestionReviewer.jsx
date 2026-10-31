@@ -16,43 +16,58 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
 
   // Fetch questions from backend if bank was imported in the background
   useEffect(() => {
-    if (
-      (!questions || questions.length === 0) &&
-      (bank.backendBankId || (bank.id && !bank.id.startsWith('qb_')))
-    ) {
-      const targetId = bank.backendBankId || bank.id
-      setLoadingBackendQuestions(true)
-      questionReviewApi
-        .listQuestions(targetId, { limit: 100 })
-        .then((res) => {
-          const list = res.data || []
+    if (questions && questions.length > 0) return
+
+    const loadQuestions = async () => {
+      try {
+        setLoadingBackendQuestions(true)
+        let targetId = bank.backendBankId || (bank.id && !bank.id.startsWith("qb_") ? bank.id : null)
+
+        if (!targetId && bank.title) {
+          try {
+            const allBanks = await questionBankApi.listQuestionBanks()
+            const match = (allBanks || []).find((b) => b.title === bank.title || b.id === bank.id)
+            if (match) targetId = match.id
+          } catch (e) {
+            console.warn("Could not list backend banks for fallback:", e)
+          }
+        }
+
+        if (targetId) {
+          const res = await questionReviewApi.listQuestions(targetId, { limit: 100 })
+          const list = res?.data || []
           if (list.length > 0) {
             const mapped = list.map((bq, idx) => ({
-              id: `Q${String(idx + 1).padStart(3, '0')}`,
+              id: `Q${String(idx + 1).padStart(3, "0")}`,
               question: bq.questionText,
               options: (bq.options || []).map((o) => ({
                 id: o.label,
-                text: o.text || '',
+                text: o.text || "",
                 imageUrl: o.imageUrl || null,
               })),
-              correctOption: bq.correctOption || 'A',
-              explanation: bq.explanation || '',
+              correctOption: bq.correctOption || "A",
+              explanation: bq.explanation || "",
               image:
-                bq.images?.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                bq.images?.find((img) => img.role === "QUESTION")?.imageUrl ||
                 bq.images?.[0]?.imageUrl ||
                 null,
-              choicesImage: bq.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
-              explanationImage: bq.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
+              choicesImage: bq.images?.find((img) => img.role === "CHOICES")?.imageUrl || null,
+              explanationImage: bq.images?.find((img) => img.role === "EXPLANATION")?.imageUrl || null,
               confidenceScores: bq.confidenceScores || null,
               needsReview: bq.needsReview || false,
             }))
             setQuestions(mapped)
-            saveQuestionBank({ ...bank, questions: mapped, questionCount: mapped.length })
+            saveQuestionBank({ ...bank, backendBankId: targetId, questions: mapped, questionCount: mapped.length })
           }
-        })
-        .catch((err) => console.warn('Failed to load backend questions in reviewer:', err))
-        .finally(() => setLoadingBackendQuestions(false))
+        }
+      } catch (err) {
+        console.warn("Failed to load backend questions in reviewer:", err)
+      } finally {
+        setLoadingBackendQuestions(false)
+      }
     }
+
+    loadQuestions()
   }, [bank])
 
   const validation = validateQuestions(questions)

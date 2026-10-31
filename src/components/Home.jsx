@@ -24,7 +24,7 @@ const feedbacks = [
 const FAQ_ITEMS = [
   {
     q: "What format are the 1-on-1 tutoring sessions conducted in?",
-    a: "Sessions are conducted live via high-definition video (Google Meet or Zoom) with interactive digital whiteboarding. We diagram cellular pathways, annotate College Board FRQ prompt texts, and run live calculations in real time. Students receive complete annotated PDF session notes immediately after class."
+    a: "Sessions are conducted live via high-definition video (Google Meet or Zoom) with interactive digital whiteboarding. We diagram cellular pathways, annotate College Board FRQ prompt texts, and run live calculations in real time."
   },
   {
     q: "What time zones and hours do you support?",
@@ -177,7 +177,7 @@ function Home({ activePage }) {
               </button>
               <button type="button" onClick={() => setSelectedCourseId('apes')} className="hero-course-chip">
                 <ion-icon name="earth-outline"></ion-icon>
-                <span>APES</span>
+                <span>AP Environmental science</span>
               </button>
               <button type="button" onClick={() => setSelectedCourseId('ap-psychology')} className="hero-course-chip">
                 <ion-icon name="bulb-outline"></ion-icon>
