@@ -179,13 +179,27 @@ function QuestionImportModal({ bank, onClose, onImported }) {
       const questionBankId = uploadRes.questionBankId
       setImportedBackendBankId(questionBankId)
 
+      // Immediately save processing state so card is preserved on dashboard even if modal is closed or laptop sleeps
+      const initialBank = {
+        ...bank,
+        id: bank.id || questionBankId,
+        backendBankId: questionBankId,
+        title: uploadPayload.title,
+        status: 'PROCESSING',
+        processingProgress: 5,
+        processingStep: 'CAPTURING_SCREENSHOTS',
+        createdAt: bank.createdAt || new Date().toISOString(),
+      }
+      saveQuestionBank(initialBank)
+      if (onImported) onImported(initialBank)
+
       setProgressMsg('PDF uploaded! Processing pages via background queue (OCR & AI vision)...')
 
-      // Poll every 2 seconds (up to 90 seconds)
+      // Poll every 2.5 seconds (up to 480 attempts = 20 minutes for large 100-page exams)
       let completed = false
       let attempts = 0
-      while (!completed && attempts < 45) {
-        await new Promise((r) => setTimeout(r, 2000))
+      while (!completed && attempts < 480) {
+        await new Promise((r) => setTimeout(r, 2500))
         attempts++
         const job = await questionBankApi.getProcessingJob(jobId)
 
@@ -205,18 +219,47 @@ function QuestionImportModal({ bank, onClose, onImported }) {
             })),
             correctOption: bq.correctOption || 'A',
             explanation: bq.explanation || '',
-            image: bq.images?.[0]?.imageUrl || null,
+            image: bq.images?.find((img) => img.role === 'QUESTION')?.imageUrl || bq.images?.[0]?.imageUrl || null,
+            choicesImage: bq.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
+            explanationImage: bq.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
             confidenceScores: bq.confidenceScores || null,
             needsReview: bq.needsReview || false,
           }))
 
           const validated = validateQuestions(mapped)
           setValidationResult(validated)
-          setProgressMsg(`Successfully structured ${mapped.length} questions from PDF via backend!`)
+
+          // Auto-save the completed questions directly to storage so no manual confirmation is required
+          const finishedBank = {
+            ...bank,
+            id: bank.id || questionBankId,
+            backendBankId: questionBankId,
+            status: 'READY_FOR_REVIEW',
+            processingProgress: 100,
+            processingStep: 'COMPLETED',
+            questions: mapped,
+            questionCount: mapped.length,
+          }
+          saveQuestionBank(finishedBank)
+          if (onImported) onImported(finishedBank)
+
+          setProgressMsg(`Successfully structured and saved ${mapped.length} questions from PDF!`)
           break
         } else if (job.status === 'FAILED') {
           throw new Error(job.error || 'Backend PDF processing failed.')
         } else {
+          // Update in-progress progress in storage
+          const inProgress = {
+            ...bank,
+            id: bank.id || questionBankId,
+            backendBankId: questionBankId,
+            status: 'PROCESSING',
+            processingProgress: job.progress || 5,
+            processingStep: job.currentStep || 'processing',
+          }
+          saveQuestionBank(inProgress)
+          if (onImported) onImported(inProgress)
+
           setProgressMsg(
             `Status: ${job.status} — Step: ${job.currentStep || 'processing'} (${job.progress || 0}% complete)...`
           )
@@ -224,7 +267,7 @@ function QuestionImportModal({ bank, onClose, onImported }) {
       }
 
       if (!completed) {
-        throw new Error('Processing job timed out. You can check the job status in processing jobs.')
+        throw new Error('Processing is still continuing in the background on the server. Your quiz will automatically appear on your dashboard when complete.')
       }
     } catch (err) {
       console.error('Backend PDF processing failed:', err)

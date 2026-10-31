@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { saveQuestionBank } from '../services/questionBankStorage'
 import { validateQuestions } from '../services/questionValidator'
 import { resolveAssetUrl } from '../services/ephemeralImageService'
+import { questionReviewApi } from '../../../services/nxtstepApi'
 
 function QuestionReviewer({ bank, onClose, onSaved }) {
   const [questions, setQuestions] = useState(
@@ -11,6 +12,48 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editedQuestion, setEditedQuestion] = useState(null)
   const [savedNotice, setSavedNotice] = useState('')
+  const [loadingBackendQuestions, setLoadingBackendQuestions] = useState(false)
+
+  // Fetch questions from backend if bank was imported in the background
+  useEffect(() => {
+    if (
+      (!questions || questions.length === 0) &&
+      (bank.backendBankId || (bank.id && !bank.id.startsWith('qb_')))
+    ) {
+      const targetId = bank.backendBankId || bank.id
+      setLoadingBackendQuestions(true)
+      questionReviewApi
+        .listQuestions(targetId, { limit: 100 })
+        .then((res) => {
+          const list = res.data || []
+          if (list.length > 0) {
+            const mapped = list.map((bq, idx) => ({
+              id: `Q${String(idx + 1).padStart(3, '0')}`,
+              question: bq.questionText,
+              options: (bq.options || []).map((o) => ({
+                id: o.label,
+                text: o.text || '',
+                imageUrl: o.imageUrl || null,
+              })),
+              correctOption: bq.correctOption || 'A',
+              explanation: bq.explanation || '',
+              image:
+                bq.images?.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                bq.images?.[0]?.imageUrl ||
+                null,
+              choicesImage: bq.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
+              explanationImage: bq.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
+              confidenceScores: bq.confidenceScores || null,
+              needsReview: bq.needsReview || false,
+            }))
+            setQuestions(mapped)
+            saveQuestionBank({ ...bank, questions: mapped, questionCount: mapped.length })
+          }
+        })
+        .catch((err) => console.warn('Failed to load backend questions in reviewer:', err))
+        .finally(() => setLoadingBackendQuestions(false))
+    }
+  }, [bank])
 
   const validation = validateQuestions(questions)
   const currentQ = questions[currentIndex] || null
@@ -136,7 +179,23 @@ function QuestionReviewer({ bank, onClose, onSaved }) {
         <div className="qb-modal-body">
           {savedNotice && <div className="qb-alert-toast" style={{ top: '10px' }}>{savedNotice}</div>}
 
-          {questions.length === 0 ? (
+          {loadingBackendQuestions ? (
+            <div className="qb-empty-state" style={{ padding: '48px 16px' }}>
+              <div
+                style={{
+                  margin: '0 auto 16px',
+                  width: '36px',
+                  height: '36px',
+                  border: '3px solid rgba(255,255,255,0.1)',
+                  borderTopColor: 'var(--mint, #10B981)',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }}
+              ></div>
+              <h4>Loading Questions from Database...</h4>
+              <p style={{ color: 'var(--text-muted)' }}>Fetching questions and cropped diagrams from MongoDB Atlas.</p>
+            </div>
+          ) : questions.length === 0 ? (
             <div className="qb-empty-state">
               <ion-icon name="help-circle-outline" class="qb-empty-icon"></ion-icon>
               <h4>No Questions in this Bank</h4>

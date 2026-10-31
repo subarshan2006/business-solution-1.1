@@ -25,14 +25,104 @@ function QuestionBankList({ onLaunchQuiz }) {
   const [showPurgeAllModal, setShowPurgeAllModal] = useState(false)
   const [isPurging, setIsPurging] = useState(false)
 
-  const reloadBanks = () => {
-    const list = getQuestionBanks()
-    setBanks(list)
+  const reloadBanks = async () => {
+    // 1. Immediately load local banks for zero-latency UI display
+    const localList = getQuestionBanks() || []
+    setBanks(localList)
+
+    // 2. Fetch all persistent question banks from MongoDB Atlas
+    try {
+      const backendBanks = await questionBankApi.listQuestionBanks()
+      if (Array.isArray(backendBanks)) {
+        const updatedLocal = [...localList]
+        let hasChanges = false
+
+        backendBanks.forEach((bb) => {
+          const matchIdx = updatedLocal.findIndex(
+            (b) => b.backendBankId === bb.id || b.id === bb.id || b.title === bb.title
+          )
+
+          const qCount = bb._count?.questions ?? (Array.isArray(bb.questions) ? bb.questions.length : 0)
+          const latestJob = bb.jobs?.[0] || null
+
+          if (matchIdx !== -1) {
+            const existing = updatedLocal[matchIdx]
+            const updated = {
+              ...existing,
+              backendBankId: bb.id,
+              status: bb.status,
+              processingProgress:
+                latestJob?.progress ??
+                (bb.status === 'READY_FOR_REVIEW' || bb.status === 'APPROVED' ? 100 : null),
+              processingStep: latestJob?.currentStep ?? null,
+              questionCount:
+                Array.isArray(existing.questions) && existing.questions.length > 0
+                  ? existing.questions.length
+                  : (qCount || existing.questionCount || 0),
+            }
+            updatedLocal[matchIdx] = updated
+            saveQuestionBank(updated)
+            hasChanges = true
+          } else {
+            // Newly created bank from backend (e.g. processed in background or on reload)
+            const newLocalBank = {
+              id: bb.id,
+              backendBankId: bb.id,
+              title: bb.title,
+              subject: bb.subject || 'AP Biology',
+              description: bb.description || '',
+              published: bb.status === 'APPROVED' || bb.status === 'READY_FOR_REVIEW',
+              status: bb.status,
+              createdAt: bb.createdAt,
+              updatedAt: bb.updatedAt,
+              questionCount: qCount,
+              processingProgress:
+                latestJob?.progress ??
+                (bb.status === 'READY_FOR_REVIEW' || bb.status === 'APPROVED' ? 100 : null),
+              processingStep: latestJob?.currentStep ?? null,
+              settings: {
+                randomizeQuestions: true,
+                randomizeOptions: true,
+                oneAttempt: true,
+                showExplanation: true,
+                timeLimitMinutes: 20,
+                quizEndingHours: 3,
+              },
+              authorizedStudents: [],
+              questions: [],
+            }
+            updatedLocal.push(newLocalBank)
+            saveQuestionBank(newLocalBank)
+            hasChanges = true
+          }
+        })
+
+        if (hasChanges) {
+          setBanks([...updatedLocal])
+        }
+      }
+    } catch (err) {
+      console.warn('Backend listQuestionBanks sync note:', err)
+    }
   }
 
   useEffect(() => {
     reloadBanks()
   }, [])
+
+  // Auto-poll progress if any bank is in PROCESSING state
+  useEffect(() => {
+    const hasProcessing = banks.some(
+      (b) => b.status === 'PROCESSING' || (b.processingProgress !== null && b.processingProgress < 100)
+    )
+    if (!hasProcessing) return
+
+    const pollInterval = setInterval(() => {
+      reloadBanks()
+    }, 4000)
+
+    return () => clearInterval(pollInterval)
+  }, [banks])
 
   const showNotification = (msg) => {
     setNotice(msg)
@@ -193,22 +283,36 @@ function QuestionBankList({ onLaunchQuiz }) {
       ) : (
         <div className="qb-grid">
           {banks.map((bank) => {
-            const questionCount = Array.isArray(bank.questions) ? bank.questions.length : 0
+            const questionCount =
+              Array.isArray(bank.questions) && bank.questions.length > 0
+                ? bank.questions.length
+                : (bank.questionCount || 0)
             const studentCount = Array.isArray(bank.authorizedStudents) ? bank.authorizedStudents.length : 0
 
             return (
               <div key={bank.id} className="qb-card">
                 <div className="qb-card-header">
                   <span className="qb-subject-badge">{bank.subject || 'AP Biology'}</span>
-                  <button
-                    type="button"
-                    className={`qb-status-pill ${bank.published ? 'published' : 'draft'}`}
-                    onClick={() => handleTogglePublished(bank)}
-                    title="Click to toggle publish status"
-                  >
-                    <span className="qb-status-dot"></span>
-                    {bank.published ? 'Published' : 'Draft'}
-                  </button>
+                  {bank.status === 'PROCESSING' ? (
+                    <span
+                      className="qb-status-pill draft"
+                      style={{ color: '#F59E0B', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                      title={bank.processingStep || 'Processing pages in background'}
+                    >
+                      <span className="qb-status-dot" style={{ backgroundColor: '#F59E0B' }}></span>
+                      Processing ({bank.processingProgress || 0}%)
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className={`qb-status-pill ${bank.published ? 'published' : 'draft'}`}
+                      onClick={() => handleTogglePublished(bank)}
+                      title="Click to toggle publish status"
+                    >
+                      <span className="qb-status-dot"></span>
+                      {bank.published ? 'Published' : 'Draft'}
+                    </button>
+                  )}
                 </div>
 
                 <h3 className="qb-card-title">{bank.title}</h3>

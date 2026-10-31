@@ -23,7 +23,7 @@ import {
 } from '../services/ephemeralImageService'
 import WatermarkedDiagramCanvas from './WatermarkedDiagramCanvas'
 import ThemeToggle from '../../../components/ThemeToggle'
-import { studentApi, getStoredSessionUser } from '../../../services/nxtstepApi'
+import { studentApi, questionReviewApi, getStoredSessionUser } from '../../../services/nxtstepApi'
 
 function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
   const params = useParams()
@@ -138,6 +138,39 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     const b = getQuestionBankById(activeBankId)
     if (b) {
       setBank(b)
+      if ((!b.questions || b.questions.length === 0) && (b.backendBankId || !b.id.startsWith('qb_'))) {
+        const targetId = b.backendBankId || b.id
+        questionReviewApi
+          .listQuestions(targetId, { limit: 100 })
+          .then((res) => {
+            const list = res.data || []
+            if (list.length > 0) {
+              const mapped = list.map((bq, idx) => ({
+                id: `Q${String(idx + 1).padStart(3, '0')}`,
+                question: bq.questionText,
+                options: (bq.options || []).map((o) => ({
+                  id: o.label,
+                  text: o.text || '',
+                  imageUrl: o.imageUrl || null,
+                })),
+                correctOption: bq.correctOption || 'A',
+                explanation: bq.explanation || '',
+                image:
+                  bq.images?.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                  bq.images?.[0]?.imageUrl ||
+                  null,
+                choicesImage: bq.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
+                explanationImage: bq.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
+                confidenceScores: bq.confidenceScores || null,
+                needsReview: bq.needsReview || false,
+              }))
+              const updated = { ...b, questions: mapped, questionCount: mapped.length }
+              setBank(updated)
+              saveQuestionBank(updated)
+            }
+          })
+          .catch((err) => console.warn('Failed to load questions for preview in QuizRunner:', err))
+      }
     } else {
       studentApi.getAssignedTests().then((tests) => {
         const found = Array.isArray(tests)
