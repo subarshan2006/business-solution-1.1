@@ -20,7 +20,7 @@ function Sidebar() {
         <div className="info-content">
           <h1 className="name" title="Steena Antony">Steena Antony</h1>
           <p className="title">
-            <span className="status-dot"></span> AP Biology &amp; USABO Tutor
+            <span className="status-dot"></span> Life science tutor and &amp;  AP specialist
           </p>
         </div>
 
