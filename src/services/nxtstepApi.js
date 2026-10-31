@@ -11,7 +11,7 @@
  * - Admin: Users, Roles, Parent-Student Links, Asset Cleanup
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://backend-jivant.onrender.com').replace(/\/+$/, '')
 const TOKEN_KEY = 'nxtstep_session_token'
 const USER_KEY = 'nxtstep_session_user'
 

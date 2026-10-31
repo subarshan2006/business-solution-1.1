@@ -9,11 +9,15 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: 'https://backend-jivant.onrender.com',
         changeOrigin: true,
-        secure: false,
+        secure: true,
       },
-      '/health': 'http://localhost:4000',
+      '/health': {
+        target: 'https://backend-jivant.onrender.com',
+        changeOrigin: true,
+        secure: true,
+      },
     },
   },
 })

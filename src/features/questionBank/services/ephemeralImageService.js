@@ -21,6 +21,13 @@ export function resolveAssetUrl(path) {
     return path
   }
   const clean = path.startsWith('/') ? path.slice(1) : path
+
+  // If pointing to backend files or API endpoints, resolve against backend URL
+  if (clean.startsWith('api/files/') || clean.startsWith('api/')) {
+    const apiBase = (import.meta.env.VITE_API_BASE_URL || 'https://backend-jivant.onrender.com').replace(/\/+$/, '')
+    return `${apiBase}/${clean}`
+  }
+
   const base = import.meta.env.BASE_URL || '/'
   return `${base.endsWith('/') ? base : base + '/'}${clean}`
 }
