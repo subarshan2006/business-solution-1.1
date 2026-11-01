@@ -621,6 +621,17 @@ export const testManagementApi = {
     })
     return res.data
   },
+
+  /**
+   * Interactively check an answer during teacher preview
+   */
+  async checkPreviewAnswer(testId, questionId, selectedOption) {
+    const res = await request(`/api/tests/${encodeURIComponent(testId)}/preview/check`, {
+      method: 'POST',
+      body: JSON.stringify({ questionId, selectedOption }),
+    })
+    return res.data
+  },
 }
 
 // -----------------------------------------------------------------------------

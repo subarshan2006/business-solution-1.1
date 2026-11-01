@@ -157,22 +157,39 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
           if (preview && preview.questions) {
             const mapped = (preview.questions || []).map((tq, idx) => {
               const q = tq.question || tq
+              const qImages = q.images || []
+              const questionImg =
+                qImages.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                q.image ||
+                q.imageUrl ||
+                null
+              const choicesImg =
+                q.choicesImage ||
+                q.choicesImageUrl ||
+                qImages.find((img) => img.role === 'CHOICES' || img.role === 'OPTIONS')?.imageUrl ||
+                null
+              const explanationImg =
+                q.explanationImage ||
+                q.explanationImageUrl ||
+                qImages.find((img) => img.role === 'EXPLANATION')?.imageUrl ||
+                null
+
               return {
                 id: `Q${String(idx + 1).padStart(3, '0')}`,
+                rawQuestionId: q.questionId || q.id,
+                testQuestionId: q.testQuestionId || null,
                 question: q.questionText,
                 options: (q.options || []).map((o) => ({
                   id: o.label,
                   text: o.text || '',
                   imageUrl: o.imageUrl || null,
                 })),
-                correctOption: q.correctOption || 'A',
+                correctOption: q.correctOption || '',
                 explanation: q.explanation || '',
-                image:
-                  q.images?.find((img) => img.role === 'QUESTION')?.imageUrl ||
-                  q.images?.[0]?.imageUrl ||
-                  null,
-                choicesImage: q.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
-                explanationImage: q.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
+                image: questionImg,
+                choicesImage: choicesImg,
+                explanationImage: explanationImg,
+                images: qImages,
                 confidenceScores: q.confidenceScores || null,
                 needsReview: q.needsReview || false,
               }
@@ -207,25 +224,43 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             .then((res) => {
               const list = res.data || []
               if (list.length > 0) {
-                const mapped = list.map((bq, idx) => ({
-                  id: `Q${String(idx + 1).padStart(3, '0')}`,
-                  question: bq.questionText,
-                  options: (bq.options || []).map((o) => ({
-                    id: o.label,
-                    text: o.text || '',
-                    imageUrl: o.imageUrl || null,
-                  })),
-                  correctOption: bq.correctOption || 'A',
-                  explanation: bq.explanation || '',
-                  image:
-                    bq.images?.find((img) => img.role === 'QUESTION')?.imageUrl ||
-                    bq.images?.[0]?.imageUrl ||
-                    null,
-                  choicesImage: bq.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
-                  explanationImage: bq.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
-                  confidenceScores: bq.confidenceScores || null,
-                  needsReview: bq.needsReview || false,
-                }))
+                const mapped = list.map((bq, idx) => {
+                  const qImages = bq.images || []
+                  const questionImg =
+                    qImages.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                    bq.image ||
+                    bq.imageUrl ||
+                    null
+                  const choicesImg =
+                    bq.choicesImage ||
+                    bq.choicesImageUrl ||
+                    qImages.find((img) => img.role === 'CHOICES' || img.role === 'OPTIONS')?.imageUrl ||
+                    null
+                  const explanationImg =
+                    bq.explanationImage ||
+                    bq.explanationImageUrl ||
+                    qImages.find((img) => img.role === 'EXPLANATION')?.imageUrl ||
+                    null
+
+                  return {
+                    id: `Q${String(idx + 1).padStart(3, '0')}`,
+                    rawQuestionId: bq.id,
+                    question: bq.questionText,
+                    options: (bq.options || []).map((o) => ({
+                      id: o.label,
+                      text: o.text || '',
+                      imageUrl: o.imageUrl || null,
+                    })),
+                    correctOption: bq.correctOption || '',
+                    explanation: bq.explanation || '',
+                    image: questionImg,
+                    choicesImage: choicesImg,
+                    explanationImage: explanationImg,
+                    images: qImages,
+                    confidenceScores: bq.confidenceScores || null,
+                    needsReview: bq.needsReview || false,
+                  }
+                })
                 const fallbackBank = {
                   id: activeBankId,
                   title: b?.title || 'Quiz Preview',
@@ -303,12 +338,19 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     if (isPreview) {
       const qs = prepareQuizQuestions(
         (bank.questions || []).map((q) => {
+          const qImages = q.images || []
           const questionImg =
-            q.images?.find((img) => img.role === 'QUESTION')?.imageUrl || q.image || q.imageUrl || null
+            qImages.find((img) => img.role === 'QUESTION')?.imageUrl || q.image || q.imageUrl || null
           const choicesImg =
-            q.images?.find((img) => img.role === 'CHOICES')?.imageUrl || q.choicesImage || null
+            q.choicesImage ||
+            q.choicesImageUrl ||
+            qImages.find((img) => img.role === 'CHOICES' || img.role === 'OPTIONS')?.imageUrl ||
+            null
           const explanationImg =
-            q.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || q.explanationImage || null
+            q.explanationImage ||
+            q.explanationImageUrl ||
+            qImages.find((img) => img.role === 'EXPLANATION')?.imageUrl ||
+            null
 
           return {
             ...q,
@@ -650,7 +692,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     setIsFullscreenBlocked(false)
 
     try {
-      if (bank?.isBackendTest) {
+      if (bank?.isBackendTest && !isPreview) {
         let attempt = null
         try {
           attempt = await studentApi.startAttempt(bank.id)
@@ -740,8 +782,37 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     let correctOption = currentQ.correctOption || ''
     let explanation = currentQ.explanation || ''
 
-    // If backend test, interactively check answer via backend to get correctness, correctOption, and explanation
-    if (bank?.isBackendTest) {
+    // If teacher preview, check answer interactively via teacher test preview check API
+    if (isPreview && bank?.id) {
+      try {
+        const targetQId = currentQ.rawQuestionId || currentQ.questionId || currentQ.id
+        const feedback = await testManagementApi.checkPreviewAnswer(bank.id, targetQId, selectedOptionId)
+        if (feedback) {
+          isCorrect = Boolean(feedback.isCorrect)
+          correctOption = feedback.correctOption || ''
+          explanation = feedback.explanation || ''
+          const explanationImage =
+            feedback.explanationImageUrl || currentQ.explanationImage || null
+
+          setPreparedQuestions((prev) => {
+            const next = [...prev]
+            if (next[currentIndex]) {
+              next[currentIndex] = {
+                ...next[currentIndex],
+                correctOption,
+                explanation,
+                explanationImage,
+                isCorrect,
+                selectedOption: selectedOptionId,
+              }
+            }
+            return next
+          })
+        }
+      } catch (previewErr) {
+        console.warn('Teacher preview check answer note:', previewErr)
+      }
+    } else if (bank?.isBackendTest) {
       try {
         const feedback = await studentApi.checkPracticeAnswer(bank.id, currentQ.id, selectedOptionId)
         if (feedback) {
@@ -1133,14 +1204,18 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 type="button"
                 className="btn btn-primary qb-hero-btn"
                 onClick={handleStartQuiz}
-                disabled={isStartingAttempt || (!bank.isBackendTest && preparedQuestions.length === 0)}
+                disabled={isStartingAttempt || (!bank.isBackendTest && !isPreview && preparedQuestions.length === 0)}
               >
                 <span>
                   {isStartingAttempt
-                    ? 'Starting Proctored Quiz...'
+                    ? isPreview
+                      ? 'Starting Preview...'
+                      : 'Starting Proctored Quiz...'
+                    : isPreview
+                    ? 'Start Quiz Preview'
                     : 'Start Proctored Fullscreen Quiz'}
                 </span>
-                <ion-icon name="expand-outline"></ion-icon>
+                <ion-icon name={isPreview ? 'play-outline' : 'expand-outline'}></ion-icon>
               </button>
             </div>
           </div>
