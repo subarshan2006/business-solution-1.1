@@ -23,6 +23,7 @@ import {
 } from '../services/ephemeralImageService'
 import WatermarkedDiagramCanvas from './WatermarkedDiagramCanvas'
 import ThemeToggle from '../../../components/ThemeToggle'
+import Logo from '../../../components/Logo'
 import {
   studentApi,
   questionReviewApi,
@@ -49,6 +50,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
   const [auth, setAuth] = useState(() => getStoredAuth())
   const [bank, setBank] = useState(null)
+  const [bankLoading, setBankLoading] = useState(true)
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState('')
   const [isStartingAttempt, setIsStartingAttempt] = useState(false)
@@ -140,7 +142,12 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
   // 2. Load Bank metadata (Local storage with Backend test fallback)
   useEffect(() => {
-    if (!activeBankId) return
+    if (!activeBankId) {
+      setBankLoading(false)
+      return
+    }
+
+    setBankLoading(true)
 
     // If teacher preview mode: ALWAYS fetch fresh preview directly from backend for live signed image URLs
     if (isPreview) {
@@ -207,8 +214,10 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               },
             }
             setBank(previewBank)
+            setBankLoading(false)
             return
           }
+          setBankLoading(false)
         })
         .catch((err) => {
           console.warn('Teacher test preview fetch note:', err)
@@ -277,8 +286,12 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   },
                 }
                 setBank(fallbackBank)
+                setBankLoading(false)
               } else if (b && Array.isArray(b.questions) && b.questions.length > 0) {
                 setBank(b)
+                setBankLoading(false)
+              } else {
+                setBankLoading(false)
               }
             })
             .catch((reviewErr) => {
@@ -286,6 +299,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               if (b && Array.isArray(b.questions) && b.questions.length > 0) {
                 setBank(b)
               }
+              setBankLoading(false)
             })
         })
       return
@@ -297,6 +311,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
     if (b && !isBackendId) {
       setBank(b)
+      setBankLoading(false)
     } else {
       studentApi
         .getAssignedTests()
@@ -322,13 +337,18 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               },
               questions: [],
             })
+            setBankLoading(false)
           } else if (b) {
             setBank({ ...b, isBackendTest: true })
+            setBankLoading(false)
+          } else {
+            setBankLoading(false)
           }
         })
         .catch((err) => {
           console.warn('Failed to load backend test details:', err)
           if (b) setBank({ ...b, isBackendTest: true })
+          setBankLoading(false)
         })
     }
   }, [activeBankId, auth, isPreview])
@@ -891,6 +911,86 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   }
 
   if (!bank) {
+    if (bankLoading) {
+      return (
+        <div
+          className="qb-quiz-fullscreen-wrapper"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh',
+            width: '100%',
+          }}
+        >
+          <div
+            className="qb-quiz-card text-center"
+            style={{
+              maxWidth: '440px',
+              width: '90%',
+              padding: '48px 28px',
+              margin: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                position: 'relative',
+                width: '88px',
+                height: '88px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '22px',
+              }}
+            >
+              {/* Rotating glowing accent border ring */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: '-8px',
+                  borderRadius: '24px',
+                  border: '3px solid transparent',
+                  borderTopColor: 'var(--color-brand-blue, #47afe5)',
+                  borderRightColor: 'var(--mint-hi, #90a955)',
+                  animation: 'spinSync 1.2s linear infinite',
+                }}
+              />
+              {/* Brand Logo in center */}
+              <Logo variant="mark" size={64} />
+            </div>
+
+            <h3
+              style={{
+                fontSize: '20px',
+                fontWeight: 700,
+                margin: '0 0 8px',
+                letterSpacing: '-0.02em',
+                color: 'var(--text, #FFFFFF)',
+              }}
+            >
+              Loading Quiz...
+            </h3>
+            <p
+              style={{
+                fontSize: '14px',
+                color: 'var(--text-muted, #94A3B8)',
+                margin: 0,
+                lineHeight: 1.5,
+              }}
+            >
+              {isPreview
+                ? 'Retrieving questions, options, and diagrams...'
+                : 'Retrieving your secure test session and questions...'}
+            </p>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="qb-quiz-fullscreen-wrapper">
         <div className="qb-quiz-card">
