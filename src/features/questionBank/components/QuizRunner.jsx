@@ -336,13 +336,40 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 showExplanation: true,
               },
               questions: [],
+              studentStatus: found.studentStatus || null,
             })
             setBankLoading(false)
           } else if (b) {
-            setBank({ ...b, isBackendTest: true })
+            setBank({ ...b, isBackendTest: true, studentStatus: b.studentStatus || null })
             setBankLoading(false)
           } else {
-            setBankLoading(false)
+            // Resiliency fallback: Check for active student attempt by testId before marking as not found
+            studentApi
+              .getActiveAttempt(activeBankId)
+              .then((activeAtt) => {
+                if (activeAtt) {
+                  setBank({
+                    id: activeBankId,
+                    title: activeAtt.title || 'Proctored Quiz',
+                    description: activeAtt.description || '',
+                    subject: activeAtt.subject || 'AP Biology',
+                    published: true,
+                    isBackendTest: true,
+                    questionCount: activeAtt.questions?.length || 37,
+                    settings: {
+                      timeLimitMinutes: 60,
+                      oneAttempt: true,
+                      showExplanation: true,
+                    },
+                    questions: [],
+                    studentStatus: 'STARTED',
+                  })
+                }
+                setBankLoading(false)
+              })
+              .catch(() => {
+                setBankLoading(false)
+              })
           }
         })
         .catch((err) => {
@@ -910,8 +937,8 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     }
   }
 
-  if (!bank) {
-    if (bankLoading) {
+  if (!bank || isStartingAttempt) {
+    if (bankLoading || isStartingAttempt) {
       return (
         <div
           className="qb-quiz-fullscreen-wrapper"
@@ -972,7 +999,13 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 color: 'var(--text, #FFFFFF)',
               }}
             >
-              Loading Quiz...
+              {isStartingAttempt
+                ? isPreview
+                  ? 'Starting Preview...'
+                  : bank?.studentStatus === 'STARTED'
+                  ? 'Resuming Proctored Quiz...'
+                  : 'Starting Proctored Quiz...'
+                : 'Loading Quiz...'}
             </h3>
             <p
               style={{
@@ -982,7 +1015,11 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 lineHeight: 1.5,
               }}
             >
-              {isPreview
+              {isStartingAttempt
+                ? bank?.studentStatus === 'STARTED'
+                  ? 'Retrieving your active attempt and answers...'
+                  : 'Synchronizing questions and entering secure environment...'
+                : isPreview
                 ? 'Retrieving questions, options, and diagrams...'
                 : 'Retrieving your secure test session and questions...'}
             </p>
@@ -1318,9 +1355,13 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   {isStartingAttempt
                     ? isPreview
                       ? 'Starting Preview...'
+                      : bank?.studentStatus === 'STARTED'
+                      ? 'Resuming Proctored Quiz...'
                       : 'Starting Proctored Quiz...'
                     : isPreview
                     ? 'Start Quiz Preview'
+                    : bank?.studentStatus === 'STARTED'
+                    ? 'Resume Proctored Fullscreen Quiz'
                     : 'Start Proctored Fullscreen Quiz'}
                 </span>
                 <ion-icon name={isPreview ? 'play-outline' : 'expand-outline'}></ion-icon>
