@@ -611,6 +611,16 @@ export const testManagementApi = {
     })
     return res.data
   },
+
+  /**
+   * Get full teacher preview for a test or question bank
+   */
+  async getTeacherTestPreview(id) {
+    const res = await request(`/api/tests/${encodeURIComponent(id)}/preview`, {
+      method: 'GET',
+    })
+    return res.data
+  },
 }
 
 // -----------------------------------------------------------------------------

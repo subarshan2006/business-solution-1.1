@@ -173,7 +173,7 @@ export function getQuestionBanks() {
 export function getQuestionBankById(id) {
   if (!id) return null
   const banks = getQuestionBanks()
-  return banks.find((b) => b.id === id) || null
+  return banks.find((b) => b.id === id || b.backendBankId === id) || null
 }
 
 /**

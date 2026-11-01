@@ -23,7 +23,13 @@ import {
 } from '../services/ephemeralImageService'
 import WatermarkedDiagramCanvas from './WatermarkedDiagramCanvas'
 import ThemeToggle from '../../../components/ThemeToggle'
-import { studentApi, questionReviewApi, getStoredSessionUser } from '../../../services/nxtstepApi'
+import {
+  studentApi,
+  questionReviewApi,
+  testManagementApi,
+  questionBankApi,
+  getStoredSessionUser,
+} from '../../../services/nxtstepApi'
 
 function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
   const params = useParams()
@@ -135,81 +141,163 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   // 2. Load Bank metadata (Local storage with Backend test fallback)
   useEffect(() => {
     if (!activeBankId) return
-    const b = getQuestionBankById(activeBankId)
-    if (b) {
-      setBank(b)
-      if ((!b.questions || b.questions.length === 0) && (b.backendBankId || !b.id.startsWith('qb_'))) {
-        const targetId = b.backendBankId || b.id
-        questionReviewApi
-          .listQuestions(targetId, { limit: 100 })
-          .then((res) => {
-            const list = res.data || []
-            if (list.length > 0) {
-              const mapped = list.map((bq, idx) => ({
+
+    // If teacher preview mode: fetch full preview directly from backend or local storage
+    if (isPreview) {
+      const b = getQuestionBankById(activeBankId)
+      if (b && Array.isArray(b.questions) && b.questions.length > 0) {
+        setBank(b)
+        return
+      }
+
+      // Try fetching teacher preview from backend
+      testManagementApi
+        .getTeacherTestPreview(activeBankId)
+        .then((preview) => {
+          if (preview && preview.questions) {
+            const mapped = (preview.questions || []).map((tq, idx) => {
+              const q = tq.question || tq
+              return {
                 id: `Q${String(idx + 1).padStart(3, '0')}`,
-                question: bq.questionText,
-                options: (bq.options || []).map((o) => ({
+                question: q.questionText,
+                options: (q.options || []).map((o) => ({
                   id: o.label,
                   text: o.text || '',
                   imageUrl: o.imageUrl || null,
                 })),
-                correctOption: bq.correctOption || 'A',
-                explanation: bq.explanation || '',
+                correctOption: q.correctOption || 'A',
+                explanation: q.explanation || '',
                 image:
-                  bq.images?.find((img) => img.role === 'QUESTION')?.imageUrl ||
-                  bq.images?.[0]?.imageUrl ||
+                  q.images?.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                  q.images?.[0]?.imageUrl ||
                   null,
-                choicesImage: bq.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
-                explanationImage: bq.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
-                confidenceScores: bq.confidenceScores || null,
-                needsReview: bq.needsReview || false,
-              }))
-              const updated = { ...b, questions: mapped, questionCount: mapped.length }
-              setBank(updated)
-              saveQuestionBank(updated)
+                choicesImage: q.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
+                explanationImage: q.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
+                confidenceScores: q.confidenceScores || null,
+                needsReview: q.needsReview || false,
+              }
+            })
+            const previewBank = {
+              id: preview.testId || activeBankId,
+              title: preview.title || 'Quiz Preview',
+              description: preview.description || '',
+              subject: preview.subject || 'AP Biology',
+              published: true,
+              isPreview: true,
+              questions: mapped,
+              questionCount: mapped.length,
+              settings: {
+                randomizeQuestions: false,
+                randomizeOptions: false,
+                oneAttempt: true,
+                showExplanation: true,
+                timeLimitMinutes: preview.attemptDurationMinutes || 60,
+              },
             }
-          })
-          .catch((err) => console.warn('Failed to load questions for preview in QuizRunner:', err))
-      }
-    } else {
-      studentApi.getAssignedTests().then((tests) => {
-        const found = Array.isArray(tests)
-          ? tests.find((t) => t.testId === activeBankId || t.assignmentId === activeBankId)
-          : null
-        if (found) {
-          setBank({
-            id: found.testId,
-            title: found.title,
-            description: found.description,
-            subject: found.subject || 'AP Biology',
-            published: true,
-            isBackendTest: true,
-            questionCount: found.questionCount || 39,
-            teacher: found.teacher,
-            authorizedStudents: auth?.user?.email ? [auth.user.email] : [],
-            settings: {
-              timeLimitMinutes: found.attemptDurationMinutes || 60,
-              oneAttempt: true,
-              showExplanation: true,
-            },
-            questions: [],
-          })
-        }
-      }).catch((err) => {
-        console.warn('Failed to load backend test details:', err)
-      })
+            setBank(previewBank)
+            return
+          }
+        })
+        .catch((err) => {
+          console.warn('Teacher test preview fetch note:', err)
+          // Fallback to questionReviewApi listQuestions
+          const targetBankId = b?.backendBankId || activeBankId
+          questionReviewApi
+            .listQuestions(targetBankId, { limit: 100 })
+            .then((res) => {
+              const list = res.data || []
+              if (list.length > 0) {
+                const mapped = list.map((bq, idx) => ({
+                  id: `Q${String(idx + 1).padStart(3, '0')}`,
+                  question: bq.questionText,
+                  options: (bq.options || []).map((o) => ({
+                    id: o.label,
+                    text: o.text || '',
+                    imageUrl: o.imageUrl || null,
+                  })),
+                  correctOption: bq.correctOption || 'A',
+                  explanation: bq.explanation || '',
+                  image:
+                    bq.images?.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                    bq.images?.[0]?.imageUrl ||
+                    null,
+                  choicesImage: bq.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null,
+                  explanationImage: bq.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null,
+                  confidenceScores: bq.confidenceScores || null,
+                  needsReview: bq.needsReview || false,
+                }))
+                const fallbackBank = {
+                  id: activeBankId,
+                  title: b?.title || 'Quiz Preview',
+                  description: b?.description || '',
+                  subject: b?.subject || 'AP Biology',
+                  published: true,
+                  isPreview: true,
+                  questions: mapped,
+                  questionCount: mapped.length,
+                  settings: b?.settings || {
+                    randomizeQuestions: false,
+                    randomizeOptions: false,
+                    oneAttempt: true,
+                    showExplanation: true,
+                    timeLimitMinutes: 20,
+                  },
+                }
+                setBank(fallbackBank)
+              }
+            })
+            .catch((reviewErr) => {
+              console.warn('Teacher questionReviewApi fallback note:', reviewErr)
+            })
+        })
+      return
     }
-  }, [activeBankId, auth])
+
+    // Student mode
+    const b = getQuestionBankById(activeBankId)
+    const isBackendId = Boolean(b?.backendBankId) || !activeBankId.startsWith('qb_')
+
+    if (b && !isBackendId) {
+      setBank(b)
+    } else {
+      studentApi
+        .getAssignedTests()
+        .then((tests) => {
+          const found = Array.isArray(tests)
+            ? tests.find((t) => t.testId === activeBankId || t.assignmentId === activeBankId || (b && t.title === b.title))
+            : null
+          if (found) {
+            setBank({
+              id: found.testId,
+              title: found.title,
+              description: found.description,
+              subject: found.subject || 'AP Biology',
+              published: true,
+              isBackendTest: true,
+              questionCount: found.questionCount || (b?.questionCount || 37),
+              teacher: found.teacher,
+              authorizedStudents: auth?.user?.email ? [auth.user.email] : [],
+              settings: {
+                timeLimitMinutes: found.attemptDurationMinutes || 60,
+                oneAttempt: true,
+                showExplanation: true,
+              },
+              questions: [],
+            })
+          } else if (b) {
+            setBank({ ...b, isBackendTest: true })
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to load backend test details:', err)
+          if (b) setBank({ ...b, isBackendTest: true })
+        })
+    }
+  }, [activeBankId, auth, isPreview])
 
   // 3. Perform Authorization Gate check & Pillar 1 Quiz Expiry
   useEffect(() => {
     if (!bank) return
-
-    // If backend test, proceed directly to start screen
-    if (bank.isBackendTest) {
-      setStage('start_screen')
-      return
-    }
 
     // If teacher preview mode
     if (isPreview) {
@@ -229,9 +317,15 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             explanationImage: explanationImg,
           }
         }),
-        bank.settings,
+        bank.settings || {},
       )
       setPreparedQuestions(qs)
+      setStage('start_screen')
+      return
+    }
+
+    // If backend test, student authorization is already verified and managed on the server
+    if (bank.isBackendTest) {
       setStage('start_screen')
       return
     }
