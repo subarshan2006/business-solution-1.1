@@ -613,8 +613,29 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     const checkLockdown = () => {
       const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
       const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+      const supportsFullscreen = Boolean(
+        document.fullscreenEnabled ||
+        document.webkitFullscreenEnabled ||
+        document.documentElement?.requestFullscreen ||
+        document.documentElement?.webkitRequestFullscreen
+      )
+
+      if (isMobile && !supportsFullscreen) {
+        // Mobile browsers without DOM Fullscreen API (e.g. iOS Safari)
+        // Guard against backgrounding / tab switching rather than fullscreen element
+        const isHidden = document.visibilityState === 'hidden'
+        const isShrunk = window.innerHeight < 280
+        if (isHidden || isShrunk) {
+          setIsFullscreenBlocked(true)
+          setFullscreenViolations((prev) => prev + 1)
+        } else {
+          setIsFullscreenBlocked(false)
+        }
+        return
+      }
+
       const isShrunk = isMobile
-        ? window.innerHeight < 360
+        ? window.innerHeight < 280
         : window.innerWidth < 760 || window.innerHeight < 460
 
       if (!isFs || isShrunk) {
@@ -627,6 +648,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
     document.addEventListener('fullscreenchange', checkLockdown)
     document.addEventListener('webkitfullscreenchange', checkLockdown)
+    document.addEventListener('visibilitychange', checkLockdown)
     window.addEventListener('resize', checkLockdown)
 
     // Initial check after delay to allow fullscreen transition to complete
@@ -636,6 +658,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
       clearTimeout(initialCheck)
       document.removeEventListener('fullscreenchange', checkLockdown)
       document.removeEventListener('webkitfullscreenchange', checkLockdown)
+      document.removeEventListener('visibilitychange', checkLockdown)
       window.removeEventListener('resize', checkLockdown)
     }
   }, [stage, isPreview])

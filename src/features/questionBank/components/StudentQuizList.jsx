@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { studentApi, getStoredSessionUser } from '../../../services/nxtstepApi'
-import { getQuestionBanks } from '../services/questionBankStorage'
+import { getQuestionBanks, getDeletedBankIds } from '../services/questionBankStorage'
 import { listBankAttempts } from '../services/quizAttemptService'
 
 function formatRemainingCountdown(endTime, currentMs) {
@@ -95,12 +95,16 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
       try {
         const localBanks = getQuestionBanks()
         if (Array.isArray(localBanks)) {
+          const deletedIds = getDeletedBankIds()
           localBanks.forEach((b) => {
             if (!b.published) return
+            if (deletedIds.includes(b.id) || (b.backendBankId && deletedIds.includes(b.backendBankId))) return
+
             const authorized = Array.isArray(b.authorizedStudents)
               ? b.authorizedStudents.map((s) => String(s).toLowerCase().trim())
               : []
-            if (!authorized.includes(studentEmail)) return
+            const isAuthorized = authorized.length === 0 || authorized.includes(studentEmail)
+            if (!isAuthorized) return
 
             // Check if already in combined list
             const exists = combined.some(
@@ -152,14 +156,12 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
     loadBackendTests()
   }, [studentEmail])
 
-  // Vanish expired quizzes: Exclude quizzes past endTime or marked isPast
+  // Only remove quizzes if deleted by teacher; otherwise keep visible (assigned, in-progress, or submitted)
   const visibleQuizzes = assignedTests.filter((t) => {
-    if (t.isPast) return false
-    if (t.endTime) {
-      const endMs = new Date(t.endTime).getTime()
-      if (!isNaN(endMs) && endMs <= currentTime) {
-        return false // Automatically vanishes when window timing expires
-      }
+    const deletedIds = getDeletedBankIds()
+    const quizId = t.testId || t.assignmentId
+    if (deletedIds.includes(quizId) || (t.questionBankId && deletedIds.includes(t.questionBankId))) {
+      return false
     }
     return true
   })
@@ -281,12 +283,6 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                     <ion-icon name="timer-outline"></ion-icon>
                     <span>{duration} Minutes</span>
                   </div>
-                  {remainingCountdown && (
-                    <div className="qb-meta-item" style={{ color: '#FBBF24', fontWeight: 600 }}>
-                      <ion-icon name="hourglass-outline"></ion-icon>
-                      <span>{remainingCountdown}</span>
-                    </div>
-                  )}
                   {t.teacher && (
                     <div className="qb-meta-item" style={{ color: '#38bdf8' }}>
                       <ion-icon name="person-outline"></ion-icon>

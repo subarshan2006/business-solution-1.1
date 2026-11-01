@@ -9,6 +9,7 @@ import {
 import {
   questionBankApi,
   testManagementApi,
+  teacherStudentApi,
 } from '../../../services/nxtstepApi'
 import CreateQuestionBankModal from './CreateQuestionBankModal'
 import StudentAccessModal from './StudentAccessModal'
@@ -257,11 +258,59 @@ function QuestionBankList({ onLaunchQuiz }) {
     }
   }
 
-  const handleTogglePublished = (bank) => {
-    const updated = { ...bank, published: !bank.published }
+  const handleTogglePublished = async (bank) => {
+    const newPublished = !bank.published
+    const updated = { ...bank, published: newPublished }
     saveQuestionBank(updated)
-    reloadBanks()
-    showNotification(`Question bank is now ${updated.published ? 'Published' : 'Draft'}.`)
+    setBanks((prev) => prev.map((b) => (b.id === bank.id ? updated : b)))
+
+    // Sync with backend so published quizzes appear on student dashboard immediately
+    const targetId = bank.backendBankId || (bank.id && !bank.id.startsWith('qb_') ? bank.id : null)
+    if (targetId) {
+      try {
+        if (newPublished) {
+          let emails = Array.isArray(bank.authorizedStudents) ? [...bank.authorizedStudents] : []
+          if (emails.length === 0) {
+            try {
+              const connected = await teacherStudentApi.listStudents()
+              if (Array.isArray(connected) && connected.length > 0) {
+                emails = connected
+                  .map((c) => c.student?.user?.email || c.user?.email || c.email)
+                  .filter(Boolean)
+              }
+            } catch (rErr) {
+              console.warn('Could not fetch connected students roster:', rErr)
+            }
+          }
+          if (emails.length > 0) {
+            const duration = bank?.settings?.timeLimitMinutes
+              ? parseInt(bank.settings.timeLimitMinutes, 10)
+              : 20
+            const endingHours = bank?.settings?.quizEndingHours
+              ? parseFloat(bank.settings.quizEndingHours)
+              : 3
+            await questionBankApi.assignStudents(targetId, {
+              studentEmails: emails,
+              attemptDurationMinutes: duration,
+              timeLimitMinutes: duration,
+              quizEndingHours: endingHours,
+              windowHours: endingHours,
+              maxAttempts: bank?.settings?.oneAttempt ? 1 : (bank?.settings?.maxAttempts || 1),
+              randomizeQuestions: Boolean(bank?.settings?.randomizeQuestions),
+              randomizeOptions: Boolean(bank?.settings?.randomizeOptions),
+              showExplanations: Boolean(bank?.settings?.showExplanation),
+            })
+          }
+        } else if (bank.testId) {
+          await testManagementApi.unpublishTest(bank.testId)
+        }
+      } catch (err) {
+        console.warn('Backend toggle published sync note:', err)
+      }
+    }
+
+    await reloadBanks()
+    showNotification(`Question bank is now ${newPublished ? 'Published' : 'Draft'}.`)
   }
 
   return (
