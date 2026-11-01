@@ -30,7 +30,7 @@ import {
   testManagementApi,
   questionBankApi,
   getStoredSessionUser,
-} from '../../../services/nxtstepApi'
+} from '../../../services/jivanautApi'
 
 function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
   const params = useParams()
@@ -1084,7 +1084,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const isTimerWarning = secondsRemaining !== null && secondsRemaining <= 300 // 5 mins
   const isTimerCritical = secondsRemaining !== null && secondsRemaining <= 60 // 1 min
 
-  const studentEmail = auth?.user?.email || 'NxtStep Student'
+  const studentEmail = auth?.user?.email || 'Jivanaut Student'
 
   return (
     <div className={`qb-quiz-fullscreen-wrapper ${!isPreview && stage === 'in_progress' ? 'qb-quiz-protected' : ''}`}>

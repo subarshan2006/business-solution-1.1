@@ -1,5 +1,5 @@
 /**
- * NxtStep Backend API Client Service
+ * Jivanaut Backend API Client Service
  * 
  * Provides end-to-end typed/structured bindings to the Express 4 backend:
  * - Session token management (cookie & Authorization Bearer)
@@ -12,8 +12,8 @@
  */
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://backend-jivant.onrender.com').replace(/\/+$/, '')
-const TOKEN_KEY = 'nxtstep_session_token'
-const USER_KEY = 'nxtstep_session_user'
+const TOKEN_KEY = 'jivanaut_session_token'
+const USER_KEY = 'jivanaut_session_user'
 
 export class ApiError extends Error {
   constructor(message, code = 'INTERNAL_ERROR', details = [], status = 500) {
@@ -170,7 +170,7 @@ async function request(endpoint, options = {}) {
     throw new ApiError(message, code, details, response.status)
   }
 
-  // Standard NxtStep envelope: { success: true, data: ..., pagination?: ... }
+  // Standard Jivanaut envelope: { success: true, data: ..., pagination?: ... }
   if (json && json.success === false) {
     throw new ApiError(
       json.error?.message || 'Operation failed',
@@ -260,7 +260,7 @@ export async function ensureActiveSession(fallbackUser = {}) {
     return token
   }
 
-  const email = fallbackUser.email || 'teacher@nxtstep.com'
+  const email = fallbackUser.email || 'teacher@jivanaut.com'
   const name = fallbackUser.name || 'Lead Teacher'
   const role = fallbackUser.role || 'TEACHER'
 

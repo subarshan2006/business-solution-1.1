@@ -14,7 +14,7 @@ import {
   getStoredSessionUser,
   clearSessionToken,
   isTokenExpired,
-} from '../../../services/nxtstepApi'
+} from '../../../services/jivanautApi'
 import { getStoredAuth } from '../../../services/googleAuth'
 
 const SAMPLE_TEXT_TO_IMPORT = `1. What is the primary role of RuBisCO in the Calvin cycle of photosynthesis?
@@ -108,9 +108,9 @@ function QuestionImportModal({ bank, onClose, onImported }) {
 
     // Helper to authenticate or re-authenticate teacher with backend
     const syncBackendSession = async () => {
-      setProgressMsg('Syncing authentication with NxtStep backend...')
+      setProgressMsg('Syncing authentication with Jivanaut backend...')
       const currentAuth = getStoredAuth()
-      const userEmail = currentAuth?.user?.email || 'teacher@nxtstep.com'
+      const userEmail = currentAuth?.user?.email || 'teacher@jivanaut.com'
       const userName = currentAuth?.user?.name || 'Lead Teacher'
 
       if (currentAuth?.accessToken && !currentAuth.isMock && !currentAuth.isDevAuth) {
@@ -138,12 +138,12 @@ function QuestionImportModal({ bank, onClose, onImported }) {
         token = await syncBackendSession()
       } catch {
         setLoading(false)
-        setError('Authentication required: please ensure the NxtStep backend is running and you are signed in.')
+        setError('Authentication required: please ensure the Jivanaut backend is running and you are signed in.')
         return
       }
     }
 
-    setProgressMsg('Uploading PDF to NxtStep backend server...')
+    setProgressMsg('Uploading PDF to Jivanaut backend server...')
 
     try {
       const uploadPayload = {
@@ -269,7 +269,7 @@ function QuestionImportModal({ bank, onClose, onImported }) {
       }
     } catch (err) {
       console.error('Backend PDF processing failed:', err)
-      setError(err.message || 'Failed to process PDF via NxtStep backend.')
+      setError(err.message || 'Failed to process PDF via Jivanaut backend.')
     } finally {
       setLoading(false)
     }
@@ -483,7 +483,7 @@ function QuestionImportModal({ bank, onClose, onImported }) {
                   <ion-icon name="hardware-chip-outline" class="qb-dropzone-icon" style={{ color: '#ffb347' }}></ion-icon>
                   <h4>AI OCR & Vision Processing (Backend)</h4>
                   <p style={{ fontSize: '12px' }}>
-                    Uploads PDF to NxtStep server for deep AI page rendering, question boundary detection, and diagram cropping.
+                    Uploads PDF to Jivanaut server for deep AI page rendering, question boundary detection, and diagram cropping.
                   </p>
                   <label className="btn btn-primary" style={{ marginTop: '12px', display: 'inline-block', cursor: loading ? 'not-allowed' : 'pointer' }}>
                     {loading ? 'Processing...' : 'Upload for AI Structuring'}

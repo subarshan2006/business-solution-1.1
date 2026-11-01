@@ -10,7 +10,7 @@ import {
   questionBankApi,
   testManagementApi,
   teacherStudentApi,
-} from '../../../services/nxtstepApi'
+} from '../../../services/jivanautApi'
 import CreateQuestionBankModal from './CreateQuestionBankModal'
 import StudentAccessModal from './StudentAccessModal'
 import QuestionImportModal from './QuestionImportModal'
@@ -116,7 +116,7 @@ function QuestionBankList({ onLaunchQuiz }) {
 
         // Persist cleaned list to local storage
         try {
-          localStorage.setItem('nxtstep_question_banks', JSON.stringify(filteredLocal))
+          localStorage.setItem('jivanaut_question_banks', JSON.stringify(filteredLocal))
         } catch {}
 
         setBanks([...filteredLocal])

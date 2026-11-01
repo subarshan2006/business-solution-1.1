@@ -7,7 +7,7 @@ import {
   teacherStudentApi,
   questionBankApi,
   testManagementApi,
-} from '../../../services/nxtstepApi'
+} from '../../../services/jivanautApi'
 
 function StudentAccessModal({ bank, onClose, onSaved }) {
   const [emails, setEmails] = useState(

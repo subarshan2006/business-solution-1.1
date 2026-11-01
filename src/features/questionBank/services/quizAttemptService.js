@@ -4,8 +4,8 @@
  * Supports one-time attempt enforcement, result recording, and teacher audit reports.
  */
 
-const ATTEMPTS_STORAGE_KEY = 'nxtstep_quiz_attempts'
-const STUDENT_RESULTS_PREFIX = 'nxtstep_student_results_'
+const ATTEMPTS_STORAGE_KEY = 'jivanaut_quiz_attempts'
+const STUDENT_RESULTS_PREFIX = 'jivanaut_student_results_'
 
 /**
  * Retrieve all attempt records

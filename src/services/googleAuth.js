@@ -23,7 +23,7 @@ export const DEFAULT_SCOPES = [
 
 export const EXTENDED_SCOPES = DEFAULT_SCOPES
 
-const AUTH_STORAGE_KEY = 'nxtstep_classroom_auth'
+const AUTH_STORAGE_KEY = 'jivanaut_classroom_auth'
 
 /**
  * Get current stored auth state from sessionStorage

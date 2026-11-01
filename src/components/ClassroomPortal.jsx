@@ -19,7 +19,7 @@ import {
   MOCK_20_CLASSROOMS,
   MOCK_ASSIGNMENTS,
 } from '../services/classroomApi'
-import { authApi, getStoredSessionToken } from '../services/nxtstepApi'
+import { authApi, getStoredSessionToken } from '../services/jivanautApi'
 import ParentDashboard from './ParentDashboard'
 import AssignmentModal from './AssignmentModal'
 import SessionAnnouncementGenerator from './SessionAnnouncementGenerator'
@@ -123,7 +123,7 @@ function ClassroomPortal() {
     }
   }, [role, activeTab])
 
-  // Ensure NxtStep backend session token is synchronized if user is signed in
+  // Ensure Jivanaut backend session token is synchronized if user is signed in
   useEffect(() => {
     if (auth?.user?.email) {
       const token = getStoredSessionToken()
@@ -473,7 +473,7 @@ function ClassroomPortal() {
       setAuth(fullAuth)
       saveAuth(fullAuth)
 
-      // Synchronize session token with NxtStep backend server
+      // Synchronize session token with Jivanaut backend server
       try {
         const backendAuth = await authApi.googleLogin(authData.accessToken, finalRole.toUpperCase())
         if (backendAuth?.user?.email) {
@@ -495,7 +495,7 @@ function ClassroomPortal() {
         try {
           const devLoginEmail = userEmail && userEmail !== 'Google Classroom Account'
             ? userEmail
-            : 'student@nxtstep.com'
+            : 'student@jivanaut.com'
           const devAuth = await authApi.devLogin({
             email: devLoginEmail,
             role: finalRole.toUpperCase(),
@@ -733,7 +733,7 @@ function ClassroomPortal() {
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={() => handleDevLogin('STUDENT', 'student@nxtstep.com', 'Demo Student')}
+                  onClick={() => handleDevLogin('STUDENT', 'student@jivanaut.com', 'Demo Student')}
                   disabled={loading}
                   style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '6px' }}
                 >

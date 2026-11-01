@@ -18,7 +18,7 @@ const CLASSROOM_BASE = 'https://classroom.googleapis.com/v1'
 
 function hasRosterScope() {
   try {
-    const raw = sessionStorage.getItem('nxtstep_classroom_auth')
+    const raw = sessionStorage.getItem('jivanaut_classroom_auth')
     if (!raw) return false
     const parsed = JSON.parse(raw)
     return Boolean(parsed.scopes && (parsed.scopes.includes('classroom.rosters') || parsed.scopes.includes('classroom.rosters.readonly')))
@@ -29,7 +29,7 @@ function hasRosterScope() {
 
 function hasTopicsScope() {
   try {
-    const raw = sessionStorage.getItem('nxtstep_classroom_auth')
+    const raw = sessionStorage.getItem('jivanaut_classroom_auth')
     if (!raw) return false
     const parsed = JSON.parse(raw)
     return Boolean(parsed.scopes && (parsed.scopes.includes('classroom.topics') || parsed.scopes.includes('classroom.topics.readonly')))
@@ -64,15 +64,15 @@ async function apiFetch(endpoint, accessToken) {
 export const KNOWN_TEACHERS = [
   'steenaantony14@gmail.com',
   'businesswithsubar@gmail.com',
-  'kavitha.nextsteptutoring@gmail.com',
+  'kavitha.jivanaut@gmail.com',
 ]
 
 /**
  * Pre-OAuth 4-Digit Parent Security PIN Management
  * Cryptographically secured to prevent plaintext PIN exposure in client bundles.
  */
-const PARENT_PIN_STORAGE_KEY = 'nxtstep_classroom_parent_pins'
-const DEFAULT_PIN_SALTED_HASH = '49b16106e6063849c3fd722e7299958618649ab1ff168efbd00d860675d13a02'
+const PARENT_PIN_STORAGE_KEY = 'jivanaut_classroom_parent_pins'
+const DEFAULT_PIN_SALTED_HASH = '744307addea1dcbdc2103a495d39362f139f29dd9e3f6321dc7f31d2bfba88aa'
 
 /**
  * Retrieve custom parent PIN for a classroom if specifically saved in local storage
@@ -132,7 +132,7 @@ export async function verifyParentSecurityPin(inputPin = '', courseId = '') {
   // 3. Cryptographic salted SHA-256 hash match (prevents plaintext lock in code)
   try {
     if (typeof window !== 'undefined' && window.crypto?.subtle) {
-      const saltedBytes = new TextEncoder().encode(`nxtstep_salt_${cleanInput}`)
+      const saltedBytes = new TextEncoder().encode(`jivanaut_salt_${cleanInput}`)
       const hashBuffer = await window.crypto.subtle.digest('SHA-256', saltedBytes)
       const hashHex = Array.from(new Uint8Array(hashBuffer))
         .map((b) => b.toString(16).padStart(2, '0'))
@@ -436,7 +436,7 @@ export async function fetchCourseWorkWithSubmissions(courseId, accessToken) {
 export const MOCK_TEACHER = {
   id: 'teacher-demo-01',
   name: 'Dr. Jivanaut (Teacher)',
-  email: 'educator@nxtsteptutoring.com',
+  email: 'educator@jivanaut.com',
   picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
   role: 'teacher',
 }
@@ -444,7 +444,7 @@ export const MOCK_TEACHER = {
 export const MOCK_STUDENT = {
   id: 'student-demo-01',
   name: 'Alex Rivera (Student)',
-  email: 'alex.rivera@nxtsteptutoring.com',
+  email: 'alex.rivera@jivanaut.com',
   picture: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80',
   role: 'student',
 }
@@ -482,7 +482,7 @@ export const MOCK_20_CLASSROOMS = Array.from({ length: 20 }, (_, i) => {
     topics: dirEntry.topics,
     defaultHw: dirEntry.defaultHw,
     defaultRemarks: dirEntry.defaultRemarks,
-    enrollmentCode: `nxt${num}9x`,
+    enrollmentCode: `jiv${num}9x`,
     activeAssignmentsCount: 3,
   }
 })
@@ -867,13 +867,13 @@ export function getRecentMonthKeys(n = 12) {
 
 /**
  * Summative persistence helpers (localStorage)
- * Key: nxtstep_summative_report_{courseId}_{monthKey}
+ * Key: jivanaut_summative_report_{courseId}_{monthKey}
  */
 
 export function getSummativeRecord(courseId, monthKey) {
   if (!courseId || !monthKey) return null
   try {
-    const key = `nxtstep_summative_report_${courseId}_${monthKey}`
+    const key = `jivanaut_summative_report_${courseId}_${monthKey}`
     const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null
     return raw ? JSON.parse(raw) : null
   } catch (err) {
@@ -885,7 +885,7 @@ export function getSummativeRecord(courseId, monthKey) {
 export function saveSummativeRecord(courseId, monthKey, record = {}) {
   if (!courseId || !monthKey) return null
   try {
-    const key = `nxtstep_summative_report_${courseId}_${monthKey}`
+    const key = `jivanaut_summative_report_${courseId}_${monthKey}`
     const existing = getSummativeRecord(courseId, monthKey) || {}
     const cleanRecord = {
       ...existing,
@@ -912,7 +912,7 @@ export function saveSummativeRecord(courseId, monthKey, record = {}) {
 export function saveRemarksRecord(courseId, monthKey, remarks = {}) {
   if (!courseId || !monthKey) return null
   try {
-    const key = `nxtstep_summative_report_${courseId}_${monthKey}`
+    const key = `jivanaut_summative_report_${courseId}_${monthKey}`
     const existing = getSummativeRecord(courseId, monthKey) || {}
 
     const cleanBullets = (val, fallback) => {
@@ -956,7 +956,7 @@ export function saveRemarksRecord(courseId, monthKey, remarks = {}) {
 export function resetRemarksRecord(courseId, monthKey) {
   if (!courseId || !monthKey) return null
   try {
-    const key = `nxtstep_summative_report_${courseId}_${monthKey}`
+    const key = `jivanaut_summative_report_${courseId}_${monthKey}`
     const existing = getSummativeRecord(courseId, monthKey) || {}
     const {
       academicEngagement: _academicEngagement,

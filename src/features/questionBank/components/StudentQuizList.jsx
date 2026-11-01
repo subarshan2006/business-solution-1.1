@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { studentApi, getStoredSessionUser } from '../../../services/nxtstepApi'
+import { studentApi, getStoredSessionUser } from '../../../services/jivanautApi'
 import { getQuestionBanks, getDeletedBankIds } from '../services/questionBankStorage'
 import { listBankAttempts } from '../services/quizAttemptService'
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { saveQuestionBank } from '../services/questionBankStorage'
 import { validateQuestions } from '../services/questionValidator'
 import { resolveAssetUrl } from '../services/ephemeralImageService'
-import { questionReviewApi } from '../../../services/nxtstepApi'
+import { questionReviewApi } from '../../../services/jivanautApi'
 
 function QuestionReviewer({ bank, onClose, onSaved }) {
   const [questions, setQuestions] = useState(

@@ -88,7 +88,7 @@ export default function SessionAnnouncementGenerator({
   const emailMenuRef = useRef(null)
   const [savedAnnouncements, setSavedAnnouncements] = useState(() => {
     try {
-      const saved = localStorage.getItem('nxtstep_saved_announcements')
+      const saved = localStorage.getItem('jivanaut_saved_announcements')
       return saved ? JSON.parse(saved) : []
     } catch {
       return []
@@ -327,7 +327,7 @@ Regards and thanks, ${teacherName}`
     const updated = [newItem, ...savedAnnouncements.slice(0, 9)]
     setSavedAnnouncements(updated)
     try {
-      localStorage.setItem('nxtstep_saved_announcements', JSON.stringify(updated))
+      localStorage.setItem('jivanaut_saved_announcements', JSON.stringify(updated))
     } catch (e) {
       console.warn('Could not save to localStorage:', e)
     }

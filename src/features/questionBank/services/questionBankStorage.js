@@ -7,8 +7,8 @@
 import unit1QuizData from '../../../data/unit1_chemistry_of_life_quiz.json'
 import { purgeAllEphemeralImages } from './ephemeralImageService'
 
-const STORAGE_KEY = 'nxtstep_question_banks'
-const DELETED_BANKS_KEY = 'nxtstep_deleted_question_banks'
+const STORAGE_KEY = 'jivanaut_question_banks'
+const DELETED_BANKS_KEY = 'jivanaut_deleted_question_banks'
 
 export function getDeletedBankIds() {
   if (typeof window === 'undefined' || !window.localStorage) return []

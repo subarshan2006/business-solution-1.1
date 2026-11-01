@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NxtStep Tutoring — Multimodal AI PDF Question & Diagram Extractor
+Jivanaut — Multimodal AI PDF Question & Diagram Extractor
 Extracts questions, embedded diagrams/images, choices, answers, and explanations
 from complex 109-page exam PDFs into a clean structured question bank JSON.
 

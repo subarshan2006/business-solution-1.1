@@ -288,7 +288,7 @@ export const DEFAULT_CLASSROOMS_DIRECTORY = [
   },
 ]
 
-const LOCAL_STORAGE_KEY = 'nxtstep_classroom_overrides'
+const LOCAL_STORAGE_KEY = 'jivanaut_classroom_overrides'
 
 /**
  * Retrieve saved overrides from localStorage
@@ -375,7 +375,7 @@ export function getClassroomDirectoryDetails(courseId = '', courseName = '') {
  * Recognized Parent / Guardian Emails for Google OAuth Verification (Layer 1 Security)
  */
 export const KNOWN_PARENTS = [
-  'parent@nxtsteptutoring.com',
+  'parent@jivanaut.com',
   'parent.demo@gmail.com',
   'sambhrama.parent@gmail.com',
   'carlos.rivera.parent@gmail.com',

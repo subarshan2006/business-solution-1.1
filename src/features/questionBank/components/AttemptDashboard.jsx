@@ -4,7 +4,7 @@ import {
   resetStudentAttempt,
   exportAttemptsToCsv,
 } from '../services/quizAttemptService'
-import { testManagementApi } from '../../../services/nxtstepApi'
+import { testManagementApi } from '../../../services/jivanautApi'
 
 function AttemptDashboard({ bank, onClose }) {
   const [attempts, setAttempts] = useState([])
