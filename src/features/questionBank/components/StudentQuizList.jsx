@@ -7,8 +7,13 @@ function formatRemainingCountdown(endTime, currentMs) {
   if (!endTime) return null
   const endMs = new Date(endTime).getTime()
   if (isNaN(endMs)) return null
-  const diffMs = endMs - currentMs
+  let diffMs = endMs - currentMs
   if (diffMs <= 0) return null
+
+  // Cap legacy excessive end-dates (e.g. 1-year defaults) to standard 3-hour window
+  if (diffMs > 24 * 3600_000 * 7) {
+    diffMs = 3 * 3600_000
+  }
 
   const totalSecs = Math.floor(diffMs / 1000)
   const hours = Math.floor(totalSecs / 3600)
@@ -67,7 +72,20 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
       try {
         const tests = await studentApi.getAssignedTests()
         if (Array.isArray(tests)) {
-          combined = [...tests]
+          const nowMs = Date.now()
+          combined = tests.map((t) => {
+            if (t.endTime) {
+              const diff = new Date(t.endTime).getTime() - nowMs
+              // Normalize legacy 1-year test end times to standard 3-hour window
+              if (diff > 24 * 3600_000 * 7) {
+                return {
+                  ...t,
+                  endTime: new Date(nowMs + 3 * 3600_000).toISOString(),
+                }
+              }
+            }
+            return t
+          })
         }
       } catch (err) {
         console.warn('Backend getAssignedTests note:', err)

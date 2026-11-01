@@ -118,6 +118,9 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
         const duration = bank?.settings?.timeLimitMinutes
           ? parseInt(bank.settings.timeLimitMinutes, 10)
           : 20
+        const endingHours = bank?.settings?.quizEndingHours
+          ? parseFloat(bank.settings.quizEndingHours)
+          : 3
 
         if (resolvedBackendId) {
           try {
@@ -125,6 +128,8 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
               studentEmails: emails,
               attemptDurationMinutes: duration,
               timeLimitMinutes: duration,
+              quizEndingHours: endingHours,
+              windowHours: endingHours,
               maxAttempts: bank?.settings?.oneAttempt ? 1 : (bank?.settings?.maxAttempts || 1),
               randomizeQuestions: Boolean(bank?.settings?.randomizeQuestions),
               randomizeOptions: Boolean(bank?.settings?.randomizeOptions),

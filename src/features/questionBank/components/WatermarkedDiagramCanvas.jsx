@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { revokeEphemeralBlob } from '../services/ephemeralImageService'
 
 function WatermarkedDiagramCanvas({ src, watermarkText = '', alt = 'Question Diagram', maxWidth = 800 }) {
@@ -6,6 +7,26 @@ function WatermarkedDiagramCanvas({ src, watermarkText = '', alt = 'Question Dia
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [isZoomed, setIsZoomed] = useState(false)
+
+  // Lock background scroll and support Escape key when zoomed
+  useEffect(() => {
+    if (!isZoomed) return
+
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsZoomed(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isZoomed])
 
   useEffect(() => {
     if (!src) {
@@ -94,41 +115,43 @@ function WatermarkedDiagramCanvas({ src, watermarkText = '', alt = 'Question Dia
         </div>
       </div>
 
-      {/* Lightbox Zoom Modal */}
-      {isZoomed && (
-        <div
-          className="qb-diagram-lightbox"
-          onClick={() => setIsZoomed(false)}
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          <div className="qb-lightbox-content" onClick={(e) => e.stopPropagation()}>
-            <div className="qb-lightbox-header">
-              <span>{alt}</span>
-              <button
-                type="button"
-                className="qb-modal-close-btn"
-                onClick={() => setIsZoomed(false)}
-              >
-                <ion-icon name="close-outline"></ion-icon>
-              </button>
+      {/* Lightbox Zoom Modal rendered at root viewport level to eliminate need to scroll */}
+      {isZoomed &&
+        createPortal(
+          <div
+            className="qb-diagram-lightbox"
+            onClick={() => setIsZoomed(false)}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <div className="qb-lightbox-content" onClick={(e) => e.stopPropagation()}>
+              <div className="qb-lightbox-header">
+                <span>{alt}</span>
+                <button
+                  type="button"
+                  className="qb-modal-close-btn"
+                  onClick={() => setIsZoomed(false)}
+                >
+                  <ion-icon name="close-outline"></ion-icon>
+                </button>
+              </div>
+              <div className="qb-lightbox-body">
+                <canvas
+                  ref={(zoomCanvas) => {
+                    if (!zoomCanvas || !canvasRef.current) return
+                    const ctx = zoomCanvas.getContext('2d')
+                    if (!ctx) return
+                    zoomCanvas.width = canvasRef.current.width
+                    zoomCanvas.height = canvasRef.current.height
+                    zoomCanvas.style.width = '100%'
+                    zoomCanvas.style.height = 'auto'
+                    ctx.drawImage(canvasRef.current, 0, 0)
+                  }}
+                />
+              </div>
             </div>
-            <div className="qb-lightbox-body">
-              <canvas
-                ref={(zoomCanvas) => {
-                  if (!zoomCanvas || !canvasRef.current) return
-                  const ctx = zoomCanvas.getContext('2d')
-                  if (!ctx) return
-                  zoomCanvas.width = canvasRef.current.width
-                  zoomCanvas.height = canvasRef.current.height
-                  zoomCanvas.style.width = '100%'
-                  zoomCanvas.style.height = 'auto'
-                  ctx.drawImage(canvasRef.current, 0, 0)
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }
