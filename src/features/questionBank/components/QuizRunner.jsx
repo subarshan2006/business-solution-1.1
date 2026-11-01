@@ -142,15 +142,8 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   useEffect(() => {
     if (!activeBankId) return
 
-    // If teacher preview mode: fetch full preview directly from backend or local storage
+    // If teacher preview mode: ALWAYS fetch fresh preview directly from backend for live signed image URLs
     if (isPreview) {
-      const b = getQuestionBankById(activeBankId)
-      if (b && Array.isArray(b.questions) && b.questions.length > 0) {
-        setBank(b)
-        return
-      }
-
-      // Try fetching teacher preview from backend
       testManagementApi
         .getTeacherTestPreview(activeBankId)
         .then((preview) => {
@@ -159,9 +152,11 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               const q = tq.question || tq
               const qImages = q.images || []
               const questionImg =
-                qImages.find((img) => img.role === 'QUESTION')?.imageUrl ||
                 q.image ||
                 q.imageUrl ||
+                q.questionImage ||
+                qImages.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                qImages[0]?.imageUrl ||
                 null
               const choicesImg =
                 q.choicesImage ||
@@ -217,6 +212,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         })
         .catch((err) => {
           console.warn('Teacher test preview fetch note:', err)
+          const b = getQuestionBankById(activeBankId)
           // Fallback to questionReviewApi listQuestions
           const targetBankId = b?.backendBankId || activeBankId
           questionReviewApi
@@ -227,9 +223,11 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 const mapped = list.map((bq, idx) => {
                   const qImages = bq.images || []
                   const questionImg =
-                    qImages.find((img) => img.role === 'QUESTION')?.imageUrl ||
                     bq.image ||
                     bq.imageUrl ||
+                    bq.questionImage ||
+                    qImages.find((img) => img.role === 'QUESTION')?.imageUrl ||
+                    qImages[0]?.imageUrl ||
                     null
                   const choicesImg =
                     bq.choicesImage ||
@@ -279,10 +277,15 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   },
                 }
                 setBank(fallbackBank)
+              } else if (b && Array.isArray(b.questions) && b.questions.length > 0) {
+                setBank(b)
               }
             })
             .catch((reviewErr) => {
               console.warn('Teacher questionReviewApi fallback note:', reviewErr)
+              if (b && Array.isArray(b.questions) && b.questions.length > 0) {
+                setBank(b)
+              }
             })
         })
       return
@@ -340,7 +343,12 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         (bank.questions || []).map((q) => {
           const qImages = q.images || []
           const questionImg =
-            qImages.find((img) => img.role === 'QUESTION')?.imageUrl || q.image || q.imageUrl || null
+            q.image ||
+            q.imageUrl ||
+            q.questionImage ||
+            qImages.find((img) => img.role === 'QUESTION')?.imageUrl ||
+            qImages[0]?.imageUrl ||
+            null
           const choicesImg =
             q.choicesImage ||
             q.choicesImageUrl ||
@@ -1255,7 +1263,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 <WatermarkedDiagramCanvas
                   src={createEphemeralBlob(resolveAssetUrl(currentQ.image || currentQ.imageUrl))}
                   alt={`Question ${currentIndex + 1} Diagram`}
-                  watermarkText={!isPreview ? (auth?.user?.email || studentEmail) : ''}
+                  watermarkText=""
                   maxWidth={820}
                 />
               </div>
@@ -1267,7 +1275,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                 <WatermarkedDiagramCanvas
                   src={createEphemeralBlob(resolveAssetUrl(currentQ.choicesImage))}
                   alt={`Question ${currentIndex + 1} Choices`}
-                  watermarkText={!isPreview ? (auth?.user?.email || studentEmail) : ''}
+                  watermarkText=""
                   maxWidth={820}
                 />
               </div>
@@ -1409,7 +1417,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                       <WatermarkedDiagramCanvas
                         src={createEphemeralBlob(resolveAssetUrl(currentQ.explanationImage))}
                         alt={`Explanation for Question ${currentIndex + 1}`}
-                        watermarkText={!isPreview ? (auth?.user?.email || studentEmail) : ''}
+                        watermarkText=""
                         maxWidth={820}
                       />
                     </div>
