@@ -213,7 +213,7 @@ export function deleteQuestionBank(id) {
   if (!id) return false
   recordDeletedBankId(id)
   const banks = getQuestionBanks()
-  const filtered = banks.filter((b) => b.id !== id)
+  const filtered = banks.filter((b) => b.id !== id && b.backendBankId !== id)
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
     return true
@@ -232,8 +232,15 @@ export function purgeAllLocalStorageBanks() {
     const banks = getQuestionBanks()
     const deleted = getDeletedBankIds()
     banks.forEach((b) => {
-      if (!deleted.includes(b.id)) deleted.push(b.id)
+      if (b.id && !deleted.includes(b.id)) deleted.push(b.id)
+      if (b.backendBankId && !deleted.includes(b.backendBankId)) deleted.push(b.backendBankId)
     })
+    INITIAL_QUESTION_BANKS.forEach((b) => {
+      if (b.id && !deleted.includes(b.id)) deleted.push(b.id)
+    })
+    if (unit1QuizData?.id && !deleted.includes(unit1QuizData.id)) {
+      deleted.push(unit1QuizData.id)
+    }
     localStorage.setItem(DELETED_BANKS_KEY, JSON.stringify(deleted))
     localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
   } catch (err) {

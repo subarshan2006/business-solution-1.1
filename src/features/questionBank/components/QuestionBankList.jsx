@@ -4,6 +4,7 @@ import {
   deleteQuestionBank,
   saveQuestionBank,
   purgeAllLocalStorageBanks,
+  getDeletedBankIds,
 } from '../services/questionBankStorage'
 import {
   questionBankApi,
@@ -34,11 +35,28 @@ function QuestionBankList({ onLaunchQuiz }) {
     try {
       const backendBanks = await questionBankApi.listQuestionBanks()
       if (Array.isArray(backendBanks)) {
-        const updatedLocal = [...localList]
-        let hasChanges = false
+        const deletedIds = getDeletedBankIds()
+        const backendIds = new Set(backendBanks.map((b) => b.id))
+
+        // Prune any local bank that was originally synced from backend but no longer exists on backend
+        let filteredLocal = localList.filter((b) => {
+          if (deletedIds.includes(b.id) || (b.backendBankId && deletedIds.includes(b.backendBankId))) {
+            return false
+          }
+          const isBackendBank = Boolean(b.backendBankId) || (b.id && !b.id.startsWith('qb_'))
+          if (isBackendBank) {
+            const stillOnBackend = (b.backendBankId && backendIds.has(b.backendBankId)) ||
+                                   (b.id && backendIds.has(b.id))
+            if (!stillOnBackend) {
+              return false
+            }
+          }
+          return true
+        })
 
         backendBanks.forEach((bb) => {
-          const matchIdx = updatedLocal.findIndex(
+          if (deletedIds.includes(bb.id)) return
+          const matchIdx = filteredLocal.findIndex(
             (b) => b.backendBankId === bb.id || b.id === bb.id || b.title === bb.title
           )
 
@@ -46,7 +64,7 @@ function QuestionBankList({ onLaunchQuiz }) {
           const latestJob = bb.jobs?.[0] || null
 
           if (matchIdx !== -1) {
-            const existing = updatedLocal[matchIdx]
+            const existing = filteredLocal[matchIdx]
             const updated = {
               ...existing,
               backendBankId: bb.id,
@@ -60,9 +78,8 @@ function QuestionBankList({ onLaunchQuiz }) {
                   ? existing.questions.length
                   : (qCount || existing.questionCount || 0),
             }
-            updatedLocal[matchIdx] = updated
+            filteredLocal[matchIdx] = updated
             saveQuestionBank(updated)
-            hasChanges = true
           } else {
             // Newly created bank from backend (e.g. processed in background or on reload)
             const newLocalBank = {
@@ -91,15 +108,17 @@ function QuestionBankList({ onLaunchQuiz }) {
               authorizedStudents: [],
               questions: [],
             }
-            updatedLocal.push(newLocalBank)
+            filteredLocal.push(newLocalBank)
             saveQuestionBank(newLocalBank)
-            hasChanges = true
           }
         })
 
-        if (hasChanges) {
-          setBanks([...updatedLocal])
-        }
+        // Persist cleaned list to local storage
+        try {
+          localStorage.setItem('nxtstep_question_banks', JSON.stringify(filteredLocal))
+        } catch {}
+
+        setBanks([...filteredLocal])
       }
     } catch (err) {
       console.warn('Backend listQuestionBanks sync note:', err)
@@ -143,9 +162,10 @@ function QuestionBankList({ onLaunchQuiz }) {
   const handleConfirmDelete = async () => {
     if (!bankToDelete) return
     setIsDeleting(true)
+    const targetToDelete = bankToDelete
     try {
       // 1. Try deleting from backend if matching bank exists
-      const targetId = bankToDelete.backendBankId || (bankToDelete.id && !bankToDelete.id.startsWith('qb_') ? bankToDelete.id : null)
+      const targetId = targetToDelete.backendBankId || (targetToDelete.id && !targetToDelete.id.startsWith('qb_') ? targetToDelete.id : null)
       if (targetId) {
         try {
           await questionBankApi.deleteQuestionBank(targetId)
@@ -156,7 +176,7 @@ function QuestionBankList({ onLaunchQuiz }) {
         try {
           const remoteBanks = await questionBankApi.listQuestionBanks()
           const match = Array.isArray(remoteBanks)
-            ? remoteBanks.find((b) => b.id === bankToDelete.id || b.title === bankToDelete.title)
+            ? remoteBanks.find((b) => b.id === targetToDelete.id || b.title === targetToDelete.title)
             : null
           if (match?.id) {
             await questionBankApi.deleteQuestionBank(match.id)
@@ -167,25 +187,43 @@ function QuestionBankList({ onLaunchQuiz }) {
       }
 
       // 2. Try deleting matching test if testId exists
-      if (bankToDelete.testId) {
+      if (targetToDelete.testId) {
         try {
-          await testManagementApi.deleteTest(bankToDelete.testId)
+          await testManagementApi.deleteTest(targetToDelete.testId)
         } catch (testErr) {
           console.warn('Backend test delete notice:', testErr)
         }
       }
 
-      // 3. Delete from localStorage
-      deleteQuestionBank(bankToDelete.id)
-      reloadBanks()
-      showNotification(`Deleted "${bankToDelete.title}" successfully.`)
+      // 3. Delete from localStorage and record deleted IDs
+      deleteQuestionBank(targetToDelete.id)
+      if (targetToDelete.backendBankId) {
+        deleteQuestionBank(targetToDelete.backendBankId)
+      }
+
+      // 4. Immediately remove from state
+      setBanks((prev) =>
+        prev.filter(
+          (b) =>
+            b.id !== targetToDelete.id &&
+            b.backendBankId !== targetToDelete.id &&
+            (!targetToDelete.backendBankId || (b.id !== targetToDelete.backendBankId && b.backendBankId !== targetToDelete.backendBankId))
+        )
+      )
+
+      showNotification(`Deleted "${targetToDelete.title}" successfully.`)
       setBankToDelete(null)
+      await reloadBanks()
     } catch (err) {
       console.error('Failed to delete question bank:', err)
-      deleteQuestionBank(bankToDelete.id)
-      reloadBanks()
-      showNotification(`Deleted "${bankToDelete.title}".`)
+      deleteQuestionBank(targetToDelete.id)
+      if (targetToDelete.backendBankId) {
+        deleteQuestionBank(targetToDelete.backendBankId)
+      }
+      setBanks((prev) => prev.filter((b) => b.id !== targetToDelete.id))
+      showNotification(`Deleted "${targetToDelete.title}".`)
       setBankToDelete(null)
+      await reloadBanks()
     } finally {
       setIsDeleting(false)
     }
@@ -203,15 +241,17 @@ function QuestionBankList({ onLaunchQuiz }) {
 
       // 2. Purge local storage
       purgeAllLocalStorageBanks()
-      reloadBanks()
-      showNotification('Successfully purged all quizzes and screenshots from database. Storage reset.')
+      setBanks([])
       setShowPurgeAllModal(false)
+      showNotification('Successfully purged all quizzes and screenshots from database. Storage reset.')
+      await reloadBanks()
     } catch (err) {
       console.error('Failed to purge database:', err)
       purgeAllLocalStorageBanks()
-      reloadBanks()
-      showNotification('Cleaned local quiz storage.')
+      setBanks([])
       setShowPurgeAllModal(false)
+      showNotification('Cleaned local quiz storage.')
+      await reloadBanks()
     } finally {
       setIsPurging(false)
     }
