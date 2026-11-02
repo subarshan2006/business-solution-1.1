@@ -243,6 +243,16 @@ export function purgeAllLocalStorageBanks() {
     }
     localStorage.setItem(DELETED_BANKS_KEY, JSON.stringify(deleted))
     localStorage.setItem(STORAGE_KEY, JSON.stringify([]))
+    localStorage.removeItem('jivanaut_quiz_attempts')
+    // Purge all student email partition attempts & violations
+    const keysToRemove = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('jivanaut_student_results_')) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k))
   } catch (err) {
     console.warn('Failed to purge local storage banks:', err)
   }

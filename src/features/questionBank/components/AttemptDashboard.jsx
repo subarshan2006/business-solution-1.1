@@ -4,7 +4,7 @@ import {
   resetStudentAttempt,
   exportAttemptsToCsv,
 } from '../services/quizAttemptService'
-import { testManagementApi } from '../../../services/jivanautApi'
+import { testManagementApi, ensureActiveSession } from '../../../services/jivanautApi'
 
 function AttemptDashboard({ bank, onClose }) {
   const [attempts, setAttempts] = useState([])
@@ -14,18 +14,41 @@ function AttemptDashboard({ bank, onClose }) {
   const [retakeConfirmEmail, setRetakeConfirmEmail] = useState(null)
 
   const loadAttempts = async () => {
-    // 1. Fetch local storage attempts
-    const list = listBankAttempts(bank.id)
-    setAttempts(list)
+    // 1. Fetch local storage attempts (checking bank.id, bank.testId, bank.backendBankId)
+    const localLists = [
+      ...listBankAttempts(bank.id),
+      ...(bank.testId ? listBankAttempts(bank.testId) : []),
+      ...(bank.backendBankId ? listBankAttempts(bank.backendBankId) : []),
+    ]
+    const uniqueLocal = Array.from(
+      new Map(localLists.map((a) => [a.studentEmail?.toLowerCase(), a])).values()
+    )
+    setAttempts(uniqueLocal)
 
     // 2. Fetch server-side test results from backend
-    const testIdentifier = bank.testId || bank.backendBankId || bank.id
-    if (testIdentifier) {
+    const identifiers = [bank.testId, bank.backendBankId, bank.id, bank.title].filter(Boolean)
+    if (identifiers.length > 0) {
       setLoading(true)
       try {
-        const results = await testManagementApi.getTestResults(testIdentifier)
-        if (results && Array.isArray(results.studentRoster)) {
-          setBackendRoster(results.studentRoster)
+        await ensureActiveSession({ email: 'businesswithsubar@gmail.com', role: 'TEACHER' })
+        let rosterList = null
+        for (const ident of identifiers) {
+          try {
+            const results = await testManagementApi.getTestResults(ident)
+            const list =
+              results?.studentRoster ||
+              results?.students ||
+              (Array.isArray(results) ? results : null)
+            if (list && Array.isArray(list) && list.length > 0) {
+              rosterList = list
+              break
+            }
+          } catch (e) {
+            // try next identifier candidate
+          }
+        }
+        if (rosterList && Array.isArray(rosterList)) {
+          setBackendRoster(rosterList)
         }
       } catch (err) {
         console.warn('Backend getTestResults note:', err)
@@ -104,7 +127,21 @@ function AttemptDashboard({ bank, onClose }) {
             minute: '2-digit',
           })
         : 'Completed'
-      fullscreenDisplay = backendRecord.fullscreenIntegrity || '✓ Fullscreen'
+
+      const violations =
+        backendRecord.minimizeCount ??
+        backendRecord.violations?.length ??
+        localAttempt?.fullscreenViolations ??
+        (backendRecord.fullscreenIntegrity && backendRecord.fullscreenIntegrity.includes('exit')
+          ? backendRecord.fullscreenIntegrity
+          : 0)
+
+      fullscreenDisplay =
+        typeof violations === 'number'
+          ? violations > 0
+            ? `⚠️ ${violations} exit(s)`
+            : '✓ Fullscreen (0 exits)'
+          : violations || '✓ Fullscreen (0 exits)'
     } else if (localAttempt) {
       scoreDisplay = `${localAttempt.score} / ${localAttempt.totalQuestions}`
       percentageDisplay = `${localAttempt.percentage}%`

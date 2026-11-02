@@ -515,6 +515,23 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
       )
 
       if (!isPreview && effectiveEmail && bank) {
+        // Dual-write: Always record locally partitioned by student email with proctoring stats for zero-latency UI updates
+        const attemptPayload = {
+          score: correctCount,
+          totalQuestions: preparedQuestions.length,
+          answers: studentAnswers,
+          studentName: auth?.user?.name || effectiveEmail,
+          fullscreenViolations,
+        }
+        const saved = recordCompletedAttempt(bank.id, effectiveEmail, attemptPayload)
+        if (bank.testId && bank.testId !== bank.id) {
+          recordCompletedAttempt(bank.testId, effectiveEmail, attemptPayload)
+        }
+        if (bank.backendBankId && bank.backendBankId !== bank.id) {
+          recordCompletedAttempt(bank.backendBankId, effectiveEmail, attemptPayload)
+        }
+        setCompletedAttemptData(saved)
+
         if (bank.isBackendTest) {
           const answersPayload = studentAnswers.map((a) => ({
             attemptQuestionId: a.questionId,
@@ -524,28 +541,19 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             .submitAttempt(bank.id, answersPayload)
             .then((result) => {
               if (result) {
-                setFinalScore(result.score || 0)
+                setFinalScore(result.score ?? correctCount)
                 setCompletedAttemptData({
-                  score: result.score,
-                  totalQuestions: result.totalQuestions,
-                  percentage: result.percentage,
+                  score: result.score ?? correctCount,
+                  totalQuestions: result.totalQuestions || preparedQuestions.length,
+                  percentage: result.percentage ?? Math.round((correctCount / preparedQuestions.length) * 100),
                   timeTakenSeconds: result.timeTakenSeconds,
+                  fullscreenViolations,
                 })
               }
             })
             .catch((err) => {
               console.warn('Backend attempt submission warning:', err)
             })
-        } else {
-          // Pillar 3: Record attempt strictly partitioned by student email with proctoring stats
-          const saved = recordCompletedAttempt(bank.id, effectiveEmail, {
-            score: correctCount,
-            totalQuestions: preparedQuestions.length,
-            answers: studentAnswers,
-            studentName: auth?.user?.name || effectiveEmail,
-            fullscreenViolations,
-          })
-          setCompletedAttemptData(saved)
         }
       }
 
