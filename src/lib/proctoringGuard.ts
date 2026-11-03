@@ -566,11 +566,17 @@ export class ProctoringGuard {
 
     // Window blur & focus
     const onBlur = () => {
+      if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && document.hasFocus()) {
+        return;
+      }
       handleFocusLoss('Window minimized or lost focus');
     };
 
     const onFocusOut = (e: FocusEvent) => {
       if (e.relatedTarget && typeof document !== 'undefined' && document.contains && document.contains(e.relatedTarget as Node)) {
+        return;
+      }
+      if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && document.hasFocus()) {
         return;
       }
       handleFocusLoss('Window minimized or lost focus');

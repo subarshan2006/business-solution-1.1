@@ -14344,3 +14344,51 @@ body:has(.qb-quiz-overlay-modal) .sidebar {
 [data-theme='light'] .qb-solution-review-card .qb-review-explanation {
   background: #F4F4F5 !important;
 }
+
+/* Retest History Scrollable Container & Card Theme Styles */
+.qb-retests-scroll-container {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.4) transparent;
+}
+
+.qb-retests-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.qb-retests-scroll-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+.qb-retests-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.4);
+  border-radius: 4px;
+}
+
+.qb-retests-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.6);
+}
+
+[data-theme='light'] .qb-retests-container {
+  background: #F4F4F5 !important;
+  border-color: #E4E4E7 !important;
+}
+
+[data-theme='light'] .qb-retests-container strong {
+  color: #18181B !important;
+}
+
+[data-theme='light'] .qb-retests-scroll-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme='light'] .qb-retests-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='light'] .qb-retests-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+}

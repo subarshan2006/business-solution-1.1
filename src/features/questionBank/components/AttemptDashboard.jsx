@@ -468,6 +468,7 @@ function AttemptDashboard({ bank, onClose }) {
                         <tr key={`${row.email}-expanded`} className="qb-retests-row">
                           <td colSpan={8} style={{ padding: '0 16px 16px', background: 'rgba(255, 255, 255, 0.02)' }}>
                             <div
+                              className="qb-retests-container"
                               style={{
                                 background: 'rgba(0, 0, 0, 0.35)',
                                 border: '1px solid var(--line, #383842)',
@@ -507,74 +508,85 @@ function AttemptDashboard({ bank, onClose }) {
                               </div>
 
                               <div
+                                className="qb-retests-scroll-container"
                                 style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-                                  gap: '12px',
+                                  maxHeight: '260px',
+                                  overflowY: 'auto',
+                                  paddingRight: '6px',
                                 }}
                               >
-                                {row.attemptsList.map((att, idx) => {
-                                  const attNum = att.attemptNumber || idx + 1
-                                  const attScore = att.score ?? '—'
-                                  const attTotal = att.totalQuestions || questionTotal
-                                  const attPct =
-                                    att.percentage ??
-                                    (typeof att.score === 'number' ? Math.round((att.score / attTotal) * 100) : '—')
-                                  const attDate = att.submittedAt || att.completedAt
-                                    ? new Date(att.submittedAt || att.completedAt).toLocaleDateString(undefined, {
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      })
-                                    : 'Submitted'
-                                  const attExits = att.minimizeCount ?? att.fullscreenViolations ?? 0
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
+                                    gap: '12px',
+                                  }}
+                                >
+                                  {row.attemptsList.map((att, idx) => {
+                                    const attNum = att.attemptNumber || idx + 1
+                                    const attScore = att.score ?? '—'
+                                    const attTotal = att.totalQuestions || questionTotal
+                                    const attPct =
+                                      att.percentage ??
+                                      (typeof att.score === 'number' ? Math.round((att.score / attTotal) * 100) : '—')
+                                    const attDate = att.submittedAt || att.completedAt
+                                      ? new Date(att.submittedAt || att.completedAt).toLocaleDateString(undefined, {
+                                          year: 'numeric',
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
+                                      : 'Submitted'
+                                    const attExits = att.minimizeCount ?? att.fullscreenViolations ?? 0
 
-                                  return (
-                                    <div
-                                      key={att.id || idx}
-                                      style={{
-                                        background: 'rgba(255, 255, 255, 0.04)',
-                                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                                        borderRadius: '8px',
-                                        padding: '12px 14px',
-                                      }}
-                                    >
+                                    return (
                                       <div
+                                        key={att.id || idx}
+                                        className="qb-retest-card"
                                         style={{
-                                          display: 'flex',
-                                          justifyContent: 'space-between',
-                                          alignItems: 'center',
-                                          marginBottom: '6px',
+                                          background: '#FFFFFF',
+                                          border: '1px solid #E4E4E7',
+                                          borderRadius: '8px',
+                                          padding: '12px 14px',
+                                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.06)',
                                         }}
                                       >
-                                        <span style={{ fontWeight: 700, fontSize: '13px', color: '#47afe5' }}>
-                                          Attempt #{attNum}
-                                        </span>
-                                        <span
+                                        <div
                                           style={{
-                                            fontSize: '11px',
-                                            fontWeight: 600,
-                                            padding: '2px 8px',
-                                            borderRadius: '10px',
-                                            background: attExits > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                                            color: attExits > 0 ? '#EF4444' : '#10B981',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            marginBottom: '6px',
                                           }}
                                         >
-                                          {attExits > 0 ? `⚠️ ${attExits} exit(s)` : '✓ Clean'}
-                                        </span>
+                                          <span style={{ fontWeight: 700, fontSize: '13px', color: '#000000' }}>
+                                            Attempt #{attNum}
+                                          </span>
+                                          <span
+                                            style={{
+                                              fontSize: '11px',
+                                              fontWeight: 600,
+                                              padding: '2px 8px',
+                                              borderRadius: '10px',
+                                              background: attExits > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                              color: attExits > 0 ? '#DC2626' : '#059669',
+                                            }}
+                                          >
+                                            {attExits > 0 ? `⚠️ ${attExits} exit(s)` : '✓ Clean'}
+                                          </span>
+                                        </div>
+                                        <div style={{ fontSize: '15px', fontWeight: 700, color: '#18181B', marginBottom: '4px' }}>
+                                          {attScore} / {attTotal} marks <span style={{ fontSize: '12px', fontWeight: 500, color: '#71717A' }}>({attPct}%)</span>
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: '#71717A', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                          <ion-icon name="time-outline"></ion-icon>
+                                          <span>{attDate}</span>
+                                        </div>
                                       </div>
-                                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
-                                        {attScore} / {attTotal} marks <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-2, #A1A1AA)' }}>({attPct}%)</span>
-                                      </div>
-                                      <div style={{ fontSize: '11px', color: 'var(--text-2, #A1A1AA)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <ion-icon name="time-outline"></ion-icon>
-                                        <span>{attDate}</span>
-                                      </div>
-                                    </div>
-                                  )
-                                })}
+                                    )
+                                  })}
+                                </div>
                               </div>
                             </div>
                           </td>
