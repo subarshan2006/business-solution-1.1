@@ -352,11 +352,11 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                       <button
                         type="button"
                         className="btn btn-primary"
-                        style={{ flex: 1, minWidth: '130px' }}
+                        style={{ flex: 1, minWidth: '130px', background: '#10B981', borderColor: '#059669', color: '#FFFFFF' }}
                         onClick={() => handleLaunch && handleLaunch(quizId, { viewResult: false, isRetest: true })}
                       >
                         <ion-icon name="refresh-outline"></ion-icon>
-                        <span>Take Retest {t.remainingAttempts ? `(${t.remainingAttempts} left)` : ''}</span>
+                        <span>Retake Test {t.remainingAttempts ? `(${t.remainingAttempts} left)` : ''}</span>
                       </button>
                       {canViewResult && (
                         <button
@@ -365,8 +365,8 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                           style={{ flex: 1, minWidth: '130px' }}
                           onClick={() => handleLaunch && handleLaunch(quizId, { viewResult: true })}
                         >
-                          <ion-icon name="eye-outline"></ion-icon>
-                          <span>View Previous Result {t.latestScore !== null && t.latestScore !== undefined ? `(${t.latestScore}/${qCount})` : ''}</span>
+                          <ion-icon name="ribbon-outline"></ion-icon>
+                          <span>View Result {t.latestScore !== null && t.latestScore !== undefined ? `(${t.latestScore}/${qCount})` : ''}</span>
                         </button>
                       )}
                     </div>

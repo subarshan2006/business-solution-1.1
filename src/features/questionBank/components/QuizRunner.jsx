@@ -14,6 +14,7 @@ import {
 import {
   getStudentAttempt,
   recordCompletedAttempt,
+  resetStudentAttempt,
 } from '../services/quizAttemptService'
 import { prepareQuizQuestions } from '../utils/quizUtils'
 import {
@@ -78,6 +79,13 @@ function QuizRunner({
   const [completedAttemptData, setCompletedAttemptData] = useState(null)
   const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false)
   const [isScreenObscured, setIsScreenObscured] = useState(false)
+  const [showDetailedResult, setShowDetailedResult] = useState(() => Boolean(effectiveViewResult))
+
+  useEffect(() => {
+    if (effectiveViewResult) {
+      setShowDetailedResult(true)
+    }
+  }, [effectiveViewResult])
 
   // Timer states
   const [secondsRemaining, setSecondsRemaining] = useState(null)
@@ -713,7 +721,7 @@ function QuizRunner({
           }))
           studentApi
             .submitAttempt(bank.id, answersPayload)
-            .then((result) => {
+            .then(async (result) => {
               if (result) {
                 setFinalScore(result.score ?? correctCount)
                 setCompletedAttemptData({
@@ -726,6 +734,46 @@ function QuizRunner({
                   wrongAnswers: result.wrongAnswers ?? (preparedQuestions.length - correctCount),
                   questions: result.questions || null,
                 })
+              }
+
+              // Prefetch authoritative questions & explanations for View Result
+              try {
+                const targetTestId = bank.id || activeBankId
+                const fullResult = await studentApi.getTestResult(targetTestId)
+                if (fullResult?.questions && fullResult.questions.length > 0) {
+                  const mapped = fullResult.questions.map((q, idx) => ({
+                    id: q.attemptQuestionId || `Q${String(idx + 1).padStart(3, '0')}`,
+                    question: q.questionText,
+                    options: (q.options || []).map((o) => ({
+                      id: o.label || o.id,
+                      text: o.text || '',
+                      imageUrl: o.imageUrl || null,
+                    })),
+                    selectedOption: q.selectedOption || null,
+                    correctOption: q.correctOption || null,
+                    isCorrect: q.isCorrect ?? null,
+                    explanation: q.explanation || '',
+                    explanationImage: q.explanationImageUrl || q.explanationImage || null,
+                    image: q.image || q.imageUrl || null,
+                    choicesImage: q.choicesImage || null,
+                  }))
+                  setPreparedQuestions(mapped)
+                  setStudentAnswers(
+                    mapped.map((q) => ({
+                      questionId: q.id,
+                      selectedOption: q.selectedOption,
+                      correctOption: q.correctOption,
+                      isCorrect: q.isCorrect,
+                      explanation: q.explanation,
+                    }))
+                  )
+                  if (typeof fullResult.score === 'number') {
+                    setFinalScore(fullResult.score)
+                  }
+                  setCompletedAttemptData(fullResult)
+                }
+              } catch (fullResErr) {
+                console.warn('Post-submission test result prefetch note:', fullResErr)
               }
             })
             .catch((err) => {
@@ -837,7 +885,8 @@ function QuizRunner({
   }, [stage, isPreview, bank?.id, bank?.testId, activeBankId])
 
   // Start Quiz (Triggers Desktop & Mobile Fullscreen Lockdown)
-  const handleStartQuiz = async () => {
+  const handleStartQuiz = async (opts = {}) => {
+    const isRetest = Boolean(opts?.isRetest || effectiveIsRetest || bank?.studentStatus === 'CAN_RETEST')
     setIsStartingAttempt(true)
     setCurrentIndex(0)
     setSelectedOptionId('')
@@ -848,17 +897,31 @@ function QuizRunner({
     setIsFullscreenBlocked(false)
     setIsTerminated(false)
 
+    const effectiveEmail =
+      (auth?.user?.email && auth.user.email !== 'Google Classroom Account' ? auth.user.email : '') ||
+      getStoredSessionUser()?.email ||
+      auth?.user?.email ||
+      ''
+
+    if (isRetest && effectiveEmail && bank) {
+      if (bank.id) resetStudentAttempt(bank.id, effectiveEmail)
+      if (bank.testId) resetStudentAttempt(bank.testId, effectiveEmail)
+      if (bank.backendBankId) resetStudentAttempt(bank.backendBankId, effectiveEmail)
+    }
+
     try {
       if (bank?.isBackendTest && !isPreview) {
         let attempt = null
         try {
-          attempt = await studentApi.startAttempt(bank.id)
+          const payload = isRetest ? { isRetest: true, forceNew: true } : {}
+          attempt = await studentApi.startAttempt(bank.id, payload)
         } catch (err) {
-          // If attempt already in progress, resume it cleanly!
+          // If attempt already in progress (and not an explicit retest), resume it cleanly!
           if (
-            err.code === 'ATTEMPT_ALREADY_EXISTS' ||
-            err.status === 409 ||
-            (err.message && err.message.includes('already started'))
+            !isRetest &&
+            (err.code === 'ATTEMPT_ALREADY_EXISTS' ||
+              err.status === 409 ||
+              (err.message && err.message.includes('already started')))
           ) {
             attempt = await studentApi.getActiveAttempt(bank.id)
           } else {
@@ -887,18 +950,21 @@ function QuizRunner({
               choicesImage: choicesImg,
               explanationImage: explanationImg,
               images: q.images || [],
-              correctOption: q.correctOption || '',
-              explanation: q.explanation || '',
-              selectedOption: q.selectedOption || null,
-              isCorrect: q.isCorrect ?? null,
+              correctOption: isRetest ? '' : (q.correctOption || ''),
+              explanation: isRetest ? '' : (q.explanation || ''),
+              selectedOption: isRetest ? null : (q.selectedOption || null),
+              isCorrect: isRetest ? null : (q.isCorrect ?? null),
             }
           })
           setPreparedQuestions(qs)
 
-          // If first question was already answered, populate selection and submitted state
-          if (qs[0] && qs[0].selectedOption) {
+          // If first question was already answered and NOT a retest, populate selection
+          if (!isRetest && qs[0] && qs[0].selectedOption) {
             setSelectedOptionId(qs[0].selectedOption)
             setIsAnswerSubmitted(true)
+          } else {
+            setSelectedOptionId('')
+            setIsAnswerSubmitted(false)
           }
         } else {
           throw new Error('No questions available in this test attempt.')
@@ -922,6 +988,150 @@ function QuizRunner({
       setStage('access_denied')
     } finally {
       setIsStartingAttempt(false)
+    }
+  }
+
+  // Retake Quiz Handler: Always launches a 100% clean new attempt with no saved choices
+  const handleRetakeQuiz = async () => {
+    setIsStartingAttempt(true)
+    setCurrentIndex(0)
+    setSelectedOptionId('')
+    setIsAnswerSubmitted(false)
+    setStudentAnswers([])
+    setPreparedQuestions([])
+    setCompletedAttemptData(null)
+    setFinalScore(0)
+    setShowDetailedResult(false)
+    setTimedOutNotice(false)
+    setFullscreenViolations(0)
+    setIsFullscreenBlocked(false)
+    setIsTerminated(false)
+
+    const effectiveEmail =
+      (auth?.user?.email && auth.user.email !== 'Google Classroom Account' ? auth.user.email : '') ||
+      getStoredSessionUser()?.email ||
+      auth?.user?.email ||
+      ''
+
+    if (effectiveEmail && bank) {
+      if (bank.id) resetStudentAttempt(bank.id, effectiveEmail)
+      if (bank.testId) resetStudentAttempt(bank.testId, effectiveEmail)
+      if (bank.backendBankId) resetStudentAttempt(bank.backendBankId, effectiveEmail)
+    }
+
+    try {
+      if (bank?.isBackendTest && !isPreview) {
+        const attempt = await studentApi.startAttempt(bank.id, { isRetest: true, forceNew: true })
+
+        if (attempt?.questions && attempt.questions.length > 0) {
+          const qs = attempt.questions.map((q) => {
+            const questionImg =
+              q.images?.find((img) => img.role === 'QUESTION')?.imageUrl || q.images?.[0]?.imageUrl || null
+            const choicesImg =
+              q.images?.find((img) => img.role === 'CHOICES')?.imageUrl || null
+            const explanationImg =
+              q.images?.find((img) => img.role === 'EXPLANATION')?.imageUrl || null
+
+            return {
+              id: q.attemptQuestionId,
+              question: q.questionText,
+              options: (q.options || []).map((o) => ({
+                id: o.label,
+                text: o.text || o.label,
+                imageUrl: o.imageUrl,
+              })),
+              image: questionImg,
+              choicesImage: choicesImg,
+              explanationImage: explanationImg,
+              images: q.images || [],
+              correctOption: '',
+              explanation: '',
+              selectedOption: null,
+              isCorrect: null,
+            }
+          })
+          setPreparedQuestions(qs)
+          setSelectedOptionId('')
+          setIsAnswerSubmitted(false)
+        } else {
+          throw new Error('No questions available in this test attempt.')
+        }
+      } else if (bank?.questions) {
+        const qs = prepareQuizQuestions(bank.questions, bank.settings)
+        setPreparedQuestions(qs.map((q) => ({ ...q, selectedOption: null, isCorrect: null })))
+        setSelectedOptionId('')
+        setIsAnswerSubmitted(false)
+      }
+
+      if (!isPreview) {
+        const isFs = await enterFullscreen()
+        if (!isFs) {
+          setIsFullscreenBlocked(true)
+          setStage('in_progress')
+          return
+        }
+      }
+
+      setIsFullscreenBlocked(false)
+      setStage('in_progress')
+    } catch (err) {
+      console.error('Failed to start retest:', err)
+      setAuthError(err.message || 'Unable to start retest. You may have reached the maximum attempt limit.')
+      setStage('access_denied')
+    } finally {
+      setIsStartingAttempt(false)
+    }
+  }
+
+  // Toggle or fetch View Result solutions
+  const handleViewResultClick = async () => {
+    if (!showDetailedResult) {
+      if (bank?.isBackendTest && !isPreview && (!preparedQuestions.length || !preparedQuestions[0]?.correctOption)) {
+        setBankLoading(true)
+        try {
+          const targetTestId = bank.id || activeBankId
+          const fullResult = await studentApi.getTestResult(targetTestId)
+          if (fullResult?.questions && fullResult.questions.length > 0) {
+            const mapped = fullResult.questions.map((q, idx) => ({
+              id: q.attemptQuestionId || `Q${String(idx + 1).padStart(3, '0')}`,
+              question: q.questionText,
+              options: (q.options || []).map((o) => ({
+                id: o.label || o.id,
+                text: o.text || '',
+                imageUrl: o.imageUrl || null,
+              })),
+              selectedOption: q.selectedOption || null,
+              correctOption: q.correctOption || null,
+              isCorrect: q.isCorrect ?? null,
+              explanation: q.explanation || '',
+              explanationImage: q.explanationImageUrl || q.explanationImage || null,
+              image: q.image || q.imageUrl || null,
+              choicesImage: q.choicesImage || null,
+            }))
+            setPreparedQuestions(mapped)
+            setStudentAnswers(
+              mapped.map((q) => ({
+                questionId: q.id,
+                selectedOption: q.selectedOption,
+                correctOption: q.correctOption,
+                isCorrect: q.isCorrect,
+                explanation: q.explanation,
+              }))
+            )
+            if (typeof fullResult.score === 'number') {
+              setFinalScore(fullResult.score)
+            }
+            setCompletedAttemptData(fullResult)
+          }
+        } catch (err) {
+          console.warn('Could not fetch test result on View Result click:', err)
+        } finally {
+          setBankLoading(false)
+        }
+      }
+      setShowDetailedResult(true)
+    } else {
+      setShowDetailedResult(false)
     }
   }
 
@@ -1811,8 +2021,113 @@ function QuizRunner({
                 </p>
               </div>
 
+              {/* PRIMARY TWO BUTTON ACTIONS: RETAKE TEST & VIEW RESULT */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '14px',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  marginTop: '24px',
+                  marginBottom: showDetailedResult ? '28px' : '16px',
+                }}
+              >
+                {/* Button 1: Retake Test */}
+                {canRetestMode ? (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{
+                      background: '#10B981',
+                      borderColor: '#059669',
+                      color: '#FFFFFF',
+                      minWidth: '180px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      fontSize: '15px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                    onClick={handleRetakeQuiz}
+                    disabled={isStartingAttempt}
+                  >
+                    <ion-icon name="refresh-outline" style={{ fontSize: '18px' }}></ion-icon>
+                    <span>
+                      {isStartingAttempt
+                        ? 'Starting New Test...'
+                        : `Retake Test ${typeof bank?.remainingAttempts === 'number' ? `(${bank.remainingAttempts} left)` : ''}`}
+                    </span>
+                  </button>
+                ) : isSingleAttemptMode ? (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      color: '#F87171',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <ion-icon name="lock-closed-outline" style={{ fontSize: '16px' }}></ion-icon>
+                    <span>Single-attempt mode enabled (No retakes)</span>
+                  </div>
+                ) : null}
+
+                {/* Button 2: View Result / Hide Solutions */}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{
+                    minWidth: '180px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    background: showDetailedResult ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.08)',
+                    borderColor: showDetailedResult ? '#38bdf8' : 'rgba(255, 255, 255, 0.2)',
+                    color: showDetailedResult ? '#38bdf8' : 'var(--text-1, #F4F4F5)',
+                    cursor: 'pointer',
+                  }}
+                  onClick={handleViewResultClick}
+                  disabled={bankLoading}
+                >
+                  <ion-icon name={showDetailedResult ? 'eye-off-outline' : 'ribbon-outline'} style={{ fontSize: '18px' }}></ion-icon>
+                  <span>{showDetailedResult ? 'Hide Result Solutions' : 'View Result'}</span>
+                </button>
+
+                {/* Button 3: Back to Dashboard */}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{
+                    minWidth: '150px',
+                    padding: '12px 20px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    color: 'var(--text-2, #A1A1AA)',
+                  }}
+                  onClick={handleExitQuiz}
+                >
+                  Back to Dashboard
+                </button>
+              </div>
+
               {/* Question Solutions & Explanations Review List */}
-              {preparedQuestions.length > 0 && (
+              {showDetailedResult && preparedQuestions.length > 0 && (
                 <div className="qb-review-section" style={{ textAlign: 'left', marginTop: '32px' }}>
                   <div className="qb-review-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
                     <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text, #FFF)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1947,48 +2262,27 @@ function QuizRunner({
                       )
                     })}
                   </div>
-                </div>
-              )}
 
-              {/* Bottom Actions: Retest vs Single Attempt */}
-              <div style={{ marginTop: '36px' }}>
-                {isSingleAttemptMode ? (
-                  <div>
-                    <div className="qb-info-banner" style={{ marginBottom: '20px', textAlign: 'center', justifyContent: 'center' }}>
-                      <ion-icon name="lock-closed-outline"></ion-icon>
-                      <span>Single-attempt mode is enabled for this exam. Retakes are not permitted.</span>
-                    </div>
-                    <button type="button" className="btn btn-primary qb-hero-btn" onClick={handleExitQuiz}>
-                      Back to Dashboard
-                    </button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button type="button" className="btn btn-secondary" onClick={handleExitQuiz} style={{ minWidth: '160px' }}>
-                      Back to Dashboard
-                    </button>
+                  {/* Bottom Actions after solutions review list */}
+                  <div style={{ marginTop: '32px', display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
                     {canRetestMode && (
                       <button
                         type="button"
                         className="btn btn-primary"
                         style={{ background: '#10B981', borderColor: '#059669', color: '#FFFFFF', minWidth: '160px' }}
-                        onClick={() => {
-                          setPreparedQuestions([])
-                          setStudentAnswers([])
-                          setSelectedOptionId('')
-                          setIsAnswerSubmitted(false)
-                          setCompletedAttemptData(null)
-                          setStage('start_screen')
-                          handleStartQuiz()
-                        }}
+                        onClick={handleRetakeQuiz}
+                        disabled={isStartingAttempt}
                       >
                         <ion-icon name="refresh-outline"></ion-icon>
-                        <span>Take Retest {typeof bank.remainingAttempts === 'number' ? `(${bank.remainingAttempts} left)` : ''}</span>
+                        <span>Retake Test</span>
                       </button>
                     )}
+                    <button type="button" className="btn btn-secondary" onClick={handleExitQuiz} style={{ minWidth: '160px' }}>
+                      Back to Dashboard
+                    </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )
         })()}

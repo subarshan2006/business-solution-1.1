@@ -658,9 +658,10 @@ export const studentApi = {
   /**
    * Start or resume a test attempt (Strict DTO whitelist - correctOption stripped)
    */
-  async startAttempt(testId) {
+  async startAttempt(testId, payload = {}) {
     const res = await request(`/api/student/tests/${encodeURIComponent(testId)}/start`, {
       method: 'POST',
+      body: JSON.stringify(payload),
     })
     return res.data
   },
