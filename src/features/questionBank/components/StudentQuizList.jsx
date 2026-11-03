@@ -130,7 +130,8 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                 startTime: b.createdAt || new Date().toISOString(),
                 endTime: endIso,
                 attemptDurationMinutes: b.settings?.timeLimitMinutes || 20,
-                maxAttempts: b.settings?.oneAttempt ? 1 : 1,
+                maxAttempts: b.settings?.oneAttempt ? 1 : (b.settings?.maxAttempts || 10),
+                isSingleAttempt: b.settings?.oneAttempt !== false,
                 questionCount: Array.isArray(b.questions) ? b.questions.length : 0,
                 studentStatus: myAttempt ? 'SUBMITTED' : 'READY',
                 isLocalBank: true,
@@ -230,8 +231,16 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
         <div className="qb-grid">
           {visibleQuizzes.map((t) => {
             const quizId = t.testId || t.assignmentId
-            const isSubmitted = t.studentStatus === 'SUBMITTED'
+            const isSingle =
+              t.isSingleAttempt === true ||
+              (t.isSingleAttempt === undefined &&
+                (t.maxAttempts === 1 || t.settings?.oneAttempt === true) &&
+                !t.canRetest &&
+                !t.allowRetest)
+            const isSubmitted = t.studentStatus === 'SUBMITTED' || Boolean(t.completedAttempts && t.completedAttempts > 0)
             const isStarted = t.studentStatus === 'STARTED'
+            const canViewResult = Boolean(t.canViewResult || isSubmitted || (t.latestScore !== null && t.latestScore !== undefined))
+            const canRetest = Boolean(!isSingle && (t.canRetest || (t.remainingAttempts !== undefined && t.remainingAttempts > 0) || t.studentStatus === 'CAN_RETEST'))
             const duration = t.attemptDurationMinutes || 60
             const qCount = t.questionCount || 0
             const remainingCountdown = formatRemainingCountdown(t.endTime, currentTime)
@@ -240,8 +249,8 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
               <div key={quizId} className="qb-card qb-student-card">
                 <div className="qb-card-header">
                   <span className="qb-subject-badge">{t.subject || 'Proctored Exam'}</span>
-                  <span className={`qb-attempt-badge ${isSubmitted ? 'completed' : isStarted ? 'started' : 'pending'}`}>
-                    {isSubmitted ? '✓ Completed' : isStarted ? '● In Progress' : '● Ready to Take'}
+                  <span className={`qb-attempt-badge ${isSubmitted ? 'completed' : isStarted ? 'started' : canRetest ? 'started' : 'pending'}`}>
+                    {isSubmitted ? '✓ Completed' : isStarted ? '● In Progress' : canRetest ? '● Retest Available' : '● Ready to Take'}
                   </span>
                 </div>
 
@@ -249,6 +258,32 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                 <p className="qb-card-desc">
                   {t.description || `${qCount} Questions • ${duration} min timer`}
                 </p>
+
+                {/* Latest Score Badge */}
+                {t.latestScore !== null && t.latestScore !== undefined && (
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      borderRadius: '16px',
+                      background: 'rgba(16, 185, 129, 0.12)',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      color: '#10B981',
+                      fontWeight: 700,
+                      fontSize: '12px',
+                      marginBottom: '10px',
+                      width: 'fit-content',
+                    }}
+                    title="Your recorded score"
+                  >
+                    <ion-icon name="ribbon-outline" style={{ fontSize: '15px' }}></ion-icon>
+                    <span>
+                      Score: {t.latestScore} / {qCount} ({t.latestPercentage !== null && t.latestPercentage !== undefined ? `${t.latestPercentage}%` : `${qCount > 0 ? Math.round((t.latestScore / qCount) * 100) : 0}%`})
+                    </span>
+                  </div>
+                )}
 
                 {/* Dynamic Real-time Countdown Timer Badge */}
                 {remainingCountdown && (
@@ -292,20 +327,63 @@ function StudentQuizList({ auth, onLaunchQuiz, onSignIn, studentEmail: propStude
                 </div>
 
                 <div className="qb-student-card-actions">
-                  {isSubmitted ? (
+                  {isSingle ? (
+                    canViewResult ? (
+                      <button
+                        type="button"
+                        className="btn btn-secondary qb-full-btn"
+                        onClick={() => handleLaunch && handleLaunch(quizId, { viewResult: true })}
+                      >
+                        <ion-icon name="ribbon-outline"></ion-icon>
+                        <span>View Result</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-primary qb-full-btn"
+                        onClick={() => handleLaunch && handleLaunch(quizId, { viewResult: false })}
+                      >
+                        <ion-icon name="play-outline"></ion-icon>
+                        <span>{isStarted ? 'Resume Quiz' : 'Start Quiz'}</span>
+                      </button>
+                    )
+                  ) : canRetest ? (
+                    <div style={{ display: 'flex', gap: '8px', width: '100%', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ flex: 1, minWidth: '130px' }}
+                        onClick={() => handleLaunch && handleLaunch(quizId, { viewResult: false, isRetest: true })}
+                      >
+                        <ion-icon name="refresh-outline"></ion-icon>
+                        <span>Take Retest {t.remainingAttempts ? `(${t.remainingAttempts} left)` : ''}</span>
+                      </button>
+                      {canViewResult && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ flex: 1, minWidth: '130px' }}
+                          onClick={() => handleLaunch && handleLaunch(quizId, { viewResult: true })}
+                        >
+                          <ion-icon name="eye-outline"></ion-icon>
+                          <span>View Previous Result {t.latestScore !== null && t.latestScore !== undefined ? `(${t.latestScore}/${qCount})` : ''}</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : canViewResult ? (
                     <button
                       type="button"
                       className="btn btn-secondary qb-full-btn"
-                      onClick={() => handleLaunch && handleLaunch(quizId)}
+                      onClick={() => handleLaunch && handleLaunch(quizId, { viewResult: true })}
                     >
-                      <ion-icon name="eye-outline"></ion-icon>
-                      <span>View Results</span>
+                      <ion-icon name="ribbon-outline"></ion-icon>
+                      <span>View Result {t.latestScore !== null && t.latestScore !== undefined ? `(${t.latestScore}/${qCount})` : ''}</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       className="btn btn-primary qb-full-btn"
-                      onClick={() => handleLaunch && handleLaunch(quizId)}
+                      onClick={() => handleLaunch && handleLaunch(quizId, { viewResult: false })}
                     >
                       <ion-icon name="play-outline"></ion-icon>
                       <span>{isStarted ? 'Resume Quiz' : 'Start Quiz'}</span>

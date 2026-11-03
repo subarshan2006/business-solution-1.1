@@ -3,6 +3,7 @@ import {
   createQuestionBank,
   saveQuestionBank,
 } from '../services/questionBankStorage'
+import { questionBankApi } from '../../../services/jivanautApi'
 
 function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
   const isEditing = Boolean(bank)
@@ -53,10 +54,12 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
     const qCount = questionsPerAttempt ? parseInt(questionsPerAttempt, 10) : null
     const tLimit = timeLimitMinutes ? parseInt(timeLimitMinutes, 10) : null
     const endHours = quizEndingHours ? parseFloat(quizEndingHours) : 3
+    const isSingle = oneAttempt === true
     const settings = {
       randomizeQuestions,
       randomizeOptions,
-      oneAttempt,
+      oneAttempt: isSingle,
+      maxAttempts: isSingle ? 1 : 10,
       showExplanation,
       questionsPerAttempt: qCount && qCount > 0 ? qCount : null,
       timeLimitMinutes: tLimit && tLimit > 0 ? tLimit : null,
@@ -73,6 +76,22 @@ function CreateQuestionBankModal({ bank = null, onClose, onSaved }) {
         published,
         settings,
       })
+
+      const targetId = bank?.backendBankId || (bank?.id && !bank.id.startsWith('qb_') ? bank.id : null)
+      if (targetId) {
+        questionBankApi
+          .assignStudents(targetId, {
+            singleAttempt: isSingle,
+            oneAttempt: isSingle,
+            maxAttempts: isSingle ? 1 : 10,
+            timeLimitMinutes: tLimit && tLimit > 0 ? tLimit : 20,
+            attemptDurationMinutes: tLimit && tLimit > 0 ? tLimit : 20,
+            randomizeQuestions,
+            randomizeOptions,
+            showExplanations: showExplanation,
+          })
+          .catch((syncErr) => console.warn('Sync question bank settings to backend note:', syncErr))
+      }
     } else {
       const newBank = createQuestionBank({
         title,

@@ -14323,3 +14323,24 @@ body:has(.qb-quiz-overlay-modal) .sidebar {
 [data-theme='light'] .qb-screen-obscured-overlay p {
   color: #52525B;
 }
+
+/* Retest breakdown & solution review styles */
+.qb-retests-row td {
+  border-bottom: 1px solid var(--line, #383842);
+}
+
+[data-theme='light'] .qb-retests-row td {
+  background: rgba(0, 0, 0, 0.02) !important;
+}
+
+[data-theme='light'] .qb-solution-review-card {
+  background: #FFFFFF !important;
+}
+
+[data-theme='light'] .qb-solution-review-card p {
+  color: #27272A !important;
+}
+
+[data-theme='light'] .qb-solution-review-card .qb-review-explanation {
+  background: #F4F4F5 !important;
+}

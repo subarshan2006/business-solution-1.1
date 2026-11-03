@@ -124,13 +124,16 @@ function StudentAccessModal({ bank, onClose, onSaved }) {
 
         if (resolvedBackendId) {
           try {
+            const isSingle = bank?.settings?.oneAttempt !== false
             await questionBankApi.assignStudents(resolvedBackendId, {
               studentEmails: emails,
               attemptDurationMinutes: duration,
               timeLimitMinutes: duration,
               quizEndingHours: endingHours,
               windowHours: endingHours,
-              maxAttempts: bank?.settings?.oneAttempt ? 1 : (bank?.settings?.maxAttempts || 1),
+              singleAttempt: isSingle,
+              oneAttempt: isSingle,
+              maxAttempts: isSingle ? 1 : (bank?.settings?.maxAttempts || 10),
               randomizeQuestions: Boolean(bank?.settings?.randomizeQuestions),
               randomizeOptions: Boolean(bank?.settings?.randomizeOptions),
               showExplanations: Boolean(bank?.settings?.showExplanation),

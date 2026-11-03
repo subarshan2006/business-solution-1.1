@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import {
   listBankAttempts,
   resetStudentAttempt,
-  exportAttemptsToCsv,
 } from '../services/quizAttemptService'
 import { testManagementApi, ensureActiveSession } from '../../../services/jivanautApi'
 
@@ -12,6 +11,7 @@ function AttemptDashboard({ bank, onClose }) {
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState('')
   const [retakeConfirmEmail, setRetakeConfirmEmail] = useState(null)
+  const [expandedEmail, setExpandedEmail] = useState(null)
 
   const loadAttempts = async () => {
     // 1. Fetch local storage attempts (checking bank.id, bank.testId, bank.backendBankId)
@@ -36,6 +36,7 @@ function AttemptDashboard({ bank, onClose }) {
           try {
             const results = await testManagementApi.getTestResults(ident)
             const list =
+              results?.roster ||
               results?.studentRoster ||
               results?.students ||
               (Array.isArray(results) ? results : null)
@@ -43,7 +44,7 @@ function AttemptDashboard({ bank, onClose }) {
               rosterList = list
               break
             }
-          } catch (e) {
+          } catch {
             // try next identifier candidate
           }
         }
@@ -101,22 +102,62 @@ function AttemptDashboard({ bank, onClose }) {
 
     const isCompleted = isBackendCompleted || Boolean(localAttempt)
 
-    let scoreDisplay = '—'
-    let percentageDisplay = '—'
+    const latestScore =
+      backendRecord?.latestScore ??
+      backendRecord?.score ??
+      localAttempt?.score ??
+      null
+
+    const bestScore =
+      backendRecord?.bestScore ??
+      backendRecord?.score ??
+      localAttempt?.score ??
+      null
+
+    const latestPct =
+      backendRecord?.latestPercentage ??
+      backendRecord?.percentage ??
+      localAttempt?.percentage ??
+      (latestScore !== null ? Math.round((latestScore / questionTotal) * 100) : null)
+
+    const bestPct =
+      backendRecord?.bestPercentage ??
+      (bestScore !== null ? Math.round((bestScore / questionTotal) * 100) : null)
+
+    const attemptCount =
+      backendRecord?.attemptCount ??
+      backendRecord?.attempts?.length ??
+      (localAttempt ? 1 : 0)
+
+    const attemptsList =
+      backendRecord?.attempts && Array.isArray(backendRecord.attempts) && backendRecord.attempts.length > 0
+        ? backendRecord.attempts
+        : localAttempt
+        ? [localAttempt]
+        : []
+
+    let latestScoreDisplay = '—'
+    let bestScoreDisplay = '—'
+    let latestPctDisplay = '—'
+    let bestPctDisplay = '—'
     let completedDateDisplay = '—'
     let fullscreenDisplay = '—'
     let hasAttempt = Boolean(isCompleted)
 
     if (isBackendCompleted) {
-      const score = backendRecord.score ?? 0
+      const score = latestScore ?? 0
       const total = backendRecord.totalQuestions || questionTotal
-      const pct =
-        backendRecord.percentage !== null && backendRecord.percentage !== undefined
-          ? backendRecord.percentage
-          : Math.round((score / total) * 100)
+      latestScoreDisplay = `${score} / ${total}`
+      latestPctDisplay = `${latestPct ?? Math.round((score / total) * 100)}%`
 
-      scoreDisplay = `${score} / ${total}`
-      percentageDisplay = `${pct}%`
+      if (bestScore !== null) {
+        bestScoreDisplay = `${bestScore} / ${total}`
+        bestPctDisplay = `${bestPct ?? Math.round((bestScore / total) * 100)}%`
+      } else {
+        bestScoreDisplay = latestScoreDisplay
+        bestPctDisplay = latestPctDisplay
+      }
+
       const rawDate = backendRecord.completedAt || backendRecord.submittedAt
       completedDateDisplay = rawDate
         ? new Date(rawDate).toLocaleDateString(undefined, {
@@ -143,8 +184,10 @@ function AttemptDashboard({ bank, onClose }) {
             : '✓ Fullscreen (0 exits)'
           : violations || '✓ Fullscreen (0 exits)'
     } else if (localAttempt) {
-      scoreDisplay = `${localAttempt.score} / ${localAttempt.totalQuestions}`
-      percentageDisplay = `${localAttempt.percentage}%`
+      latestScoreDisplay = `${localAttempt.score} / ${localAttempt.totalQuestions}`
+      latestPctDisplay = `${localAttempt.percentage}%`
+      bestScoreDisplay = latestScoreDisplay
+      bestPctDisplay = latestPctDisplay
       completedDateDisplay = localAttempt.completedAt
         ? new Date(localAttempt.completedAt).toLocaleDateString(undefined, {
             year: 'numeric',
@@ -168,8 +211,12 @@ function AttemptDashboard({ bank, onClose }) {
         : backendRecord?.status === 'IN_PROGRESS'
         ? 'In Progress'
         : 'Not Attempted',
-      scoreDisplay,
-      percentageDisplay,
+      latestScoreDisplay,
+      latestPctDisplay,
+      bestScoreDisplay,
+      bestPctDisplay,
+      attemptCount,
+      attemptsList,
       completedDateDisplay,
       fullscreenDisplay,
       hasAttempt,
@@ -187,8 +234,31 @@ function AttemptDashboard({ bank, onClose }) {
   }
 
   const handleExportCsv = () => {
-    const csv = exportAttemptsToCsv(bank.id, bank.title)
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const header = [
+      'Student Email',
+      'Status',
+      'Latest Score',
+      'Latest Percentage',
+      'Best Score',
+      'Best Percentage',
+      'Attempt Count',
+      'Fullscreen Integrity',
+      'Completed At',
+    ]
+    const rows = studentRows.map((r) => [
+      `"${r.email}"`,
+      `"${r.status}"`,
+      `"${r.latestScoreDisplay}"`,
+      `"${r.latestPctDisplay}"`,
+      `"${r.bestScoreDisplay}"`,
+      `"${r.bestPctDisplay}"`,
+      r.attemptCount,
+      `"${r.fullscreenDisplay}"`,
+      `"${r.completedDateDisplay}"`,
+    ])
+
+    const csvContent = [header.join(','), ...rows.map((r) => r.join(','))].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -303,8 +373,9 @@ function AttemptDashboard({ bank, onClose }) {
                   <tr>
                     <th>Student Email</th>
                     <th>Status</th>
-                    <th>Score</th>
-                    <th>Percentage</th>
+                    <th>Latest Score</th>
+                    <th>Best Score</th>
+                    <th>Attempts</th>
                     <th>Fullscreen Integrity</th>
                     <th>Completed At</th>
                     <th>Actions</th>
@@ -312,48 +383,204 @@ function AttemptDashboard({ bank, onClose }) {
                 </thead>
                 <tbody>
                   {studentRows.map((row) => (
-                    <tr key={row.email}>
-                      <td className="qb-student-email-cell">
-                        <ion-icon name="person-circle-outline"></ion-icon>
-                        <span>{row.email}</span>
-                      </td>
-                      <td>
-                        <span className={`qb-attempt-badge ${row.status === 'Completed' ? 'completed' : row.status === 'In Progress' ? 'started' : 'pending'}`}>
-                          {row.status}
-                        </span>
-                      </td>
-                      <td className="font-mono">{row.scoreDisplay}</td>
-                      <td className="font-mono font-bold">{row.percentageDisplay}</td>
-                      <td>
-                        {row.fullscreenDisplay !== '—' ? (
-                          row.fullscreenDisplay.includes('⚠️') ? (
-                            <span style={{ color: '#EF4444', fontWeight: 600, fontSize: '12px' }}>
-                              {row.fullscreenDisplay}
+                    <>
+                      <tr key={row.email}>
+                        <td className="qb-student-email-cell">
+                          <ion-icon name="person-circle-outline"></ion-icon>
+                          <span>{row.email}</span>
+                        </td>
+                        <td>
+                          <span className={`qb-attempt-badge ${row.status === 'Completed' ? 'completed' : row.status === 'In Progress' ? 'started' : 'pending'}`}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td className="font-mono">
+                          {row.latestScoreDisplay !== '—' ? (
+                            <span>
+                              {row.latestScoreDisplay}{' '}
+                              <span style={{ color: 'var(--text-2, #A1A1AA)', fontSize: '11px' }}>
+                                ({row.latestPctDisplay})
+                              </span>
                             </span>
                           ) : (
-                            <span style={{ color: '#10B981', fontWeight: 600, fontSize: '12px' }}>
-                              {row.fullscreenDisplay}
+                            '—'
+                          )}
+                        </td>
+                        <td className="font-mono font-bold" style={{ color: row.bestScoreDisplay !== '—' ? '#10B981' : 'inherit' }}>
+                          {row.bestScoreDisplay !== '—' ? (
+                            <span>
+                              {row.bestScoreDisplay}{' '}
+                              <span style={{ color: '#10B981', fontSize: '11px', opacity: 0.9 }}>
+                                ({row.bestPctDisplay})
+                              </span>
                             </span>
-                          )
-                        ) : (
-                          <span style={{ color: 'var(--text-2, #A1A1AA)', fontSize: '12px' }}>—</span>
-                        )}
-                      </td>
-                      <td className="qb-time-cell">{row.completedDateDisplay}</td>
-                      <td>
-                        {row.hasAttempt && (
-                          <button
-                            type="button"
-                            className="qb-reset-btn"
-                            onClick={() => setRetakeConfirmEmail(row.email)}
-                            title="Reset attempt (allow student to retake)"
-                          >
-                            <ion-icon name="refresh-outline"></ion-icon>
-                            <span>Allow Retake</span>
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="font-mono font-bold">{row.attemptCount}</span>
+                            {row.attemptsList.length > 1 && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary qb-small-btn"
+                                style={{ fontSize: '11px', padding: '3px 8px', height: '24px' }}
+                                onClick={() => setExpandedEmail(expandedEmail === row.email ? null : row.email)}
+                              >
+                                <ion-icon name={expandedEmail === row.email ? 'chevron-up-outline' : 'chevron-down-outline'}></ion-icon>
+                                <span>{expandedEmail === row.email ? 'Hide' : `Retests (${row.attemptCount})`}</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          {row.fullscreenDisplay !== '—' ? (
+                            row.fullscreenDisplay.includes('⚠️') ? (
+                              <span style={{ color: '#EF4444', fontWeight: 600, fontSize: '12px' }}>
+                                {row.fullscreenDisplay}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#10B981', fontWeight: 600, fontSize: '12px' }}>
+                                {row.fullscreenDisplay}
+                              </span>
+                            )
+                          ) : (
+                            <span style={{ color: 'var(--text-2, #A1A1AA)', fontSize: '12px' }}>—</span>
+                          )}
+                        </td>
+                        <td className="qb-time-cell">{row.completedDateDisplay}</td>
+                        <td>
+                          {row.hasAttempt && (
+                            <button
+                              type="button"
+                              className="qb-reset-btn"
+                              onClick={() => setRetakeConfirmEmail(row.email)}
+                              title="Reset attempt (allow student to retake)"
+                            >
+                              <ion-icon name="refresh-outline"></ion-icon>
+                              <span>Allow Retake</span>
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {expandedEmail === row.email && (
+                        <tr key={`${row.email}-expanded`} className="qb-retests-row">
+                          <td colSpan={8} style={{ padding: '0 16px 16px', background: 'rgba(255, 255, 255, 0.02)' }}>
+                            <div
+                              style={{
+                                background: 'rgba(0, 0, 0, 0.35)',
+                                border: '1px solid var(--line, #383842)',
+                                borderRadius: '10px',
+                                padding: '14px 18px',
+                                marginTop: '6px',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  marginBottom: '12px',
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    fontSize: '13px',
+                                    color: 'var(--text-1, #F4F4F5)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                  }}
+                                >
+                                  <ion-icon name="layers-outline" style={{ color: '#47afe5', fontSize: '16px' }}></ion-icon>
+                                  <span>Attempt History for {row.email} ({row.attemptsList.length} Attempt{row.attemptsList.length !== 1 ? 's' : ''})</span>
+                                </strong>
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary qb-small-btn"
+                                  style={{ fontSize: '11px', padding: '2px 8px' }}
+                                  onClick={() => setExpandedEmail(null)}
+                                >
+                                  Hide
+                                </button>
+                              </div>
+
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                                  gap: '12px',
+                                }}
+                              >
+                                {row.attemptsList.map((att, idx) => {
+                                  const attNum = att.attemptNumber || idx + 1
+                                  const attScore = att.score ?? '—'
+                                  const attTotal = att.totalQuestions || questionTotal
+                                  const attPct =
+                                    att.percentage ??
+                                    (typeof att.score === 'number' ? Math.round((att.score / attTotal) * 100) : '—')
+                                  const attDate = att.submittedAt || att.completedAt
+                                    ? new Date(att.submittedAt || att.completedAt).toLocaleDateString(undefined, {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })
+                                    : 'Submitted'
+                                  const attExits = att.minimizeCount ?? att.fullscreenViolations ?? 0
+
+                                  return (
+                                    <div
+                                      key={att.id || idx}
+                                      style={{
+                                        background: 'rgba(255, 255, 255, 0.04)',
+                                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                                        borderRadius: '8px',
+                                        padding: '12px 14px',
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          marginBottom: '6px',
+                                        }}
+                                      >
+                                        <span style={{ fontWeight: 700, fontSize: '13px', color: '#47afe5' }}>
+                                          Attempt #{attNum}
+                                        </span>
+                                        <span
+                                          style={{
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            padding: '2px 8px',
+                                            borderRadius: '10px',
+                                            background: attExits > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                                            color: attExits > 0 ? '#EF4444' : '#10B981',
+                                          }}
+                                        >
+                                          {attExits > 0 ? `⚠️ ${attExits} exit(s)` : '✓ Clean'}
+                                        </span>
+                                      </div>
+                                      <div style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', marginBottom: '4px' }}>
+                                        {attScore} / {attTotal} marks <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-2, #A1A1AA)' }}>({attPct}%)</span>
+                                      </div>
+                                      <div style={{ fontSize: '11px', color: 'var(--text-2, #A1A1AA)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <ion-icon name="time-outline"></ion-icon>
+                                        <span>{attDate}</span>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                 </tbody>
               </table>

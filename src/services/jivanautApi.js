@@ -648,6 +648,14 @@ export const studentApi = {
   },
 
   /**
+   * Get single assigned test detail for logged-in student
+   */
+  async getTestDetail(testId) {
+    const res = await request(`/api/student/tests/${encodeURIComponent(testId)}`, { method: 'GET' })
+    return res.data
+  },
+
+  /**
    * Start or resume a test attempt (Strict DTO whitelist - correctOption stripped)
    */
   async startAttempt(testId) {
@@ -715,8 +723,9 @@ export const studentApi = {
   /**
    * View score & post-test explanations (if enabled by teacher)
    */
-  async getTestResult(testId) {
-    const res = await request(`/api/student/tests/${encodeURIComponent(testId)}/result`, {
+  async getTestResult(testId, attemptNumber = null) {
+    const query = attemptNumber ? `?attemptNumber=${encodeURIComponent(attemptNumber)}` : ''
+    const res = await request(`/api/student/tests/${encodeURIComponent(testId)}/result${query}`, {
       method: 'GET',
     })
     return res.data

@@ -77,6 +77,7 @@ function ClassroomPortal() {
   const [allCourseWorkLoading, setAllCourseWorkLoading] = useState(false)
   const [allCourseWorkError, setAllCourseWorkError] = useState('')
   const [previewBankId, setPreviewBankId] = useState(null)
+  const [quizViewOptions, setQuizViewOptions] = useState(null)
 
   // When previewBankId is open, lock scroll and add modal/quiz open classes to body to hide sidebar
   useEffect(() => {
@@ -1799,7 +1800,10 @@ function ClassroomPortal() {
               ) : (
                 <StudentQuizList
                   auth={auth}
-                  onLaunchQuiz={(bankId) => setPreviewBankId(bankId)}
+                  onLaunchQuiz={(bankId, options = null) => {
+                    setPreviewBankId(bankId)
+                    setQuizViewOptions(options)
+                  }}
                   onSignIn={() => handleConnectLive('student')}
                 />
               )}
@@ -1814,7 +1818,12 @@ function ClassroomPortal() {
           <QuizRunner
             bankId={previewBankId}
             isPreview={isTeacher && role === 'teacher'}
-            onClosePreview={() => setPreviewBankId(null)}
+            initialViewResult={quizViewOptions?.viewResult || false}
+            initialIsRetest={quizViewOptions?.isRetest || false}
+            onClosePreview={() => {
+              setPreviewBankId(null)
+              setQuizViewOptions(null)
+            }}
           />
         </div>
       )}

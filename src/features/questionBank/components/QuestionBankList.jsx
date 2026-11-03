@@ -289,13 +289,16 @@ function QuestionBankList({ onLaunchQuiz }) {
             const endingHours = bank?.settings?.quizEndingHours
               ? parseFloat(bank.settings.quizEndingHours)
               : 3
+            const isSingle = bank?.settings?.oneAttempt !== false
             await questionBankApi.assignStudents(targetId, {
               studentEmails: emails,
               attemptDurationMinutes: duration,
               timeLimitMinutes: duration,
               quizEndingHours: endingHours,
               windowHours: endingHours,
-              maxAttempts: bank?.settings?.oneAttempt ? 1 : (bank?.settings?.maxAttempts || 1),
+              singleAttempt: isSingle,
+              oneAttempt: isSingle,
+              maxAttempts: isSingle ? 1 : (bank?.settings?.maxAttempts || 10),
               randomizeQuestions: Boolean(bank?.settings?.randomizeQuestions),
               randomizeOptions: Boolean(bank?.settings?.randomizeOptions),
               showExplanations: Boolean(bank?.settings?.showExplanation),

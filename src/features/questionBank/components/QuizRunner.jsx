@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   getStoredAuth,
   requestGoogleAccessToken,
@@ -32,9 +32,19 @@ import {
 } from '../../../services/jivanautApi'
 import { ProctoringGuard } from '../../../lib/proctoringGuard'
 
-function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
+function QuizRunner({
+  bankId: propBankId = null,
+  isPreview = false,
+  onClosePreview = null,
+  initialViewResult = false,
+  initialIsRetest = false,
+}) {
   const params = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const searchParams = new URLSearchParams(location?.search || '')
+  const effectiveViewResult = initialViewResult || searchParams.get('viewResult') === 'true'
+  const effectiveIsRetest = initialIsRetest || searchParams.get('retest') === 'true'
   const activeBankId = propBankId || params.bankId
 
   const [theme, setTheme] = useState(() => {
@@ -340,13 +350,28 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     } else {
       studentApi
         .getAssignedTests()
-        .then((tests) => {
-          const found = Array.isArray(tests)
+        .then(async (tests) => {
+          let found = Array.isArray(tests)
             ? tests.find((t) => t.testId === activeBankId || t.assignmentId === activeBankId || (b && t.title === b.title))
             : null
+
+          if (!found) {
+            try {
+              const detail = await studentApi.getTestDetail(activeBankId)
+              if (detail) found = detail
+            } catch (detailErr) {
+              // Not found in detail
+            }
+          }
+
           if (found) {
+            const isSingle =
+              found.isSingleAttempt !== undefined
+                ? Boolean(found.isSingleAttempt)
+                : (found.maxAttempts === 1 && !found.canRetest && !found.allowRetest)
+
             setBank({
-              id: found.testId,
+              id: found.testId || found.id || activeBankId,
               title: found.title,
               description: found.description,
               subject: found.subject || 'AP Biology',
@@ -357,15 +382,31 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               authorizedStudents: auth?.user?.email ? [auth.user.email] : [],
               settings: {
                 timeLimitMinutes: found.attemptDurationMinutes || 60,
-                oneAttempt: true,
+                oneAttempt: isSingle,
                 showExplanation: true,
               },
               questions: [],
               studentStatus: found.studentStatus || null,
+              isSingleAttempt: isSingle,
+              canViewResult: found.canViewResult ?? (found.studentStatus === 'SUBMITTED' || found.studentStatus === 'CAN_RETEST'),
+              canRetest: found.canRetest ?? (typeof found.remainingAttempts === 'number' ? found.remainingAttempts > 0 : !isSingle),
+              maxAttempts: found.maxAttempts ?? (isSingle ? 1 : 10),
+              allowRetest: found.allowRetest ?? (!isSingle),
+              remainingAttempts: found.remainingAttempts,
+              completedAttempts: found.completedAttempts,
+              latestScore: found.latestScore,
+              latestPercentage: found.latestPercentage,
             })
             setBankLoading(false)
           } else if (b) {
-            setBank({ ...b, isBackendTest: true, studentStatus: b.studentStatus || null })
+            setBank({
+              ...b,
+              isBackendTest: true,
+              studentStatus: b.studentStatus || null,
+              isSingleAttempt: b.isSingleAttempt ?? b.settings?.oneAttempt ?? true,
+              canViewResult: b.canViewResult ?? true,
+              canRetest: b.canRetest ?? false,
+            })
             setBankLoading(false)
           } else {
             // Resiliency fallback: Check for active student attempt by testId before marking as not found
@@ -388,6 +429,9 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                     },
                     questions: [],
                     studentStatus: 'STARTED',
+                    isSingleAttempt: true,
+                    canViewResult: false,
+                    canRetest: false,
                   })
                 }
                 setBankLoading(false)
@@ -443,6 +487,88 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
       )
       setPreparedQuestions(qs)
       setStage('start_screen')
+      return
+    }
+
+    // Direct result view requested OR already submitted (and not an explicit retest)
+    if (!isPreview && (effectiveViewResult || (bank.studentStatus === 'SUBMITTED' && !effectiveIsRetest))) {
+      const targetTestId = bank.id || activeBankId
+      setBankLoading(true)
+      studentApi
+        .getTestResult(targetTestId)
+        .then((result) => {
+          if (result) {
+            setFinalScore(result.score ?? 0)
+            setCompletedAttemptData(result)
+
+            // Overwrite stale local storage with the real backend result
+            const effectiveEmail = auth?.user?.email || getStoredSessionUser()?.email || ''
+            if (effectiveEmail) {
+              recordCompletedAttempt(targetTestId, effectiveEmail, {
+                score: result.score ?? 0,
+                totalQuestions: result.totalQuestions || (result.questions?.length ?? 5),
+                percentage: result.percentage ?? 0,
+                correctAnswers: result.correctAnswers ?? result.score ?? 0,
+                wrongAnswers: result.wrongAnswers ?? 0,
+                answers: (result.questions || []).map((q) => ({
+                  questionId: q.attemptQuestionId,
+                  selectedOption: q.selectedOption,
+                  correctOption: q.correctOption,
+                  isCorrect: q.isCorrect,
+                  explanation: q.explanation,
+                })),
+                studentName: auth?.user?.name || effectiveEmail,
+              })
+            }
+
+            if (Array.isArray(result.questions) && result.questions.length > 0) {
+              const mapped = result.questions.map((q, idx) => ({
+                id: q.attemptQuestionId || `Q${String(idx + 1).padStart(3, '0')}`,
+                question: q.questionText,
+                options: (q.options || []).map((o) => ({
+                  id: o.label || o.id,
+                  text: o.text || '',
+                  imageUrl: o.imageUrl || null,
+                })),
+                selectedOption: q.selectedOption || null,
+                correctOption: q.correctOption || null,
+                isCorrect: q.isCorrect ?? null,
+                explanation: q.explanation || '',
+                explanationImage: q.explanationImageUrl || q.explanationImage || null,
+                image: q.image || q.imageUrl || null,
+                choicesImage: q.choicesImage || null,
+              }))
+              setPreparedQuestions(mapped)
+              setStudentAnswers(
+                mapped.map((q) => ({
+                  questionId: q.id,
+                  selectedOption: q.selectedOption,
+                  correctOption: q.correctOption,
+                  isCorrect: q.isCorrect,
+                  explanation: q.explanation,
+                }))
+              )
+            }
+            setStage('completed')
+          } else {
+            setStage('start_screen')
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to fetch test result, checking local attempt:', err)
+          const effectiveEmail = auth?.user?.email || getStoredSessionUser()?.email || ''
+          const priorAttempt = getStudentAttempt(targetTestId, effectiveEmail)
+          if (priorAttempt && priorAttempt.status === 'completed') {
+            setCompletedAttemptData(priorAttempt)
+            setFinalScore(priorAttempt.score ?? 0)
+            setStage('completed')
+          } else {
+            setStage('start_screen')
+          }
+        })
+        .finally(() => {
+          setBankLoading(false)
+        })
       return
     }
 
@@ -577,6 +703,9 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
                   percentage: result.percentage ?? Math.round((correctCount / preparedQuestions.length) * 100),
                   timeTakenSeconds: result.timeTakenSeconds,
                   fullscreenViolations,
+                  correctAnswers: result.correctAnswers ?? correctCount,
+                  wrongAnswers: result.wrongAnswers ?? (preparedQuestions.length - correctCount),
+                  questions: result.questions || null,
                 })
               }
             })
@@ -585,14 +714,6 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
             })
         }
       }
-
-      // EPHEMERAL PURGE: Revoke all image blobs from memory immediately
-      purgeAllEphemeralImages()
-
-      // Zero out image data payloads from memory state
-      setPreparedQuestions((prev) =>
-        prev.map((q) => ({ ...q, image: null, imageUrl: null, explanationImage: null }))
-      )
 
       setStage('completed')
     },
@@ -774,15 +895,17 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     }
   }
 
-  // Select Option
-  const handleSelectOption = (optId) => {
+  // Select Option and immediately trigger instant live feedback (Green/Red)
+  const handleSelectOption = async (optId) => {
     if (isAnswerSubmitted || isSubmittingAnswer || isTerminated) return // Locked!
     setSelectedOptionId(optId)
+    await executeCheckAnswer(optId)
   }
 
-  // Submit Answer (Locks immediately, checks answer, and reveals instant practice feedback + reason)
-  const handleSubmitAnswer = async () => {
-    if (!selectedOptionId || isAnswerSubmitted || isSubmittingAnswer || isTerminated) return
+  // Execute answer validation, locking, and instant educational feedback
+  const executeCheckAnswer = async (optIdToVerify) => {
+    const selectedOpt = optIdToVerify || selectedOptionId
+    if (!selectedOpt || isAnswerSubmitted || isSubmittingAnswer || isTerminated) return
 
     const currentQ = preparedQuestions[currentIndex]
     if (!currentQ) return
@@ -790,66 +913,36 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     setIsSubmittingAnswer(true)
 
     let isCorrect = currentQ.correctOption
-      ? selectedOptionId.toUpperCase() === currentQ.correctOption.toUpperCase()
+      ? selectedOpt.toUpperCase() === currentQ.correctOption.toUpperCase()
       : false
     let correctOption = currentQ.correctOption || ''
     let explanation = currentQ.explanation || ''
+    let explanationImage = currentQ.explanationImage || null
 
     // If teacher preview, check answer interactively via teacher test preview check API
     if (isPreview && bank?.id) {
       try {
         const targetQId = currentQ.rawQuestionId || currentQ.questionId || currentQ.id
-        const feedback = await testManagementApi.checkPreviewAnswer(bank.id, targetQId, selectedOptionId)
+        const feedback = await testManagementApi.checkPreviewAnswer(bank.id, targetQId, selectedOpt)
         if (feedback) {
           isCorrect = Boolean(feedback.isCorrect)
           correctOption = feedback.correctOption || ''
           explanation = feedback.explanation || ''
-          const explanationImage =
+          explanationImage =
             feedback.explanationImageUrl || currentQ.explanationImage || null
-
-          setPreparedQuestions((prev) => {
-            const next = [...prev]
-            if (next[currentIndex]) {
-              next[currentIndex] = {
-                ...next[currentIndex],
-                correctOption,
-                explanation,
-                explanationImage,
-                isCorrect,
-                selectedOption: selectedOptionId,
-              }
-            }
-            return next
-          })
         }
       } catch (previewErr) {
         console.warn('Teacher preview check answer note:', previewErr)
       }
     } else if (bank?.isBackendTest) {
       try {
-        const feedback = await studentApi.checkPracticeAnswer(bank.id, currentQ.id, selectedOptionId)
+        const feedback = await studentApi.checkPracticeAnswer(bank.id, currentQ.id, selectedOpt)
         if (feedback) {
           isCorrect = Boolean(feedback.isCorrect)
           correctOption = feedback.correctOption || ''
           explanation = feedback.explanation || ''
-          const explanationImage =
+          explanationImage =
             feedback.explanationImageUrl || currentQ.explanationImage || null
-
-          // update current question in preparedQuestions so the option buttons & explanation panel reveal the answer & rationale
-          setPreparedQuestions((prev) => {
-            const next = [...prev]
-            if (next[currentIndex]) {
-              next[currentIndex] = {
-                ...next[currentIndex],
-                correctOption,
-                explanation,
-                explanationImage,
-                isCorrect,
-                selectedOption: selectedOptionId,
-              }
-            }
-            return next
-          })
         }
       } catch (err) {
         console.warn('Backend practice check error:', err)
@@ -857,24 +950,48 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
           .saveAnswers(bank.id, [
             {
               attemptQuestionId: currentQ.id,
-              selectedOption: selectedOptionId,
+              selectedOption: selectedOpt,
             },
           ])
           .catch(() => {})
       }
     }
 
+    // Update current question in preparedQuestions so the option buttons & explanation panel reveal the answer & rationale
+    setPreparedQuestions((prev) => {
+      const next = [...prev]
+      if (next[currentIndex]) {
+        next[currentIndex] = {
+          ...next[currentIndex],
+          correctOption,
+          explanation,
+          explanationImage,
+          isCorrect,
+          selectedOption: selectedOpt,
+        }
+      }
+      return next
+    })
+
     const answerRecord = {
       questionId: currentQ.id,
-      selectedOption: selectedOptionId,
+      selectedOption: selectedOpt,
       correctOption,
       isCorrect,
       explanation,
     }
 
-    setStudentAnswers((prev) => [...prev, answerRecord])
+    setStudentAnswers((prev) => {
+      const filtered = prev.filter((a) => a.questionId !== currentQ.id)
+      return [...filtered, answerRecord]
+    })
     setIsAnswerSubmitted(true)
     setIsSubmittingAnswer(false)
+  }
+
+  // Fallback submit handler
+  const handleSubmitAnswer = async () => {
+    await executeCheckAnswer(selectedOptionId)
   }
 
   // Next Question or Finish Quiz
@@ -1572,88 +1689,279 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         )}
 
         {/* ========================================================= */}
-        {/* VIEW 6: FINAL SCORECARD RESULT (DIAGRAMS PURGED)          */}
+        {/* VIEW 6: FINAL SCORECARD RESULT & SOLUTIONS REVIEW         */}
         {/* ========================================================= */}
-        {stage === 'completed' && (
-          <div className="qb-quiz-card text-center">
-            <div className="qb-card-icon-hero success">
-              <ion-icon name="ribbon-outline"></ion-icon>
-            </div>
-            <h2 className="qb-hero-title">Quiz Completed!</h2>
+        {stage === 'completed' && (() => {
+          const isSingleAttemptMode =
+            bank?.isSingleAttempt === true ||
+            (bank?.isSingleAttempt === undefined &&
+              (bank?.maxAttempts === 1 || bank?.settings?.oneAttempt === true) &&
+              !bank?.allowRetest &&
+              !bank?.canRetest)
 
-            {timedOutNotice ? (
-              <div className="qb-alert-toast" style={{ justifyContent: 'center', marginBottom: '16px' }}>
-                <ion-icon name="time-outline"></ion-icon>
-                <span>Time expired! Your completed answers have been auto-submitted.</span>
-              </div>
-            ) : (
-              <p className="qb-hero-desc">Great job on finishing <em>&ldquo;{bank.title}&rdquo;</em>.</p>
-            )}
+          const canRetestMode =
+            !isSingleAttemptMode &&
+            (bank?.canRetest === true ||
+              (typeof bank?.remainingAttempts === 'number' && bank?.remainingAttempts > 0) ||
+              bank?.allowRetest === true ||
+              (bank?.maxAttempts && bank.maxAttempts > 1))
 
-            <div className="qb-scorecard-box">
-              <div className="qb-result-score-big">
-                {finalScore} <span>/ {preparedQuestions.length}</span>
-              </div>
-              <div className="qb-result-percent">
-                {preparedQuestions.length > 0 ? Math.round((finalScore / preparedQuestions.length) * 100) : 0}% Score
-              </div>
+          const totalQCount = preparedQuestions.length || completedAttemptData?.totalQuestions || 0
+          const displayPercentage =
+            completedAttemptData?.percentage ??
+            (totalQCount > 0 ? Math.round((finalScore / totalQCount) * 100) : 0)
 
-              <div className="qb-score-breakdown-row">
-                <div className="qb-breakdown-item correct">
-                  <ion-icon name="checkmark-circle-outline"></ion-icon>
-                  <span>{finalScore} Correct</span>
+          const correctCount = completedAttemptData?.correctAnswers ?? finalScore
+          const wrongCount =
+            completedAttemptData?.wrongAnswers ?? (totalQCount > 0 ? Math.max(0, totalQCount - correctCount) : 0)
+
+          return (
+            <div className="qb-quiz-card text-center" style={{ maxWidth: '820px' }}>
+              <div className="qb-card-icon-hero success">
+                <ion-icon name="ribbon-outline"></ion-icon>
+              </div>
+              <h2 className="qb-hero-title">
+                {effectiveViewResult || bank?.studentStatus === 'SUBMITTED'
+                  ? 'Test Attempt Results'
+                  : 'Quiz Completed!'}
+              </h2>
+
+              {timedOutNotice ? (
+                <div className="qb-alert-toast" style={{ justifyContent: 'center', marginBottom: '16px' }}>
+                  <ion-icon name="time-outline"></ion-icon>
+                  <span>Time expired! Your completed answers have been auto-submitted.</span>
                 </div>
-                <div className="qb-breakdown-item wrong">
-                  <ion-icon name="close-circle-outline"></ion-icon>
-                  <span>{preparedQuestions.length - finalScore} Incorrect</span>
+              ) : (
+                <p className="qb-hero-desc">
+                  {effectiveViewResult || bank?.studentStatus === 'SUBMITTED'
+                    ? `Summary and detailed solution breakdown for "${bank.title}".`
+                    : `Great job on finishing "${bank.title}".`}
+                </p>
+              )}
+
+              <div className="qb-scorecard-box">
+                <div className="qb-result-score-big">
+                  {finalScore} <span>/ {totalQCount}</span>
                 </div>
+                <div className="qb-result-percent">
+                  {displayPercentage}% Score
+                </div>
+
+                <div className="qb-score-breakdown-row">
+                  <div className="qb-breakdown-item correct">
+                    <ion-icon name="checkmark-circle-outline"></ion-icon>
+                    <span>{correctCount} Correct</span>
+                  </div>
+                  <div className="qb-breakdown-item wrong">
+                    <ion-icon name="close-circle-outline"></ion-icon>
+                    <span>{wrongCount} Incorrect</span>
+                  </div>
+                </div>
+
+                {/* Pillar 3: Student Email Result Isolation Record */}
+                <div className="qb-email-record-chip">
+                  <ion-icon name="mail-outline"></ion-icon>
+                  <span>Result permanently saved to: <strong>{auth?.user?.email || studentEmail}</strong></span>
+                </div>
+
+                {/* Pillar 2: Proctored Fullscreen Integrity Status */}
+                <div className={`qb-integrity-status-pill ${fullscreenViolations === 0 ? 'clean' : fullscreenViolations >= 3 ? 'danger' : 'warning'}`}>
+                  <ion-icon name={fullscreenViolations === 0 ? 'shield-checkmark-outline' : 'warning-outline'}></ion-icon>
+                  <span>Fullscreen Integrity: {fullscreenViolations === 0 ? 'Proctored Clean (0 exits)' : fullscreenViolations >= 3 ? 'Disqualified (3 screen switches - 0 Marks)' : `${fullscreenViolations} window exit(s) recorded`}</span>
+                </div>
+
+                <p className="qb-completed-date-stamp">
+                  Submitted on {new Date().toLocaleDateString(undefined, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
               </div>
 
-              {/* Pillar 3: Student Email Result Isolation Record */}
-              <div className="qb-email-record-chip">
-                <ion-icon name="mail-outline"></ion-icon>
-                <span>Result permanently saved to: <strong>{auth?.user?.email || studentEmail}</strong></span>
-              </div>
+              {/* Question Solutions & Explanations Review List */}
+              {preparedQuestions.length > 0 && (
+                <div className="qb-review-section" style={{ textAlign: 'left', marginTop: '32px' }}>
+                  <div className="qb-review-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text, #FFF)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ion-icon name="bulb-outline" style={{ color: '#10B981' }}></ion-icon>
+                      <span>Question Solutions &amp; Explanations ({preparedQuestions.length})</span>
+                    </h3>
+                  </div>
 
-              {/* Pillar 2: Proctored Fullscreen Integrity Status */}
-              <div className={`qb-integrity-status-pill ${fullscreenViolations === 0 ? 'clean' : fullscreenViolations >= 3 ? 'danger' : 'warning'}`}>
-                <ion-icon name={fullscreenViolations === 0 ? 'shield-checkmark-outline' : 'warning-outline'}></ion-icon>
-                <span>Fullscreen Integrity: {fullscreenViolations === 0 ? 'Proctored Clean (0 exits)' : fullscreenViolations >= 3 ? 'Disqualified (3 screen switches - 0 Marks)' : `${fullscreenViolations} window exit(s) recorded`}</span>
-              </div>
+                  <div className="qb-review-cards-list" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {preparedQuestions.map((q, idx) => {
+                      const ansRecord = studentAnswers.find((a) => a.questionId === q.id) || q
+                      const studentChoice = ansRecord.selectedOption || q.selectedOption || null
+                      const correctChoice = q.correctOption || ansRecord.correctOption || null
+                      const isQCorrect =
+                        ansRecord.isCorrect !== undefined && ansRecord.isCorrect !== null
+                          ? ansRecord.isCorrect
+                          : studentChoice && correctChoice
+                          ? studentChoice.toUpperCase() === correctChoice.toUpperCase()
+                          : false
 
-              <p className="qb-completed-date-stamp">
-                Submitted on {new Date().toLocaleDateString(undefined, {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
+                      return (
+                        <div
+                          key={q.id || idx}
+                          className={`qb-solution-review-card ${isQCorrect ? 'correct' : 'incorrect'}`}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: `1px solid ${isQCorrect ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+                            borderRadius: '12px',
+                            padding: '18px 20px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text, #FFF)' }}>
+                              Question {idx + 1}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                padding: '4px 10px',
+                                borderRadius: '12px',
+                                background: isQCorrect ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: isQCorrect ? '#10B981' : '#EF4444',
+                              }}
+                            >
+                              {isQCorrect ? '✓ Correct (+1)' : '✗ Incorrect (0)'}
+                            </span>
+                          </div>
+
+                          {q.question && (
+                            <p style={{ fontSize: '14px', color: 'var(--text-1, #E4E4E7)', margin: '0 0 12px', lineHeight: 1.6 }}>
+                              {q.question}
+                            </p>
+                          )}
+
+                          {(q.image || q.imageUrl) && (
+                            <div style={{ margin: '12px 0', maxWidth: '100%', overflow: 'hidden', borderRadius: '8px' }}>
+                              <img
+                                src={resolveAssetUrl(q.image || q.imageUrl)}
+                                alt={`Question ${idx + 1}`}
+                                style={{ maxWidth: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '8px' }}
+                              />
+                            </div>
+                          )}
+
+                          {q.choicesImage && (
+                            <div style={{ margin: '12px 0', maxWidth: '100%', overflow: 'hidden', borderRadius: '8px' }}>
+                              <img
+                                src={resolveAssetUrl(q.choicesImage)}
+                                alt={`Question ${idx + 1} Choices`}
+                                style={{ maxWidth: '100%', maxHeight: '280px', objectFit: 'contain', borderRadius: '8px' }}
+                              />
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', margin: '12px 0', fontSize: '13px' }}>
+                            <div
+                              style={{
+                                padding: '6px 14px',
+                                borderRadius: '6px',
+                                background: isQCorrect ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                color: isQCorrect ? '#10B981' : '#EF4444',
+                                border: `1px solid ${isQCorrect ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                                fontWeight: 500,
+                              }}
+                            >
+                              Your Choice: <strong>Choice {studentChoice || 'None'}</strong>
+                            </div>
+                            <div
+                              style={{
+                                padding: '6px 14px',
+                                borderRadius: '6px',
+                                background: 'rgba(16, 185, 129, 0.12)',
+                                color: '#10B981',
+                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                fontWeight: 500,
+                              }}
+                            >
+                              Correct Choice: <strong>Choice {correctChoice || '—'}</strong>
+                            </div>
+                          </div>
+
+                          {(q.explanation || ansRecord.explanation) && (
+                            <div
+                              style={{
+                                marginTop: '14px',
+                                padding: '12px 16px',
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                borderRadius: '8px',
+                                borderLeft: '4px solid #10B981',
+                              }}
+                            >
+                              <div style={{ fontWeight: 600, fontSize: '12px', color: '#10B981', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <ion-icon name="information-circle-outline"></ion-icon>
+                                <span>Explanation &amp; Solution Rationale</span>
+                              </div>
+                              <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-2, #A1A1AA)', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                                {q.explanation || ansRecord.explanation}
+                              </p>
+                              {(q.explanationImage || ansRecord.explanationImage) && (
+                                <div style={{ marginTop: '10px' }}>
+                                  <img
+                                    src={resolveAssetUrl(q.explanationImage || ansRecord.explanationImage)}
+                                    alt={`Explanation for Q${idx + 1}`}
+                                    style={{ maxWidth: '100%', maxHeight: '260px', objectFit: 'contain', borderRadius: '6px' }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Actions: Retest vs Single Attempt */}
+              <div style={{ marginTop: '36px' }}>
+                {isSingleAttemptMode ? (
+                  <div>
+                    <div className="qb-info-banner" style={{ marginBottom: '20px', textAlign: 'center', justifyContent: 'center' }}>
+                      <ion-icon name="lock-closed-outline"></ion-icon>
+                      <span>Single-attempt mode is enabled for this exam. Retakes are not permitted.</span>
+                    </div>
+                    <button type="button" className="btn btn-primary qb-hero-btn" onClick={handleExitQuiz}>
+                      Back to Dashboard
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <button type="button" className="btn btn-secondary" onClick={handleExitQuiz} style={{ minWidth: '160px' }}>
+                      Back to Dashboard
+                    </button>
+                    {canRetestMode && (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ background: '#10B981', borderColor: '#059669', color: '#FFFFFF', minWidth: '160px' }}
+                        onClick={() => {
+                          setPreparedQuestions([])
+                          setStudentAnswers([])
+                          setSelectedOptionId('')
+                          setIsAnswerSubmitted(false)
+                          setCompletedAttemptData(null)
+                          setStage('start_screen')
+                          handleStartQuiz()
+                        }}
+                      >
+                        <ion-icon name="refresh-outline"></ion-icon>
+                        <span>Take Retest {typeof bank.remainingAttempts === 'number' ? `(${bank.remainingAttempts} left)` : ''}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-
-            {/* Ephemeral Notice */}
-            <div className="qb-ephemeral-purged-banner">
-              <ion-icon name="shield-checkmark-outline"></ion-icon>
-              <span>Security notice: Question diagrams were loaded ephemerally and have been permanently purged from browser memory.</span>
-            </div>
-
-            {bank.settings?.oneAttempt && !isPreview && (
-              <div className="qb-info-banner" style={{ marginBottom: '24px' }}>
-                <ion-icon name="lock-closed-outline"></ion-icon>
-                <span>Single-attempt mode is enabled. Your attempt has been permanently recorded.</span>
-              </div>
-            )}
-
-            <button
-              type="button"
-              className="btn btn-primary qb-hero-btn"
-              onClick={handleExitQuiz}
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        )}
+          )
+        })()}
       </main>
     </div>
   )
