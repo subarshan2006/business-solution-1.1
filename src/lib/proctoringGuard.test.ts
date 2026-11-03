@@ -1,0 +1,349 @@
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { ProctoringGuard } from './proctoringGuard';
+
+describe('ProctoringGuard Frontend Integrity & Black-Screen Security Tests', () => {
+  it('instantiates correctly with default options and watermark disabled', () => {
+    const guard = new ProctoringGuard({
+      testId: 'test-unit-001',
+    });
+
+    expect(guard).toBeDefined();
+    expect(guard.getMinimizeCount()).toBe(0);
+    expect(guard.getIsDisqualified()).toBe(false);
+  });
+
+  describe('Browser simulation environment', () => {
+    let mockWindow: any;
+    let mockDocument: any;
+    let mockListeners: Record<string, Function[]> = {};
+
+    beforeEach(() => {
+      mockListeners = {};
+
+      const createdElements: any[] = [];
+      const createElement = (tag: string) => {
+        const el: any = {
+          tagName: tag.toUpperCase(),
+          id: '',
+          style: {
+            cssText: '',
+            display: '',
+          },
+          innerHTML: '',
+          textContent: '',
+          parentElement: null,
+          appendChild: vi.fn(),
+          removeChild: vi.fn((child: any) => {
+            child.parentElement = null;
+          }),
+          getContext: vi.fn(() => ({
+            scale: vi.fn(),
+            clearRect: vi.fn(),
+            save: vi.fn(),
+            rotate: vi.fn(),
+            fillText: vi.fn(),
+            restore: vi.fn(),
+          })),
+        };
+        createdElements.push(el);
+        return el;
+      };
+
+      const bodyEl = createElement('body');
+      const headEl = createElement('head');
+
+      mockDocument = {
+        hidden: false,
+        hasFocus: vi.fn(() => false),
+        contains: vi.fn(() => false),
+        getElementById: vi.fn((id: string) => {
+          return createdElements.find((el) => el.id === id) || null;
+        }),
+        createElement: vi.fn((tag: string) => createElement(tag)),
+        body: bodyEl,
+        head: headEl,
+        documentElement: {
+          requestFullscreen: vi.fn(async () => {}),
+        },
+        addEventListener: vi.fn((event: string, handler: Function) => {
+          mockListeners[event] = mockListeners[event] || [];
+          mockListeners[event].push(handler);
+        }),
+        removeEventListener: vi.fn((event: string, handler: Function) => {
+          if (mockListeners[event]) {
+            mockListeners[event] = mockListeners[event].filter((h) => h !== handler);
+          }
+        }),
+      };
+
+      bodyEl.appendChild = vi.fn((el: any) => {
+        el.parentElement = bodyEl;
+        return el;
+      });
+      bodyEl.removeChild = vi.fn((el: any) => {
+        el.parentElement = null;
+        return el;
+      });
+      headEl.appendChild = vi.fn((el: any) => {
+        el.parentElement = headEl;
+        return el;
+      });
+      headEl.removeChild = vi.fn((el: any) => {
+        el.parentElement = null;
+        return el;
+      });
+
+      mockWindow = {
+        innerWidth: 1920,
+        innerHeight: 1080,
+        devicePixelRatio: 2,
+        addEventListener: vi.fn((event: string, handler: Function) => {
+          mockListeners[event] = mockListeners[event] || [];
+          mockListeners[event].push(handler);
+        }),
+        removeEventListener: vi.fn((event: string, handler: Function) => {
+          if (mockListeners[event]) {
+            mockListeners[event] = mockListeners[event].filter((h) => h !== handler);
+          }
+        }),
+        getComputedStyle: vi.fn(() => ({
+          display: 'block',
+          visibility: 'visible',
+          opacity: '0.12',
+        })),
+      };
+
+      (global as any).window = mockWindow;
+      (global as any).document = mockDocument;
+      Object.defineProperty(globalThis, 'navigator', {
+        value: {
+          userAgent: 'Mozilla/5.0 (Linux; Android 14; Mobile; Chrome/120.0)',
+          clipboard: { writeText: vi.fn(async () => {}) },
+          mediaDevices: { getDisplayMedia: vi.fn(async () => ({} as any)) },
+        },
+        configurable: true,
+        writable: true,
+      });
+
+      // Mock fetch
+      (global as any).fetch = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: {
+            minimizeCount: 1,
+            disqualified: false,
+          },
+        }),
+      }));
+    });
+
+    afterEach(() => {
+      delete (global as any).window;
+      delete (global as any).document;
+      delete (global as any).fetch;
+    });
+
+    it('enforces pure black screen (#000000) on overlay and disables watermark by default', () => {
+      const guard = new ProctoringGuard({
+        testId: 'test-101',
+      });
+      guard.start();
+
+      const overlay = mockDocument.getElementById('proctor-blackout-overlay');
+      expect(overlay).toBeDefined();
+      expect(overlay.style.cssText).toContain('background-color: #000000 !important');
+      expect(overlay.style.cssText).toContain('z-index: 2147483647 !important');
+
+      // Watermark canvas should NOT be created
+      const watermark = mockDocument.getElementById('proctor-forensic-watermark');
+      expect(watermark).toBeNull();
+
+      guard.stop();
+    });
+
+    it('suppresses mobile text selection, image dragging, and Chrome Google Lens callouts', () => {
+      const guard = new ProctoringGuard({
+        testId: 'test-styles-001',
+      });
+      guard.start();
+
+      const styleEl = mockDocument.getElementById('proctor-security-styles');
+      expect(styleEl).toBeDefined();
+      expect(styleEl.textContent).toContain('-webkit-touch-callout: none !important');
+      expect(styleEl.textContent).toContain('-webkit-user-select: none !important');
+      expect(styleEl.textContent).toContain('-webkit-user-drag: none !important');
+
+      guard.stop();
+      expect(styleEl.parentElement).toBeNull();
+    });
+
+    it('triggers instant black screen when mobile multi-touch gesture is detected', () => {
+      const blackoutSpy = vi.fn();
+      const violationSpy = vi.fn();
+
+      const guard = new ProctoringGuard({
+        testId: 'test-touch-001',
+        onBlackout: blackoutSpy,
+        onViolation: violationSpy,
+      });
+      guard.start();
+
+      const touchHandlers = mockListeners['touchstart'] || [];
+      expect(touchHandlers.length).toBeGreaterThan(0);
+
+      // Simulate 3-finger screenshot gesture
+      const multiTouchEvent = {
+        touches: [
+          { clientX: 100, clientY: 200 },
+          { clientX: 150, clientY: 250 },
+          { clientX: 200, clientY: 300 },
+        ],
+      };
+
+      touchHandlers[0]!(multiTouchEvent);
+
+      expect(blackoutSpy).toHaveBeenCalledWith(expect.stringContaining('Multi-touch gesture'));
+      const overlay = mockDocument.getElementById('proctor-blackout-overlay');
+      expect(overlay.style.display).toBe('flex');
+
+      guard.stop();
+    });
+
+    it('shows prominent security warning alert on blur, focusout, pagehide, and visibilitychange', () => {
+      const blackoutSpy = vi.fn();
+      const guard = new ProctoringGuard({
+        testId: 'test-blur-001',
+        onBlackout: blackoutSpy,
+      });
+      guard.start();
+
+      const blurHandlers = mockListeners['blur'] || [];
+      expect(blurHandlers.length).toBeGreaterThan(0);
+
+      // Trigger blur
+      blurHandlers[0]!();
+
+      expect(blackoutSpy).toHaveBeenCalled();
+      const overlay = mockDocument.getElementById('proctor-blackout-overlay');
+      expect(overlay.innerHTML).toContain('SECURITY ALERT: SCREEN HIDDEN');
+      expect(overlay.innerHTML).toContain('STRIKE WARNING: 3 screen switches will automatically terminate your exam with 0 MARKS');
+      expect(overlay.innerHTML).toContain('Current Screen Switches: <span id="proctor-strike-count"');
+
+      guard.stop();
+    });
+
+    it('permanently locks screen to EXAM TERMINATED - SCORE: 0 MARKS on 3 screen switches', async () => {
+      const violationSpy = vi.fn();
+      const guard = new ProctoringGuard({
+        testId: 'test-terminate-001',
+        apiBaseUrl: 'https://backend-jivant.onrender.com',
+        onViolation: violationSpy,
+      });
+      guard.start();
+
+      // Mock 3rd switch response from backend
+      (global as any).fetch = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: {
+            minimizeCount: 3,
+            disqualified: true,
+            score: 0,
+            message: 'Exam terminated and marked with 0 marks due to exceeding 3 screen switch violations.',
+          },
+        }),
+      }));
+
+      const blurHandlers = mockListeners['blur'] || [];
+      const focusHandlers = mockListeners['focus'] || [];
+
+      // Switch 1: Blur and focus gain
+      blurHandlers[0]!();
+      await focusHandlers[0]!();
+
+      // Force strike count to 3
+      (guard as any).minimizeCount = 3;
+      (guard as any).isDisqualified = true;
+
+      // Trigger blackout after 3 strikes
+      guard.showBlackout('Exam terminated due to 3 screen switch violations.');
+
+      const overlay = mockDocument.getElementById('proctor-blackout-overlay');
+      expect(overlay.innerHTML).toContain('EXAM TERMINATED');
+      expect(overlay.innerHTML).toContain('SCORE: 0 MARKS');
+      expect(overlay.innerHTML).toContain('You have exceeded the maximum limit of 3 screen switches');
+
+      // Attempting hideBlackout MUST NOT hide the overlay
+      guard.hideBlackout();
+      expect(overlay.style.display).toBe('flex');
+      expect(guard.getIsDisqualified()).toBe(true);
+
+      guard.stop();
+    });
+
+    it('sends Authorization Bearer header when session token exists', async () => {
+      const fetchSpy = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          data: { minimizeCount: 1, disqualified: false },
+        }),
+      }));
+      (global as any).fetch = fetchSpy;
+
+      const guard = new ProctoringGuard({
+        testId: 'test-auth-001',
+        apiBaseUrl: 'https://backend-jivant.onrender.com',
+        getAuthToken: () => 'my-jwt-session-token',
+        getActiveQuestionNumber: () => 4,
+      });
+      guard.start();
+
+      const blurHandlers = mockListeners['blur'] || [];
+      const focusHandlers = mockListeners['focus'] || [];
+
+      blurHandlers[0]!();
+      await focusHandlers[0]!();
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://backend-jivant.onrender.com/api/student/tests/test-auth-001/violations',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer my-jwt-session-token',
+            'Content-Type': 'application/json',
+          }),
+          credentials: 'include',
+        }),
+      );
+
+      guard.stop();
+    });
+
+    it('does not trigger blackout when clicking buttons while document.hasFocus() is true', () => {
+      mockDocument.hasFocus = vi.fn(() => true);
+      const blackoutSpy = vi.fn();
+      const guard = new ProctoringGuard({
+        testId: 'test-submit-click-001',
+        onBlackout: blackoutSpy,
+      });
+      guard.start();
+
+      const blurHandlers = mockListeners['blur'] || [];
+      const focusoutHandlers = mockListeners['focusout'] || [];
+
+      // Simulate clicking submit button or option
+      blurHandlers[0]!();
+      focusoutHandlers[0]!({ relatedTarget: null });
+
+      expect(blackoutSpy).not.toHaveBeenCalled();
+
+      guard.stop();
+    });
+  });
+});

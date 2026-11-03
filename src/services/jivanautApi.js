@@ -702,6 +702,17 @@ export const studentApi = {
   },
 
   /**
+   * Record a proctoring violation (minimize, blur, shortcut) and receive updated strike count
+   */
+  async recordViolation(testId, { violationType, durationSeconds, questionNumber, details } = {}) {
+    const res = await request(`/api/student/tests/${encodeURIComponent(testId)}/violations`, {
+      method: 'POST',
+      body: JSON.stringify({ violationType, durationSeconds, questionNumber, details }),
+    })
+    return res.data
+  },
+
+  /**
    * View score & post-test explanations (if enabled by teacher)
    */
   async getTestResult(testId) {

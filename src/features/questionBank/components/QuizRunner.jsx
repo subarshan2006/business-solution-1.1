@@ -28,9 +28,9 @@ import {
   studentApi,
   questionReviewApi,
   testManagementApi,
-  questionBankApi,
   getStoredSessionUser,
 } from '../../../services/jivanautApi'
+import { ProctoringGuard } from '../../../lib/proctoringGuard'
 
 function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePreview = null }) {
   const params = useParams()
@@ -77,6 +77,23 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   // Proctored Fullscreen & Anti-Cheating states (Pillar 2)
   const [isFullscreenBlocked, setIsFullscreenBlocked] = useState(false)
   const [fullscreenViolations, setFullscreenViolations] = useState(0)
+  const [isTerminated, setIsTerminated] = useState(false)
+  const guardRef = useRef(null)
+  const currentIndexRef = useRef(currentIndex)
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex
+  }, [currentIndex])
+
+  useEffect(() => {
+    if (isTerminated) {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current)
+        timerIntervalRef.current = null
+      }
+      setFinalScore(0)
+    }
+  }, [isTerminated])
 
   // Fullscreen controller utility
   const enterFullscreen = useCallback(async () => {
@@ -113,6 +130,10 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     document.body.classList.add('modal-open', 'quiz-open')
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+      if (guardRef.current) {
+        guardRef.current.stop()
+        guardRef.current = null
+      }
       purgeAllEphemeralImages()
       exitFullscreenSafe()
       document.body.classList.remove('modal-open', 'quiz-open')
@@ -120,6 +141,10 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   }, [exitFullscreenSafe])
 
   const handleExitQuiz = useCallback(() => {
+    if (guardRef.current) {
+      guardRef.current.stop()
+      guardRef.current = null
+    }
     purgeAllEphemeralImages()
     exitFullscreenSafe()
     if (onClosePreview) {
@@ -498,6 +523,10 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
   const handleFinishQuiz = useCallback(
     (isTimeout = false) => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+      if (guardRef.current) {
+        guardRef.current.stop()
+        guardRef.current = null
+      }
 
       // Calculate score
       const correctCount = studentAnswers.filter((a) => a.isCorrect).length
@@ -614,157 +643,54 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     }
   }, [stage, bank, isPreview, handleFinishQuiz])
 
-  // Pillar 2: Proctored Fullscreen & Anti-Cheating Lockdown Monitor
-  useEffect(() => {
-    if (stage !== 'in_progress' || isPreview) return
-
-    const checkLockdown = () => {
-      const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-      const supportsFullscreen = Boolean(
-        document.fullscreenEnabled ||
-        document.webkitFullscreenEnabled ||
-        document.documentElement?.requestFullscreen ||
-        document.documentElement?.webkitRequestFullscreen
-      )
-
-      if (isMobile && !supportsFullscreen) {
-        // Mobile browsers without DOM Fullscreen API (e.g. iOS Safari)
-        // Guard against backgrounding / tab switching rather than fullscreen element
-        const isHidden = document.visibilityState === 'hidden'
-        const isShrunk = window.innerHeight < 280
-        if (isHidden || isShrunk) {
-          setIsFullscreenBlocked(true)
-          setFullscreenViolations((prev) => prev + 1)
-        } else {
-          setIsFullscreenBlocked(false)
-        }
-        return
-      }
-
-      const isShrunk = isMobile
-        ? window.innerHeight < 280
-        : window.innerWidth < 760 || window.innerHeight < 460
-
-      if (!isFs || isShrunk) {
-        setIsFullscreenBlocked(true)
-        setFullscreenViolations((prev) => prev + 1)
-      } else {
-        setIsFullscreenBlocked(false)
-      }
-    }
-
-    document.addEventListener('fullscreenchange', checkLockdown)
-    document.addEventListener('webkitfullscreenchange', checkLockdown)
-    document.addEventListener('visibilitychange', checkLockdown)
-    window.addEventListener('resize', checkLockdown)
-
-    // Initial check after delay to allow fullscreen transition to complete
-    const initialCheck = setTimeout(checkLockdown, 800)
-
-    return () => {
-      clearTimeout(initialCheck)
-      document.removeEventListener('fullscreenchange', checkLockdown)
-      document.removeEventListener('webkitfullscreenchange', checkLockdown)
-      document.removeEventListener('visibilitychange', checkLockdown)
-      window.removeEventListener('resize', checkLockdown)
-    }
-  }, [stage, isPreview])
-
-  // Security Protection 1: Block Right-Click and Developer Inspect Access (Students only)
-  useEffect(() => {
-    if (stage !== 'in_progress' || isPreview) return
-
-    const blockContextMenu = (e) => {
-      e.preventDefault()
-      return false
-    }
-
-    const blockDevToolsShortcuts = (e) => {
-      // F12
-      if (e.key === 'F12' || e.keyCode === 123) {
-        e.preventDefault()
-        return false
-      }
-      // Ctrl+Shift+I / Cmd+Option+I (Inspect)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
-        e.preventDefault()
-        return false
-      }
-      // Ctrl+Shift+J / Cmd+Option+J (Console)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
-        e.preventDefault()
-        return false
-      }
-      // Ctrl+Shift+C / Cmd+Option+C (Inspect Element)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
-        e.preventDefault()
-        return false
-      }
-      // Ctrl+U / Cmd+Option+U (View Source)
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
-        e.preventDefault()
-        return false
-      }
-      // Ctrl+S / Cmd+S (Save Page)
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) {
-        e.preventDefault()
-        return false
-      }
-      // PrintScreen Key
-      if (e.key === 'PrintScreen' || e.keyCode === 44) {
-        e.preventDefault()
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText('')
-          }
-        } catch {}
-        return false
-      }
-    }
-
-    document.addEventListener('contextmenu', blockContextMenu)
-    window.addEventListener('keydown', blockDevToolsShortcuts)
-
-    return () => {
-      document.removeEventListener('contextmenu', blockContextMenu)
-      window.removeEventListener('keydown', blockDevToolsShortcuts)
-    }
-  }, [stage, isPreview])
-
-  // Security Protection 3: Tab-Switch & Window Blur Obfuscation (Screenshot/Recording Shield)
+  // Cross-Platform Proctoring & Black-Screen Security Guard (Pillar 2)
   useEffect(() => {
     if (stage !== 'in_progress' || isPreview) {
-      setIsScreenObscured(false)
+      if (guardRef.current) {
+        guardRef.current.stop()
+        guardRef.current = null
+      }
       return
     }
 
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
+    const testId = bank?.testId || bank?.id || activeBankId
+    const apiBaseUrl =
+      (import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
+      (typeof process !== 'undefined' && process.env && (process.env.NEXT_PUBLIC_API_URL || process.env.VITE_API_BASE_URL)) ||
+      ''
+
+    const guard = new ProctoringGuard({
+      testId: String(testId),
+      apiBaseUrl,
+      getActiveQuestionNumber: () => currentIndexRef.current + 1,
+      onViolation: (v) => {
+        console.warn('Proctoring violation:', v)
+        if (typeof v.minimizeCount === 'number') {
+          setFullscreenViolations(v.minimizeCount)
+        }
+        if (v.minimizeCount && v.minimizeCount >= 3) {
+          // Exam is terminated by backend with 0 marks
+          setIsTerminated(true)
+        }
+      },
+      onBlackout: () => {
         setIsScreenObscured(true)
-      } else {
+      },
+      onRestore: () => {
         setIsScreenObscured(false)
-      }
-    }
+      },
+    })
 
-    const handleWindowBlur = () => {
-      setIsScreenObscured(true)
-    }
-
-    const handleWindowFocus = () => {
-      setIsScreenObscured(false)
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('blur', handleWindowBlur)
-    window.addEventListener('focus', handleWindowFocus)
+    guardRef.current = guard
+    guard.start()
 
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('blur', handleWindowBlur)
-      window.removeEventListener('focus', handleWindowFocus)
+      if (guardRef.current) {
+        guardRef.current.stop()
+        guardRef.current = null
+      }
     }
-  }, [stage, isPreview])
+  }, [stage, isPreview, bank?.id, bank?.testId, activeBankId])
 
   // Start Quiz (Triggers Desktop & Mobile Fullscreen Lockdown)
   const handleStartQuiz = async () => {
@@ -776,6 +702,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
     setTimedOutNotice(false)
     setFullscreenViolations(0)
     setIsFullscreenBlocked(false)
+    setIsTerminated(false)
 
     try {
       if (bank?.isBackendTest && !isPreview) {
@@ -849,13 +776,13 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
   // Select Option
   const handleSelectOption = (optId) => {
-    if (isAnswerSubmitted || isSubmittingAnswer) return // Locked!
+    if (isAnswerSubmitted || isSubmittingAnswer || isTerminated) return // Locked!
     setSelectedOptionId(optId)
   }
 
   // Submit Answer (Locks immediately, checks answer, and reveals instant practice feedback + reason)
   const handleSubmitAnswer = async () => {
-    if (!selectedOptionId || isAnswerSubmitted || isSubmittingAnswer) return
+    if (!selectedOptionId || isAnswerSubmitted || isSubmittingAnswer || isTerminated) return
 
     const currentQ = preparedQuestions[currentIndex]
     if (!currentQ) return
@@ -952,6 +879,7 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
 
   // Next Question or Finish Quiz
   const handleNextQuestion = () => {
+    if (isTerminated) return
     if (currentIndex < preparedQuestions.length - 1) {
       const nextIndex = currentIndex + 1
       setCurrentIndex(nextIndex)
@@ -964,6 +892,10 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         setIsAnswerSubmitted(false)
       }
     } else {
+      if (guardRef.current) {
+        guardRef.current.stop()
+        guardRef.current = null
+      }
       handleFinishQuiz(false)
     }
   }
@@ -1404,7 +1336,27 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
         {/* ========================================================= */}
         {/* VIEW 5: INTERACTIVE QUIZ IN PROGRESS                     */}
         {/* ========================================================= */}
-        {stage === 'in_progress' && currentQ && (
+        {stage === 'in_progress' && isTerminated && (
+          <div className="qb-quiz-card text-center" style={{ border: '2px solid #ef4444' }}>
+            <div className="qb-card-icon-hero" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+              <ion-icon name="ban-outline"></ion-icon>
+            </div>
+            <h2 className="qb-hero-title" style={{ color: '#ef4444' }}>EXAM TERMINATED</h2>
+            <div style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '10px', padding: '20px', margin: '20px 0' }}>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: '#f87171', marginBottom: '8px' }}>
+                SCORE: 0 MARKS
+              </div>
+              <p style={{ color: 'var(--text-secondary, #9ca3af)', fontSize: '15px', lineHeight: 1.6, margin: 0 }}>
+                You have reached 3 screen switch violations. Your exam attempt has been automatically closed and marked with 0 marks.
+              </p>
+            </div>
+            <button type="button" className="btn btn-secondary" onClick={handleExitQuiz}>
+              Return to Classroom
+            </button>
+          </div>
+        )}
+
+        {stage === 'in_progress' && !isTerminated && currentQ && (
           <div className="qb-quiz-card">
             {/* Progress Header */}
             <div className="qb-quiz-progress-bar-container">
@@ -1664,9 +1616,9 @@ function QuizRunner({ bankId: propBankId = null, isPreview = false, onClosePrevi
               </div>
 
               {/* Pillar 2: Proctored Fullscreen Integrity Status */}
-              <div className={`qb-integrity-status-pill ${fullscreenViolations === 0 ? 'clean' : 'warning'}`}>
+              <div className={`qb-integrity-status-pill ${fullscreenViolations === 0 ? 'clean' : fullscreenViolations >= 3 ? 'danger' : 'warning'}`}>
                 <ion-icon name={fullscreenViolations === 0 ? 'shield-checkmark-outline' : 'warning-outline'}></ion-icon>
-                <span>Fullscreen Integrity: {fullscreenViolations === 0 ? 'Proctored Clean (0 exits)' : `${fullscreenViolations} window exit(s) recorded`}</span>
+                <span>Fullscreen Integrity: {fullscreenViolations === 0 ? 'Proctored Clean (0 exits)' : fullscreenViolations >= 3 ? 'Disqualified (3 screen switches - 0 Marks)' : `${fullscreenViolations} window exit(s) recorded`}</span>
               </div>
 
               <p className="qb-completed-date-stamp">
