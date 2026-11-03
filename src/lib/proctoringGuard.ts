@@ -151,6 +151,19 @@ export class ProctoringGuard {
     this.attachContextMenuAndSelectListeners();
     this.attachMediaCaptureProtection();
     this.attachMobileGestureAndTouchListeners();
+
+    // Enforce fullscreen immediately if not in fullscreen
+    if (typeof document !== 'undefined' && 'fullscreenElement' in document) {
+      const isFs = Boolean(
+        document.fullscreenElement || (document as any).webkitFullscreenElement,
+      );
+      if (!isFs) {
+        this.showBlackout(
+          'Fullscreen mode is strictly required. Please enter fullscreen to begin or continue your exam.',
+          true,
+        );
+      }
+    }
   }
 
   /**
@@ -261,7 +274,7 @@ export class ProctoringGuard {
   /**
    * Shows the black screen overlay with an explanatory message.
    */
-  public showBlackout(reason: string): void {
+  public showBlackout(reason: string, showResumeButton = false): void {
     if (this.overlayEl) {
       if (this.isDisqualified || this.minimizeCount >= 3) {
         this.overlayEl.innerHTML = `
@@ -293,11 +306,28 @@ export class ProctoringGuard {
                 Current Screen Switches: <span id="proctor-strike-count" style="color: #ef4444; font-size: 16px; font-weight: 800;">${this.minimizeCount}</span> / 3
               </p>
             </div>
-            <p style="font-size: 13px; color: #9ca3af; line-height: 1.5; margin: 0;">
+            <p style="font-size: 13px; color: #9ca3af; line-height: 1.5; margin: 0 0 16px 0;">
               ${reason}<br/>Please return to the test screen immediately. All departures are logged.
             </p>
+            ${
+              showResumeButton
+                ? `<button id="proctor-return-exam-btn" style="background: #ef4444; color: #ffffff; border: none; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer; transition: background 0.2s;">
+                    Return to Fullscreen Exam
+                  </button>`
+                : ''
+            }
           </div>
         `;
+
+        if (showResumeButton) {
+          const btn = document.getElementById('proctor-return-exam-btn');
+          if (btn) {
+            btn.onclick = async () => {
+              await this.requestFullscreen();
+              this.hideBlackout();
+            };
+          }
+        }
       }
       this.overlayEl.style.display = 'flex';
     }
@@ -503,7 +533,16 @@ export class ProctoringGuard {
       if (focusLost) return;
       focusLost = true;
       this.blurTimestamp = Date.now();
-      this.showBlackout(`Test focus lost (${reason}). Return to resume.`);
+      this.minimizeCount += 1;
+
+      if (this.minimizeCount >= 3) {
+        this.isDisqualified = true;
+        this.showBlackout('Exam terminated due to 3 screen switch violations.');
+        this.dispatchViolation('MINIMIZE', 0, 'Disqualified on 3 strikes');
+      } else {
+        this.showBlackout(`Test focus lost (${reason}). Return to resume.`, false);
+        this.dispatchViolation('MINIMIZE', 0, reason);
+      }
     };
 
     const handleFocusGain = () => {
@@ -513,24 +552,25 @@ export class ProctoringGuard {
         ? (Date.now() - this.blurTimestamp) / 1000
         : undefined;
       this.blurTimestamp = null;
-      this.hideBlackout();
-      this.dispatchViolation('MINIMIZE', durationSeconds, 'Window minimized or tab switched');
+
+      if (this.isDisqualified || this.minimizeCount >= 3) {
+        this.showBlackout('Exam terminated due to 3 screen switch violations.');
+        return;
+      }
+
+      this.showBlackout(
+        'Tab switch or window departure detected. You must acknowledge this strike and return to fullscreen to continue.',
+        true,
+      );
     };
 
     // Window blur & focus
-    // Guards against false positives when clicking inside the page (e.g. submit buttons, inputs)
     const onBlur = () => {
-      if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && document.hasFocus()) {
-        return;
-      }
       handleFocusLoss('Window minimized or lost focus');
     };
 
     const onFocusOut = (e: FocusEvent) => {
       if (e.relatedTarget && typeof document !== 'undefined' && document.contains && document.contains(e.relatedTarget as Node)) {
-        return;
-      }
-      if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && document.hasFocus()) {
         return;
       }
       handleFocusLoss('Window minimized or lost focus');
@@ -571,10 +611,19 @@ export class ProctoringGuard {
         document.fullscreenElement || (document as any).webkitFullscreenElement,
       );
       if (!isFullscreen) {
-        this.showBlackout('Fullscreen mode was exited. Please re-enter fullscreen.');
-        this.dispatchViolation('FULLSCREEN_EXIT', undefined, 'Fullscreen exited');
+        this.minimizeCount += 1;
+        if (this.minimizeCount >= 3) {
+          this.isDisqualified = true;
+          this.showBlackout('Exam terminated due to 3 screen switch violations.');
+          this.dispatchViolation('FULLSCREEN_EXIT', undefined, 'Disqualified on fullscreen exit');
+        } else {
+          this.showBlackout('Fullscreen mode was exited. Fullscreen is strictly required to view questions.', true);
+          this.dispatchViolation('FULLSCREEN_EXIT', undefined, 'Fullscreen exited');
+        }
       } else {
-        this.hideBlackout();
+        if (!this.isDisqualified && this.minimizeCount < 3) {
+          this.hideBlackout();
+        }
       }
     };
 

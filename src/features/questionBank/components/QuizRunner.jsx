@@ -118,10 +118,29 @@ function QuizRunner({
       }
     } catch (err) {
       console.warn('Fullscreen entry prevented:', err)
-    } finally {
-      setIsFullscreenBlocked(false)
     }
+    const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
+    setIsFullscreenBlocked(!isFs)
+    return isFs
   }, [])
+
+  // Active Fullscreen Enforcement: Lock quiz immediately if fullscreen is not active or exited
+  useEffect(() => {
+    if (stage !== 'in_progress' || isPreview) return
+
+    const handleFsChange = () => {
+      const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
+      setIsFullscreenBlocked(!isFs)
+    }
+
+    handleFsChange()
+    document.addEventListener('fullscreenchange', handleFsChange)
+    document.addEventListener('webkitfullscreenchange', handleFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange)
+      document.removeEventListener('webkitfullscreenchange', handleFsChange)
+    }
+  }, [stage, isPreview])
 
   const exitFullscreenSafe = useCallback(() => {
     try {
@@ -792,6 +811,8 @@ function QuizRunner({
         if (v.minimizeCount && v.minimizeCount >= 3) {
           // Exam is terminated by backend with 0 marks
           setIsTerminated(true)
+          setIsFullscreenBlocked(true)
+          handleFinishQuiz(false)
         }
       },
       onBlackout: () => {
@@ -799,6 +820,8 @@ function QuizRunner({
       },
       onRestore: () => {
         setIsScreenObscured(false)
+        const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
+        setIsFullscreenBlocked(!isFs)
       },
     })
 
@@ -883,8 +906,15 @@ function QuizRunner({
       }
 
       if (!isPreview) {
-        await enterFullscreen()
+        const isFs = await enterFullscreen()
+        if (!isFs) {
+          setIsFullscreenBlocked(true)
+          setStage('in_progress')
+          return
+        }
       }
+
+      setIsFullscreenBlocked(false)
       setStage('in_progress')
     } catch (err) {
       console.error('Failed to start quiz attempt:', err)
@@ -1221,13 +1251,13 @@ function QuizRunner({
       {stage === 'in_progress' && isScreenObscured && !isPreview && (
         <div
           className="qb-screen-obscured-overlay"
-          onClick={() => setIsScreenObscured(false)}
-          title="Click to resume quiz"
+          onClick={enterFullscreen}
+          title="Click to return to fullscreen and resume exam"
         >
           <ion-icon name="shield-half-outline"></ion-icon>
           <h3>Security Shield Active</h3>
           <p>
-            Quiz questions are hidden while your browser window or tab is not active. Click anywhere to resume practicing.
+            Quiz questions are hidden while your browser window or tab is not active. Click to return to fullscreen and resume exam.
           </p>
         </div>
       )}
