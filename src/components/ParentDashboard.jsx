@@ -9,6 +9,7 @@ import {
   saveSummativeRecord,
   saveRemarksRecord,
   resetRemarksRecord,
+  saveSessionMark,
 } from '../services/classroomApi'
 
 function ParentDashboard({
@@ -31,9 +32,10 @@ function ParentDashboard({
   const [summativeRecord, setSummativeRecord] = useState(null)
   const [summativeForm, setSummativeForm] = useState({ score: '', total: 100, note: '', date: '' })
   const [remarksForm, setRemarksForm] = useState({
-    academicEngagement: '',
-    focusAreas: '',
+    sessionRemarks: {},
   })
+  const [editingMarkSession, setEditingMarkSession] = useState(null)
+  const [markInputValue, setMarkInputValue] = useState('')
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false)
   const [remarksSuccessNotice, setRemarksSuccessNotice] = useState(false)
 
@@ -64,22 +66,19 @@ function ParentDashboard({
           date: rec.date || '',
         })
         setRemarksForm({
-          academicEngagement: rec.academicEngagement || '',
-          focusAreas: rec.focusAreas || '',
+          sessionRemarks: rec.sessionRemarks || {},
         })
       } else {
         setSummativeForm({ score: '', total: 100, note: '', date: '' })
         setRemarksForm({
-          academicEngagement: '',
-          focusAreas: '',
+          sessionRemarks: {},
         })
       }
     } else {
       setSummativeRecord(null)
       setSummativeForm({ score: '', total: 100, note: '', date: '' })
       setRemarksForm({
-        academicEngagement: '',
-        focusAreas: '',
+        sessionRemarks: {},
       })
     }
     setIsEditingSummative(false)
@@ -137,11 +136,16 @@ function ParentDashboard({
   }
 
   const handleOpenRemarksEditor = () => {
+    const initialSessionRemarks = { ...(summativeRecord?.sessionRemarks || {}) }
+    if (monthlyReport.sessions && monthlyReport.sessions.length > 0) {
+      monthlyReport.sessions.forEach((s) => {
+        if (initialSessionRemarks[s.sessionNumber] == null && s.remarks) {
+          initialSessionRemarks[s.sessionNumber] = s.remarks
+        }
+      })
+    }
     setRemarksForm({
-      academicEngagement:
-        summativeRecord?.academicEngagement || monthlyReport.narrative.academicEngagement || '',
-      focusAreas:
-        summativeRecord?.focusAreas || monthlyReport.narrative.focusAreas || '',
+      sessionRemarks: initialSessionRemarks,
     })
     setIsEditingRemarks(true)
     setIsEditingSummative(false)
@@ -152,8 +156,7 @@ function ParentDashboard({
     if (!selectedCourse?.id) return
 
     const saved = saveRemarksRecord(selectedCourse.id, selectedMonthKey, {
-      academicEngagement: remarksForm.academicEngagement,
-      focusAreas: remarksForm.focusAreas,
+      sessionRemarks: remarksForm.sessionRemarks,
     })
     setSummativeRecord(saved)
     setIsEditingRemarks(false)
@@ -166,12 +169,23 @@ function ParentDashboard({
     const saved = resetRemarksRecord(selectedCourse.id, selectedMonthKey)
     setSummativeRecord(saved)
     setRemarksForm({
-      academicEngagement: '',
-      focusAreas: '',
+      sessionRemarks: {},
     })
     setIsEditingRemarks(false)
     setRemarksSuccessNotice('reset')
     setTimeout(() => setRemarksSuccessNotice(false), 3000)
+  }
+
+  const handleSaveSessionMark = (sessionNumber, newMark) => {
+    if (!selectedCourse?.id) {
+      setEditingMarkSession(null)
+      return
+    }
+    const saved = saveSessionMark(selectedCourse.id, selectedMonthKey, sessionNumber, newMark)
+    if (saved) {
+      setSummativeRecord(saved)
+    }
+    setEditingMarkSession(null)
   }
 
   return (
@@ -857,18 +871,64 @@ function ParentDashboard({
                 <table className="mr-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '18%' }}>DATE / WEEK</th>
+                      <th style={{ width: '18%' }}>DATE / SESSION</th>
                       <th style={{ width: '42%' }}>CORE TOPICS COVERED</th>
-                      <th style={{ width: '26%' }}>CLASSROOM ASSIGNMENT REF</th>
-                      <th style={{ width: '14%' }}>STATUS</th>
+                      <th style={{ width: '24%' }}>TEST MARKS / SCORE</th>
+                      <th style={{ width: '16%' }}>STATUS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {monthlyReport.curriculum.rows.map((row, idx) => (
                       <tr key={row.id || idx}>
-                        <td className="mr-cell-date" data-label="Date / Week">{row.dateWeek}</td>
+                        <td className="mr-cell-date" data-label="Date / Session">{row.dateWeek}</td>
                         <td className="mr-cell-topics" data-label="Core Topics Covered">{row.topics}</td>
-                        <td className="mr-cell-ref" data-label="Classroom Assignment Ref">{row.assignmentRef}</td>
+                        <td
+                          className={`mr-cell-marks ${isTeacherView ? 'mr-cell-interactive' : ''}`}
+                          data-label="Test Marks / Score"
+                          onClick={() => {
+                            if (!isTeacherView) return
+                            if (editingMarkSession === row.sessionNumber) return
+                            setEditingMarkSession(row.sessionNumber)
+                            setMarkInputValue(row.testMarks && row.testMarks !== '—' ? row.testMarks : '')
+                          }}
+                        >
+                          {isTeacherView && editingMarkSession === row.sessionNumber ? (
+                            <input
+                              type="text"
+                              autoFocus
+                              className="mr-inline-mark-input"
+                              value={markInputValue}
+                              placeholder="e.g. 18/20"
+                              onChange={(e) => setMarkInputValue(e.target.value)}
+                              onBlur={() => handleSaveSessionMark(row.sessionNumber, markInputValue)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  handleSaveSessionMark(row.sessionNumber, markInputValue)
+                                } else if (e.key === 'Escape') {
+                                  setEditingMarkSession(null)
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span
+                              className={`mr-marks-badge ${row.testMarks && row.testMarks !== '—' ? 'has-marks' : 'empty-marks'} ${isTeacherView ? 'clickable' : ''}`}
+                              title={isTeacherView ? 'Touch or click to enter/edit mark' : ''}
+                            >
+                              {row.testMarks && row.testMarks !== '—' ? (
+                                row.testMarks
+                              ) : isTeacherView ? (
+                                <span className="mr-marks-prompt">+ Enter Mark</span>
+                              ) : (
+                                '—'
+                              )}
+                              {isTeacherView && (
+                                <ion-icon name="create-outline" className="mr-mark-pencil-icon"></ion-icon>
+                              )}
+                            </span>
+                          )}
+                        </td>
                         <td className="mr-cell-status" data-label="Status">
                           <span
                             className={`mr-status-pill ${row.status.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
@@ -919,7 +979,7 @@ function ParentDashboard({
                 <h3 className="mr-section-heading">Instructor Remarks & Observations</h3>
                 {isTeacherView && (
                   <div className="mr-section-teacher-actions">
-                    {monthlyReport.narrative.isCustomRemarks && (
+                    {monthlyReport.narrative?.isCustomRemarks && (
                       <span className="mr-badge-custom-indicator">Customized by Teacher</span>
                     )}
                     <button
@@ -932,7 +992,7 @@ function ParentDashboard({
                           handleOpenRemarksEditor()
                         }
                       }}
-                      title="Teacher only: Edit Academic Engagement & Focus Areas"
+                      title="Teacher only: Edit Session Remarks & Observations"
                     >
                       <ion-icon name={isEditingRemarks ? 'close-outline' : 'create-outline'}></ion-icon>
                       <span>{isEditingRemarks ? 'Cancel' : 'Edit Remarks'}</span>
@@ -946,36 +1006,42 @@ function ParentDashboard({
                   <div className="mr-editor-header">
                     <div className="mr-editor-title-row">
                       <ion-icon name="chatbox-ellipses-outline"></ion-icon>
-                      <h4 className="h4 mr-editor-title">Edit Remarks ({monthlyReport.academicCycle})</h4>
+                      <h4 className="h4 mr-editor-title">Edit Session Remarks ({monthlyReport.academicCycle})</h4>
                     </div>
                     <span className="mr-editor-badge">Teacher-Only Tool</span>
                   </div>
                   <p className="mr-editor-sub">
-                    Manual academic engagement and focus areas update the official monthly report card instantly and are saved for this student and academic cycle.
+                    Customize remarks for each session. Changes reflect on the official monthly report card instantly and are saved for this student and academic cycle.
                   </p>
 
-                  <div className="mr-form-group full-width">
-                    <label htmlFor="mr-engagement-input">Academic Engagement & Class Participation:</label>
-                    <textarea
-                      id="mr-engagement-input"
-                      rows="3"
-                      placeholder="e.g. Student has displayed high enthusiasm..."
-                      value={remarksForm.academicEngagement}
-                      onChange={(e) => setRemarksForm({ ...remarksForm, academicEngagement: e.target.value })}
-                      required
-                    ></textarea>
-                  </div>
-
-                  <div className="mr-form-group full-width">
-                    <label htmlFor="mr-focus-input">Focus Areas & Recommendations:</label>
-                    <textarea
-                      id="mr-focus-input"
-                      rows="3"
-                      placeholder="e.g. Continued focus is recommended on verifying extraneous roots..."
-                      value={remarksForm.focusAreas}
-                      onChange={(e) => setRemarksForm({ ...remarksForm, focusAreas: e.target.value })}
-                      required
-                    ></textarea>
+                  <div className="mr-session-editor-list">
+                    {monthlyReport.sessions && monthlyReport.sessions.length > 0 ? (
+                      monthlyReport.sessions.map((sess, idx) => (
+                        <div className="mr-form-group full-width" key={sess.id || idx}>
+                          <label htmlFor={`mr-session-input-${sess.sessionNumber}`}>
+                            <strong>Session {sess.sessionNumber}: {sess.topicHeading}</strong>
+                            <span className="mr-field-hint">{sess.date} • {sess.topics}</span>
+                          </label>
+                          <textarea
+                            id={`mr-session-input-${sess.sessionNumber}`}
+                            rows="3"
+                            placeholder={`Enter remarks for Session ${sess.sessionNumber} (${sess.topicHeading})...`}
+                            value={remarksForm.sessionRemarks[sess.sessionNumber] ?? sess.remarks}
+                            onChange={(e) =>
+                              setRemarksForm({
+                                ...remarksForm,
+                                sessionRemarks: {
+                                  ...remarksForm.sessionRemarks,
+                                  [sess.sessionNumber]: e.target.value,
+                                },
+                              })
+                            }
+                          ></textarea>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="mr-editor-sub">No sessions recorded yet for this cycle.</p>
+                    )}
                   </div>
 
                   <div className="mr-editor-actions">
@@ -983,12 +1049,12 @@ function ParentDashboard({
                       <ion-icon name="save-outline"></ion-icon>
                       <span>Save Remarks</span>
                     </button>
-                    {monthlyReport.narrative.isCustomRemarks && (
+                    {monthlyReport.narrative?.isCustomRemarks && (
                       <button
                         type="button"
                         className="mr-reset-btn"
                         onClick={handleResetRemarks}
-                        title="Revert back to algorithm-generated narrative"
+                        title="Revert back to stream-extracted remarks"
                       >
                         <ion-icon name="refresh-outline"></ion-icon>
                         <span>Reset to Auto-Generated</span>
@@ -1004,15 +1070,29 @@ function ParentDashboard({
                   </div>
                 </form>
               ) : (
-                <div className="mr-remarks-card">
-                  <p className="mr-remark-line">
-                    <strong className="mr-remark-bold">Academic Engagement: </strong>
-                    <span>{monthlyReport.narrative.academicEngagement}</span>
-                  </p>
-                  <p className="mr-remark-line">
-                    <strong className="mr-remark-bold">Focus Areas: </strong>
-                    <span>{monthlyReport.narrative.focusAreas}</span>
-                  </p>
+                <div className="mr-session-remarks-list">
+                  {monthlyReport.sessions && monthlyReport.sessions.length > 0 ? (
+                    monthlyReport.sessions.map((sess, idx) => (
+                      <div className="mr-session-remark-card" key={sess.id || idx}>
+                        <div className="mr-session-remark-header">
+                          <div className="mr-session-badge-group">
+                            <span className="mr-session-badge">Session {sess.sessionNumber}</span>
+                            <span className="mr-session-date-tag">{sess.date}</span>
+                          </div>
+                          <h4 className="mr-session-topic-heading">{sess.topicHeading}</h4>
+                        </div>
+                        <p className="mr-session-remark-text">
+                          {sess.remarks || 'Session concluded successfully. Core topics and problem sets reviewed.'}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="mr-remarks-card">
+                      <p className="mr-remark-line">
+                        <em>No session announcements recorded for this cycle yet.</em>
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
