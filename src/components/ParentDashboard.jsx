@@ -33,8 +33,6 @@ function ParentDashboard({
   const [remarksForm, setRemarksForm] = useState({
     academicEngagement: '',
     focusAreas: '',
-    targetedSupport: '',
-    parentRecommendations: '',
   })
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false)
   const [remarksSuccessNotice, setRemarksSuccessNotice] = useState(false)
@@ -58,11 +56,6 @@ function ParentDashboard({
     if (selectedCourse?.id && selectedMonthKey) {
       const rec = getSummativeRecord(selectedCourse.id, selectedMonthKey)
       setSummativeRecord(rec)
-      const formatBullets = (val) => {
-        if (!val) return ''
-        if (Array.isArray(val)) return val.join('\n')
-        return String(val)
-      }
       if (rec) {
         setSummativeForm({
           score: rec.score != null ? rec.score : '',
@@ -73,16 +66,12 @@ function ParentDashboard({
         setRemarksForm({
           academicEngagement: rec.academicEngagement || '',
           focusAreas: rec.focusAreas || '',
-          targetedSupport: formatBullets(rec.targetedSupport),
-          parentRecommendations: formatBullets(rec.parentRecommendations),
         })
       } else {
         setSummativeForm({ score: '', total: 100, note: '', date: '' })
         setRemarksForm({
           academicEngagement: '',
           focusAreas: '',
-          targetedSupport: '',
-          parentRecommendations: '',
         })
       }
     } else {
@@ -91,8 +80,6 @@ function ParentDashboard({
       setRemarksForm({
         academicEngagement: '',
         focusAreas: '',
-        targetedSupport: '',
-        parentRecommendations: '',
       })
     }
     setIsEditingSummative(false)
@@ -150,25 +137,11 @@ function ParentDashboard({
   }
 
   const handleOpenRemarksEditor = () => {
-    const formatBullets = (val) => {
-      if (!val) return ''
-      if (Array.isArray(val)) return val.join('\n')
-      return String(val)
-    }
-
     setRemarksForm({
       academicEngagement:
         summativeRecord?.academicEngagement || monthlyReport.narrative.academicEngagement || '',
       focusAreas:
         summativeRecord?.focusAreas || monthlyReport.narrative.focusAreas || '',
-      targetedSupport:
-        (summativeRecord?.targetedSupport && summativeRecord.targetedSupport.length > 0
-          ? formatBullets(summativeRecord.targetedSupport)
-          : formatBullets(monthlyReport.narrative.targetedSupport)) || '',
-      parentRecommendations:
-        (summativeRecord?.parentRecommendations && summativeRecord.parentRecommendations.length > 0
-          ? formatBullets(summativeRecord.parentRecommendations)
-          : formatBullets(monthlyReport.narrative.parentRecommendations)) || '',
     })
     setIsEditingRemarks(true)
     setIsEditingSummative(false)
@@ -178,20 +151,9 @@ function ParentDashboard({
     e.preventDefault()
     if (!selectedCourse?.id) return
 
-    const parseBullets = (text) => {
-      if (!text) return []
-      if (Array.isArray(text)) return text.map((s) => String(s).trim().replace(/^[-•*]\s*/, '')).filter(Boolean)
-      return String(text)
-        .split('\n')
-        .map((line) => line.trim().replace(/^[-•*]\s*/, ''))
-        .filter(Boolean)
-    }
-
     const saved = saveRemarksRecord(selectedCourse.id, selectedMonthKey, {
       academicEngagement: remarksForm.academicEngagement,
       focusAreas: remarksForm.focusAreas,
-      targetedSupport: parseBullets(remarksForm.targetedSupport),
-      parentRecommendations: parseBullets(remarksForm.parentRecommendations),
     })
     setSummativeRecord(saved)
     setIsEditingRemarks(false)
@@ -206,8 +168,6 @@ function ParentDashboard({
     setRemarksForm({
       academicEngagement: '',
       focusAreas: '',
-      targetedSupport: '',
-      parentRecommendations: '',
     })
     setIsEditingRemarks(false)
     setRemarksSuccessNotice('reset')
@@ -972,7 +932,7 @@ function ParentDashboard({
                           handleOpenRemarksEditor()
                         }
                       }}
-                      title="Teacher only: Edit Academic Engagement, Focus Areas & Recommendations"
+                      title="Teacher only: Edit Academic Engagement & Focus Areas"
                     >
                       <ion-icon name={isEditingRemarks ? 'close-outline' : 'create-outline'}></ion-icon>
                       <span>{isEditingRemarks ? 'Cancel' : 'Edit Remarks'}</span>
@@ -986,12 +946,12 @@ function ParentDashboard({
                   <div className="mr-editor-header">
                     <div className="mr-editor-title-row">
                       <ion-icon name="chatbox-ellipses-outline"></ion-icon>
-                      <h4 className="h4 mr-editor-title">Edit Remarks & Recommendations ({monthlyReport.academicCycle})</h4>
+                      <h4 className="h4 mr-editor-title">Edit Remarks ({monthlyReport.academicCycle})</h4>
                     </div>
                     <span className="mr-editor-badge">Teacher-Only Tool</span>
                   </div>
                   <p className="mr-editor-sub">
-                    Manual academic engagement, focus areas, targeted support, and parent recommendations update the official monthly report card instantly and are saved for this student and academic cycle.
+                    Manual academic engagement and focus areas update the official monthly report card instantly and are saved for this student and academic cycle.
                   </p>
 
                   <div className="mr-form-group full-width">
@@ -1016,36 +976,6 @@ function ParentDashboard({
                       onChange={(e) => setRemarksForm({ ...remarksForm, focusAreas: e.target.value })}
                       required
                     ></textarea>
-                  </div>
-
-                  <div className="mr-editor-recs-grid">
-                    <div className="mr-form-group">
-                      <label htmlFor="mr-targeted-support-input">
-                        Targeted Support for Next Month:
-                        <span className="mr-field-hint">One bullet point per line</span>
-                      </label>
-                      <textarea
-                        id="mr-targeted-support-input"
-                        rows="3"
-                        placeholder="e.g. Reinforce asymptotes and rational expressions&#10;Timed practice sets for multi-step equation solving"
-                        value={remarksForm.targetedSupport}
-                        onChange={(e) => setRemarksForm({ ...remarksForm, targetedSupport: e.target.value })}
-                      ></textarea>
-                    </div>
-
-                    <div className="mr-form-group">
-                      <label htmlFor="mr-parent-recs-input">
-                        Parent Recommendations:
-                        <span className="mr-field-hint">One bullet point per line</span>
-                      </label>
-                      <textarea
-                        id="mr-parent-recs-input"
-                        rows="3"
-                        placeholder="e.g. Review Google Classroom assignment feedback tags&#10;Ensure weekly 15-minute formula sheet review at home"
-                        value={remarksForm.parentRecommendations}
-                        onChange={(e) => setRemarksForm({ ...remarksForm, parentRecommendations: e.target.value })}
-                      ></textarea>
-                    </div>
                   </div>
 
                   <div className="mr-editor-actions">
@@ -1087,56 +1017,7 @@ function ParentDashboard({
               )}
             </div>
 
-            {/* 7 & 8. Targeted Support for Next Month & Parent Recommendations */}
-            {!isEditingRemarks && (
-              <div className="mr-recs-grid">
-                <div className="mr-recs-card">
-                  <div className="mr-recs-card-header">
-                    <h4 className="mr-recs-heading">Targeted Support for Next Month</h4>
-                    {isTeacherView && (
-                      <button
-                        type="button"
-                        className="mr-recs-edit-btn"
-                        onClick={handleOpenRemarksEditor}
-                        title="Teacher only: Edit Targeted Support and Parent Recommendations"
-                      >
-                        <ion-icon name="create-outline"></ion-icon>
-                        <span>Edit</span>
-                      </button>
-                    )}
-                  </div>
-                  <ul className="mr-recs-list">
-                    {monthlyReport.narrative.targetedSupport.map((item, idx) => (
-                      <li key={idx}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="mr-recs-card">
-                  <div className="mr-recs-card-header">
-                    <h4 className="mr-recs-heading">Parent Recommendations</h4>
-                    {isTeacherView && (
-                      <button
-                        type="button"
-                        className="mr-recs-edit-btn"
-                        onClick={handleOpenRemarksEditor}
-                        title="Teacher only: Edit Targeted Support and Parent Recommendations"
-                      >
-                        <ion-icon name="create-outline"></ion-icon>
-                        <span>Edit</span>
-                      </button>
-                    )}
-                  </div>
-                  <ul className="mr-recs-list">
-                    {monthlyReport.narrative.parentRecommendations.map((item, idx) => (
-                      <li key={idx}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* 9. Footer */}
+            {/* 7. Footer */}
             <div className="mr-footer">
               <div className="mr-footer-left">
                 Tutor: {monthlyReport.footer.tutorName} • Contact: {monthlyReport.footer?.contactEmail || 'jivanauttestprep@gmail.com'}

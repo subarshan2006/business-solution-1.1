@@ -6585,7 +6585,7 @@ article:has(.parent-pin-modal-backdrop) {
 
 .parent-tab-btn:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  color: black;
 }
 
 .parent-tab-btn.active {
