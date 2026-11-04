@@ -764,7 +764,8 @@ main {
 
   .whatsapp-fab {
     bottom: calc(max(20px, env(safe-area-inset-bottom, 20px)) + 104px);
-    right: calc(max(20px, env(safe-area-inset-right, 20px)) - 2px);
+    right: calc(max(20px, env(safe-area-inset-right, 20px)) - 6px);
+    z-index: 101;
   }
 
   .whatsapp-fab .whatsapp-fab-icon-box,
@@ -4770,10 +4771,17 @@ article,
 }
 
 @media (max-width: 1023px) {
+  .whatsapp-fab {
+    bottom: calc(max(20px, env(safe-area-inset-bottom, 20px)) + 104px);
+    right: calc(max(20px, env(safe-area-inset-right, 20px)) - 6px);
+    z-index: 101;
+  }
+
   .whatsapp-fab .whatsapp-fab-icon-box,
   [data-theme='light'] .whatsapp-fab .whatsapp-fab-icon-box {
     background: #25D366 !important;
     border-color: #25D366 !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(37, 211, 102, 0.35);
   }
 
   .whatsapp-fab ion-icon,
@@ -4782,6 +4790,7 @@ article,
     --color: #FFFFFF !important;
     fill: #FFFFFF !important;
     stroke: #FFFFFF !important;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
   }
 }
 
