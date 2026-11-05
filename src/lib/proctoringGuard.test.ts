@@ -345,5 +345,85 @@ describe('ProctoringGuard Frontend Integrity & Black-Screen Security Tests', () 
 
       guard.stop();
     });
+
+    it('counts Command (Meta), Control, and PrintScreen as screen switch strikes and disqualifies on 3 strikes', () => {
+      const violationSpy = vi.fn();
+      const guard = new ProctoringGuard({
+        testId: 'test-key-strikes-001',
+        onViolation: violationSpy,
+      });
+      guard.start();
+
+      const keydownHandlers = mockListeners['keydown'] || [];
+      const keyupHandlers = mockListeners['keyup'] || [];
+
+      // Strike 1: Press Command (Meta) alone
+      const mockEventCmd = {
+        key: 'Meta',
+        metaKey: true,
+        ctrlKey: false,
+        repeat: false,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+      keydownHandlers[0]!(mockEventCmd);
+      expect(guard.getMinimizeCount()).toBe(1);
+      expect(mockEventCmd.preventDefault).toHaveBeenCalled();
+
+      // Release Command key
+      keyupHandlers[0]!({ key: 'Meta', metaKey: false, ctrlKey: false });
+
+      // Fast-forward cooldown (1.1s)
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 1100);
+
+      // Strike 2: Press Control alone
+      const mockEventCtrl = {
+        key: 'Control',
+        metaKey: false,
+        ctrlKey: true,
+        repeat: false,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+      keydownHandlers[0]!(mockEventCtrl);
+      expect(guard.getMinimizeCount()).toBe(2);
+
+      // Verify key repeat does NOT increment count
+      const mockEventCtrlRepeat = {
+        key: 'Control',
+        metaKey: false,
+        ctrlKey: true,
+        repeat: true,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+      keydownHandlers[0]!(mockEventCtrlRepeat);
+      expect(guard.getMinimizeCount()).toBe(2); // Still 2 strikes!
+
+      // Release Control key
+      keyupHandlers[0]!({ key: 'Control', metaKey: false, ctrlKey: false });
+
+      // Fast-forward cooldown (1.1s)
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 2500);
+
+      // Strike 3: Press PrintScreen
+      const mockEventPrtScn = {
+        key: 'PrintScreen',
+        metaKey: false,
+        ctrlKey: false,
+        repeat: false,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+      keydownHandlers[0]!(mockEventPrtScn);
+      expect(guard.getMinimizeCount()).toBe(3);
+      expect(guard.getIsDisqualified()).toBe(true);
+
+      const overlay = mockDocument.getElementById('proctor-blackout-overlay');
+      expect(overlay.innerHTML).toContain('EXAM TERMINATED');
+      expect(overlay.innerHTML).toContain('SCORE: 0 MARKS');
+
+      guard.stop();
+    });
   });
 });

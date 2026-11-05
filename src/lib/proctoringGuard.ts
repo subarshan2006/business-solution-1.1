@@ -73,6 +73,7 @@ export class ProctoringGuard {
   private cleanupFns: Array<() => void> = [];
   private minimizeCount: number = 0;
   private isDisqualified: boolean = false;
+  private lastRestrictedKeyStrikeTimestamp: number = 0;
 
   constructor(options: ProctoringGuardOptions) {
     this.testId = options.testId;
@@ -382,12 +383,8 @@ export class ProctoringGuard {
   ): Promise<void> {
     const questionNumber = this.getActiveQuestionNumber ? this.getActiveQuestionNumber() : undefined;
 
-    // Track minimize / app-switch locally as well to safeguard against network dropouts
-    if (violationType === 'MINIMIZE' || violationType === 'APP_SWITCH') {
-      this.minimizeCount += 1;
-      if (this.minimizeCount >= 3) {
-        this.isDisqualified = true;
-      }
+    if (this.minimizeCount >= 3) {
+      this.isDisqualified = true;
     }
 
     try {
@@ -457,59 +454,107 @@ export class ProctoringGuard {
   }
 
   /**
-   * Intercepts Windows & macOS screenshot, print, and DevTools shortcuts.
+   * Intercepts Windows & macOS screenshot, restricted keys (Command, Control, PrintScreen),
+   * print, and DevTools shortcuts. Counts restricted keys as screen switch strikes.
    */
   private attachKeyboardListeners(): void {
+    const pressedRestrictedKeys = new Set<string>();
+    let lastRestrictedStrikeTime = 0;
+
+    const triggerRestrictedKeyStrike = (keyLabel: string, detailMsg: string) => {
+      const now = Date.now();
+      // Debounce across restricted keys to prevent duplicate strikes for simultaneous key events or rapid presses
+      if (now - lastRestrictedStrikeTime < 1000) {
+        return;
+      }
+      lastRestrictedStrikeTime = now;
+      this.lastRestrictedKeyStrikeTimestamp = now;
+
+      this.clearClipboard();
+      this.minimizeCount += 1;
+
+      if (this.minimizeCount >= 3) {
+        this.isDisqualified = true;
+        this.showBlackout('Exam terminated due to 3 screen switch violations.');
+        this.dispatchViolation('APP_SWITCH', undefined, `${detailMsg} (Strike ${this.minimizeCount}/3 - Disqualified)`);
+      } else {
+        this.showBlackout(
+          `Security Alert: Pressing ${keyLabel} is strictly prohibited! Strike ${this.minimizeCount} of 3 recorded.`,
+          true,
+        );
+        this.dispatchViolation('APP_SWITCH', undefined, `${detailMsg} (Strike ${this.minimizeCount}/3)`);
+      }
+    };
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      const isPrintScreen = e.key === 'PrintScreen' || e.code === 'PrintScreen' || e.keyCode === 44;
+      const isCmd = e.key === 'Meta' || e.key === 'OS' || e.metaKey;
+      const isCtrl = e.key === 'Control' || e.ctrlKey;
 
-      // 1. Windows PrintScreen
-      if (e.key === 'PrintScreen') {
+      // 1. Detect PrintScreen
+      if (isPrintScreen) {
         e.preventDefault();
-        this.clearClipboard();
-        this.showBlackout('Screenshot capture key (PrintScreen) detected.');
-        this.dispatchViolation('CAPTURE_SHORTCUT', undefined, 'PrintScreen pressed');
+        e.stopPropagation();
+        if (e.repeat || pressedRestrictedKeys.has('PrintScreen')) {
+          return;
+        }
+        pressedRestrictedKeys.add('PrintScreen');
+        triggerRestrictedKeyStrike('PrintScreen', 'PrintScreen key pressed');
         return;
       }
 
-      // 2. Windows Snipping Tool (Win + Shift + S)
-      if (e.shiftKey && (e.metaKey || e.ctrlKey) && key === 's') {
+      // 2. Detect Command key (alone or in combinations on macOS / Windows key)
+      if (isCmd) {
         e.preventDefault();
-        this.clearClipboard();
-        this.showBlackout('Screen snipping tool shortcut detected.');
-        this.dispatchViolation('CAPTURE_SHORTCUT', undefined, 'Snipping tool shortcut');
+        e.stopPropagation();
+        if (e.repeat || pressedRestrictedKeys.has('Command')) {
+          return;
+        }
+        pressedRestrictedKeys.add('Command');
+        triggerRestrictedKeyStrike('Command (Cmd / Win)', 'Command / Meta key pressed');
         return;
       }
 
-      // 3. macOS Screenshot Shortcuts: Cmd+Shift+3, Cmd+Shift+4, Cmd+Shift+5
-      if (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(key)) {
+      // 3. Detect Control key (alone or in combinations)
+      if (isCtrl) {
         e.preventDefault();
-        this.clearClipboard();
-        this.showBlackout('macOS screenshot shortcut detected.');
-        this.dispatchViolation('CAPTURE_SHORTCUT', undefined, `macOS Cmd+Shift+${key}`);
+        e.stopPropagation();
+        if (e.repeat || pressedRestrictedKeys.has('Control')) {
+          return;
+        }
+        pressedRestrictedKeys.add('Control');
+        triggerRestrictedKeyStrike('Control (Ctrl)', 'Control key pressed');
         return;
       }
 
-      // 4. Print shortcuts: Ctrl+P or Cmd+P
-      if (isCmdOrCtrl && key === 'p') {
+      // 4. Developer Tools: F12
+      if (e.key === 'F12' || e.code === 'F12' || e.keyCode === 123) {
         e.preventDefault();
-        this.showBlackout('Printing or saving test content is prohibited.');
-        this.dispatchViolation('CAPTURE_SHORTCUT', undefined, 'Print shortcut');
-        return;
-      }
-
-      // 5. Developer Tools: F12 or Ctrl+Shift+I / Cmd+Opt+I
-      if (e.key === 'F12' || (isCmdOrCtrl && e.shiftKey && key === 'i') || (e.metaKey && e.altKey && key === 'i')) {
-        e.preventDefault();
+        e.stopPropagation();
         this.showBlackout('Developer tools inspection is prohibited.');
         this.dispatchViolation('OTHER', undefined, 'DevTools shortcut attempted');
         return;
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen' || e.code === 'PrintScreen' || e.keyCode === 44) {
+        pressedRestrictedKeys.delete('PrintScreen');
+      }
+      if (e.key === 'Meta' || e.key === 'OS' || !e.metaKey) {
+        pressedRestrictedKeys.delete('Command');
+      }
+      if (e.key === 'Control' || !e.ctrlKey) {
+        pressedRestrictedKeys.delete('Control');
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown, true);
-    this.cleanupFns.push(() => window.removeEventListener('keydown', handleKeyDown, true));
+    window.addEventListener('keyup', handleKeyUp, true);
+    this.cleanupFns.push(() => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
+    });
   }
 
   /**
@@ -533,6 +578,19 @@ export class ProctoringGuard {
       if (focusLost) return;
       focusLost = true;
       this.blurTimestamp = Date.now();
+
+      // If focus loss immediately follows a restricted key strike (e.g. Windows key opening Start menu),
+      // avoid double-counting strikes for the same event
+      const isImmediatePostKeyBlur = Date.now() - this.lastRestrictedKeyStrikeTimestamp < 1500;
+      if (isImmediatePostKeyBlur) {
+        if (this.isDisqualified || this.minimizeCount >= 3) {
+          this.showBlackout('Exam terminated due to 3 screen switch violations.');
+        } else {
+          this.showBlackout(`Test focus lost (${reason}). Return to resume.`, true);
+        }
+        return;
+      }
+
       this.minimizeCount += 1;
 
       if (this.minimizeCount >= 3) {
