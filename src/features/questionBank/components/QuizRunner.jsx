@@ -68,7 +68,7 @@ function QuizRunner({
 
   // Quiz progression stages:
   // 'checking_auth' | 'access_denied' | 'already_completed' | 'start_screen' | 'in_progress' | 'completed'
-  const [stage, setStage] = useState('checking_auth')
+  const [stage, setStage] = useState(() => (effectiveViewResult ? 'completed' : 'checking_auth'))
 
   const [preparedQuestions, setPreparedQuestions] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -424,7 +424,9 @@ function QuizRunner({
               latestScore: found.latestScore,
               latestPercentage: found.latestPercentage,
             })
-            setBankLoading(false)
+            if (!effectiveViewResult && found.studentStatus !== 'SUBMITTED') {
+              setBankLoading(false)
+            }
           } else if (b) {
             setBank({
               ...b,
@@ -434,7 +436,9 @@ function QuizRunner({
               canViewResult: b.canViewResult ?? true,
               canRetest: b.canRetest ?? false,
             })
-            setBankLoading(false)
+            if (!effectiveViewResult && b.studentStatus !== 'SUBMITTED') {
+              setBankLoading(false)
+            }
           } else {
             // Resiliency fallback: Check for active student attempt by testId before marking as not found
             studentApi
@@ -1257,8 +1261,8 @@ function QuizRunner({
     }
   }
 
-  if (!bank || isStartingAttempt) {
-    if (bankLoading || isStartingAttempt) {
+  if (!bank || bankLoading || isStartingAttempt) {
+    if (bankLoading || isStartingAttempt || (!bank && stage === 'checking_auth')) {
       return (
         <div
           className="qb-quiz-fullscreen-wrapper"
@@ -1325,6 +1329,8 @@ function QuizRunner({
                   : bank?.studentStatus === 'STARTED'
                   ? 'Resuming Proctored Quiz...'
                   : 'Starting Proctored Quiz...'
+                : effectiveViewResult || stage === 'completed' || bank?.studentStatus === 'SUBMITTED'
+                ? 'Loading Results...'
                 : 'Loading Quiz...'}
             </h3>
             <p
@@ -1339,6 +1345,8 @@ function QuizRunner({
                 ? bank?.studentStatus === 'STARTED'
                   ? 'Retrieving your active attempt and answers...'
                   : 'Synchronizing questions and entering secure environment...'
+                : effectiveViewResult || stage === 'completed' || bank?.studentStatus === 'SUBMITTED'
+                ? 'Retrieving your test answers and score...'
                 : isPreview
                 ? 'Retrieving questions, options, and diagrams...'
                 : 'Retrieving your secure test session and questions...'}
@@ -1477,7 +1485,7 @@ function QuizRunner({
         {/* ========================================================= */}
         {/* VIEW 1: SIGN IN REQUIRED                                 */}
         {/* ========================================================= */}
-        {stage === 'checking_auth' && (
+        {stage === 'checking_auth' && !effectiveViewResult && (
           <div className="qb-quiz-card text-center">
             <div className="qb-card-icon-hero">
               <ion-icon name="lock-closed-outline"></ion-icon>
