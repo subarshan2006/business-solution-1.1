@@ -74,6 +74,9 @@ export class ProctoringGuard {
   private minimizeCount: number = 0;
   private isDisqualified: boolean = false;
   private lastRestrictedKeyStrikeTimestamp: number = 0;
+  private isKeyboardFocused: boolean = false;
+  private lastTouchStrikeTime: number = 0;
+  private lastSplitScreenStrikeTime: number = 0;
 
   constructor(options: ProctoringGuardOptions) {
     this.testId = options.testId;
@@ -152,6 +155,7 @@ export class ProctoringGuard {
     this.attachContextMenuAndSelectListeners();
     this.attachMediaCaptureProtection();
     this.attachMobileGestureAndTouchListeners();
+    this.attachSplitScreenListeners();
 
     // Enforce fullscreen immediately if not in fullscreen
     if (typeof document !== 'undefined' && 'fullscreenElement' in document) {
@@ -598,8 +602,11 @@ export class ProctoringGuard {
         this.showBlackout('Exam terminated due to 3 screen switch violations.');
         this.dispatchViolation('MINIMIZE', 0, 'Disqualified on 3 strikes');
       } else {
-        this.showBlackout(`Test focus lost (${reason}). Return to resume.`, false);
-        this.dispatchViolation('MINIMIZE', 0, reason);
+        this.showBlackout(
+          `Security Alert: ${reason}. Strike ${this.minimizeCount} of 3 recorded. Return to fullscreen to continue.`,
+          true,
+        );
+        this.dispatchViolation('MINIMIZE', 0, `${reason} (Strike ${this.minimizeCount}/3)`);
       }
     };
 
@@ -617,17 +624,17 @@ export class ProctoringGuard {
       }
 
       this.showBlackout(
-        'Tab switch or window departure detected. You must acknowledge this strike and return to fullscreen to continue.',
+        `Security Alert: Screen departure detected. Strike ${this.minimizeCount} of 3 recorded. You must acknowledge this strike and return to fullscreen to continue.`,
         true,
       );
     };
 
-    // Window blur & focus
+    // Window blur & focus (e.g. top notification shade pulldown or system dialog)
     const onBlur = () => {
       if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && document.hasFocus()) {
         return;
       }
-      handleFocusLoss('Window minimized or lost focus');
+      handleFocusLoss('Top notification pulldown or window departure');
     };
 
     const onFocusOut = (e: FocusEvent) => {
@@ -637,15 +644,15 @@ export class ProctoringGuard {
       if (typeof document !== 'undefined' && typeof document.hasFocus === 'function' && document.hasFocus()) {
         return;
       }
-      handleFocusLoss('Window minimized or lost focus');
+      handleFocusLoss('Top notification pulldown or window departure');
     };
 
     const onFocus = () => handleFocusGain();
 
-    // Visibility change (tab switch, minimize, mobile app-switcher)
+    // Visibility change (tab switch, home screen swipe, app switch to WhatsApp/ChatGPT)
     const onVisibilityChange = () => {
       if (typeof document !== 'undefined' && document.hidden) {
-        handleFocusLoss('Tab switched or minimized');
+        handleFocusLoss('App switch or home screen exit');
       } else {
         handleFocusGain();
       }
@@ -891,23 +898,97 @@ export class ProctoringGuard {
   }
 
   /**
-   * Detects mobile multi-touch screenshot gestures (e.g. 3-finger swipe) and suppresses touch callouts.
+   * Detects and blocks mobile 3-finger screenshot gestures and suppresses touch callouts / Google Lens.
    */
   private attachMobileGestureAndTouchListeners(): void {
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
-    // 1. Detect multi-touch screenshot gestures (2 or more simultaneous touch points)
+    // 1. Detect and BLOCK 3-finger screenshot gestures (adds +1 strike)
     const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches && e.touches.length > 1) {
-        this.showBlackout('Multi-touch gesture or screenshot attempt detected.');
-        this.dispatchViolation('CAPTURE_SHORTCUT', undefined, 'Multi-touch gesture detected');
+      // 3 or more simultaneous touch points is the standard screenshot gesture
+      if (e.touches && e.touches.length >= 3) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        e.stopPropagation();
+
+        const now = Date.now();
+        if (now - this.lastTouchStrikeTime < 1500) {
+          return;
+        }
+        this.lastTouchStrikeTime = now;
+        this.clearClipboard();
+
+        this.minimizeCount += 1;
+        if (this.minimizeCount >= 3) {
+          this.isDisqualified = true;
+          this.showBlackout('Exam terminated due to 3 screen switch violations.');
+          this.dispatchViolation(
+            'APP_SWITCH',
+            undefined,
+            `3-finger screenshot gesture blocked (Strike ${this.minimizeCount}/3 - Disqualified)`,
+          );
+        } else {
+          this.showBlackout(
+            `Security Alert: 3-finger screenshot gesture blocked! Strike ${this.minimizeCount} of 3 recorded. Return to fullscreen to continue.`,
+            true,
+          );
+          this.dispatchViolation(
+            'APP_SWITCH',
+            undefined,
+            `3-finger screenshot gesture blocked (Strike ${this.minimizeCount}/3)`,
+          );
+        }
+      } else if (e.touches && e.touches.length === 2) {
+        // Prevent 2-finger zoom gestures without recording a strike
+        if (e.cancelable) {
+          e.preventDefault();
+        }
       }
     };
 
-    window.addEventListener('touchstart', handleTouchStart, { passive: true } as any);
-    this.cleanupFns.push(() => window.removeEventListener('touchstart', handleTouchStart as any));
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches && e.touches.length >= 3) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        e.stopPropagation();
+      }
+    };
 
-    // 2. Inject global CSS preventing text selection, image dragging, and touch callouts (Google Lens)
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    this.cleanupFns.push(() => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+    });
+
+    // 2. Track keyboard focus on inputs to avoid false-positive split-screen detection
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        this.isKeyboardFocused = true;
+      }
+    };
+
+    const onFocusOut = () => {
+      // Slight delay to allow keyboard dismissal animation to complete
+      setTimeout(() => {
+        const active = document.activeElement as HTMLElement | null;
+        if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA' && !active.isContentEditable)) {
+          this.isKeyboardFocused = false;
+        }
+      }, 300);
+    };
+
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    this.cleanupFns.push(() => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    });
+
+    // 3. Inject global CSS preventing text selection, image dragging, and touch callouts (Google Lens)
     let styleEl = document.getElementById('proctor-security-styles');
     if (!styleEl) {
       styleEl = document.createElement('style');
@@ -918,6 +999,7 @@ export class ProctoringGuard {
           -webkit-user-select: none !important;
           user-select: none !important;
           -webkit-tap-highlight-color: transparent !important;
+          touch-action: pan-y !important;
         }
         img {
           pointer-events: none !important;
@@ -931,6 +1013,82 @@ export class ProctoringGuard {
     this.cleanupFns.push(() => {
       if (styleEl && styleEl.parentElement) {
         styleEl.parentElement.removeChild(styleEl);
+      }
+    });
+  }
+
+  /**
+   * Detects mobile split-screen / multi-window mode where the browser window shrinks into half-screen mode.
+   */
+  private attachSplitScreenListeners(): void {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    const checkSplitScreen = () => {
+      // Ignore if virtual keyboard is active
+      const active = document.activeElement as HTMLElement | null;
+      const isInputActive = Boolean(
+        active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable),
+      );
+      if (this.isKeyboardFocused || isInputActive) {
+        return;
+      }
+
+      const currentHeight = window.innerHeight;
+      const currentWidth = window.innerWidth;
+      const screenHeight = (window.screen && (window.screen.availHeight || window.screen.height)) || currentHeight;
+      const screenWidth = (window.screen && (window.screen.availWidth || window.screen.width)) || currentWidth;
+
+      if (!screenHeight || !screenWidth) return;
+
+      const heightRatio = currentHeight / screenHeight;
+      const widthRatio = currentWidth / screenWidth;
+
+      // Split-screen typically cuts height or width to ~50% (threshold 0.65)
+      // Check both portrait split (height drops below 65%) and landscape split (width drops below 65%)
+      const isSplitScreen =
+        (heightRatio < 0.65 && screenHeight > 400) ||
+        (widthRatio < 0.65 && screenWidth > 500 && currentWidth < 600);
+
+      if (isSplitScreen) {
+        const now = Date.now();
+        // Cooldown of 2.5s between split-screen strikes while in split mode
+        if (now - this.lastSplitScreenStrikeTime < 2500) {
+          return;
+        }
+        this.lastSplitScreenStrikeTime = now;
+
+        this.minimizeCount += 1;
+        if (this.minimizeCount >= 3) {
+          this.isDisqualified = true;
+          this.showBlackout('Exam terminated due to 3 screen switch violations.');
+          this.dispatchViolation(
+            'APP_SWITCH',
+            undefined,
+            `Split-screen mode detected (Strike ${this.minimizeCount}/3 - Disqualified)`,
+          );
+        } else {
+          this.showBlackout(
+            `Security Alert: Split-screen / multi-window mode detected! Running apps side-by-side is strictly prohibited. Strike ${this.minimizeCount} of 3 recorded. Return to full screen to continue.`,
+            true,
+          );
+          this.dispatchViolation(
+            'APP_SWITCH',
+            undefined,
+            `Split-screen mode detected (Strike ${this.minimizeCount}/3)`,
+          );
+        }
+      }
+    };
+
+    window.addEventListener('resize', checkSplitScreen);
+    if ((window as any).visualViewport) {
+      (window as any).visualViewport.addEventListener('resize', checkSplitScreen);
+    }
+
+    this.cleanupFns.push(() => {
+      window.removeEventListener('resize', checkSplitScreen);
+      if ((window as any).visualViewport) {
+        (window as any).visualViewport.removeEventListener('resize', checkSplitScreen);
       }
     });
   }

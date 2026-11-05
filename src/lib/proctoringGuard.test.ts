@@ -97,6 +97,12 @@ describe('ProctoringGuard Frontend Integrity & Black-Screen Security Tests', () 
         innerWidth: 1920,
         innerHeight: 1080,
         devicePixelRatio: 2,
+        screen: {
+          availHeight: 1080,
+          availWidth: 1920,
+          height: 1080,
+          width: 1920,
+        },
         addEventListener: vi.fn((event: string, handler: Function) => {
           mockListeners[event] = mockListeners[event] || [];
           mockListeners[event].push(handler);
@@ -422,6 +428,94 @@ describe('ProctoringGuard Frontend Integrity & Black-Screen Security Tests', () 
       const overlay = mockDocument.getElementById('proctor-blackout-overlay');
       expect(overlay.innerHTML).toContain('EXAM TERMINATED');
       expect(overlay.innerHTML).toContain('SCORE: 0 MARKS');
+
+      guard.stop();
+    });
+
+    it('records strike on top notification shade pulldown and app switch', () => {
+      const guard = new ProctoringGuard({ testId: 'test-mobile-shade-001' });
+      guard.start();
+
+      const blurHandlers = mockListeners['blur'] || [];
+      const visibilityHandlers = mockListeners['visibilitychange'] || [];
+
+      // Pulldown top notification bar (triggers blur without hidden initially)
+      mockDocument.hasFocus = vi.fn(() => false);
+      mockDocument.hidden = false;
+      blurHandlers[0]!();
+
+      expect(guard.getMinimizeCount()).toBe(1);
+      const overlay = mockDocument.getElementById('proctor-blackout-overlay');
+      expect(overlay.innerHTML).toContain('Top notification pulldown or window departure');
+
+      // Fast-forward
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 2000);
+
+      // Switch to another app like WhatsApp (triggers visibilitychange to hidden)
+      mockDocument.hidden = true;
+      visibilityHandlers[0]!();
+
+      expect(guard.getMinimizeCount()).toBe(2);
+      expect(overlay.innerHTML).toContain('App switch or home screen exit');
+
+      guard.stop();
+    });
+
+    it('blocks 3-finger screenshot gesture and records a strike', () => {
+      const guard = new ProctoringGuard({ testId: 'test-mobile-gesture-001' });
+      guard.start();
+
+      const touchstartHandlers = mockListeners['touchstart'] || [];
+      const touchmoveHandlers = mockListeners['touchmove'] || [];
+
+      const mock3FingerEvent = {
+        touches: [{ clientX: 10 }, { clientX: 50 }, { clientX: 90 }],
+        cancelable: true,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      };
+
+      // 3 fingers touch screen
+      touchstartHandlers[0]!(mock3FingerEvent);
+      expect(mock3FingerEvent.preventDefault).toHaveBeenCalled();
+      expect(guard.getMinimizeCount()).toBe(1);
+
+      // 3 fingers drag downward (touchmove)
+      touchmoveHandlers[0]!(mock3FingerEvent);
+      expect(mock3FingerEvent.preventDefault).toHaveBeenCalled();
+
+      const overlay = mockDocument.getElementById('proctor-blackout-overlay');
+      expect(overlay.innerHTML).toContain('3-finger screenshot gesture blocked');
+
+      guard.stop();
+    });
+
+    it('detects split-screen mode and records strike, while allowing keyboard typing', () => {
+      const guard = new ProctoringGuard({ testId: 'test-mobile-splitscreen-001' });
+      guard.start();
+
+      const resizeHandlers = mockListeners['resize'] || [];
+
+      // 1. Normal resize with input element focused (virtual keyboard) -> NO STRIKE
+      const mockInput = {
+        tagName: 'INPUT',
+        isContentEditable: false,
+      };
+      mockDocument.activeElement = mockInput;
+      mockWindow.innerHeight = 450; // Dropped to 450 due to keyboard
+      resizeHandlers[0]!();
+
+      expect(guard.getMinimizeCount()).toBe(0);
+
+      // 2. Split-screen resize with NO input focused -> STRIKE RECORDED
+      mockDocument.activeElement = mockDocument.body;
+      (guard as any).isKeyboardFocused = false;
+      mockWindow.innerHeight = 450; // Half screen in split mode (450 / 1080 = 41% < 65%)
+      resizeHandlers[0]!();
+
+      expect(guard.getMinimizeCount()).toBe(1);
+      const overlay = mockDocument.getElementById('proctor-blackout-overlay');
+      expect(overlay.innerHTML).toContain('Split-screen / multi-window mode detected');
 
       guard.stop();
     });
