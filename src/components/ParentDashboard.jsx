@@ -27,13 +27,9 @@ function ParentDashboard({
 }) {
   const [activeParentTab, setActiveParentTab] = useState('progress') // 'progress', 'pending', 'completed', 'upcoming', 'report'
   const [selectedMonthKey, setSelectedMonthKey] = useState(getMonthKey())
-  const [isEditingSummative, setIsEditingSummative] = useState(false)
   const [isEditingRemarks, setIsEditingRemarks] = useState(false)
   const [summativeRecord, setSummativeRecord] = useState(null)
-  const [summativeForm, setSummativeForm] = useState({ score: '', total: 100, note: '', date: '' })
-  const [remarksForm, setRemarksForm] = useState({
-    sessionRemarks: {},
-  })
+  const [remarksPointsText, setRemarksPointsText] = useState('')
   const [editingMarkSession, setEditingMarkSession] = useState(null)
   const [markInputValue, setMarkInputValue] = useState('')
   const [saveSuccessNotice, setSaveSuccessNotice] = useState(false)
@@ -58,30 +54,19 @@ function ParentDashboard({
     if (selectedCourse?.id && selectedMonthKey) {
       const rec = getSummativeRecord(selectedCourse.id, selectedMonthKey)
       setSummativeRecord(rec)
-      if (rec) {
-        setSummativeForm({
-          score: rec.score != null ? rec.score : '',
-          total: rec.total != null ? rec.total : 100,
-          note: rec.note || '',
-          date: rec.date || '',
-        })
-        setRemarksForm({
-          sessionRemarks: rec.sessionRemarks || {},
-        })
+      if (rec?.remarksText) {
+        setRemarksPointsText(rec.remarksText)
+      } else if (rec?.totalRemarksPoints && Array.isArray(rec.totalRemarksPoints)) {
+        setRemarksPointsText(
+          rec.totalRemarksPoints.map((p) => (p.startsWith('•') ? p : `• ${p}`)).join('\n')
+        )
       } else {
-        setSummativeForm({ score: '', total: 100, note: '', date: '' })
-        setRemarksForm({
-          sessionRemarks: {},
-        })
+        setRemarksPointsText('')
       }
     } else {
       setSummativeRecord(null)
-      setSummativeForm({ score: '', total: 100, note: '', date: '' })
-      setRemarksForm({
-        sessionRemarks: {},
-      })
+      setRemarksPointsText('')
     }
-    setIsEditingSummative(false)
     setIsEditingRemarks(false)
   }, [selectedCourse?.id, selectedMonthKey])
 
@@ -118,45 +103,27 @@ function ParentDashboard({
     window.print()
   }
 
-  const handleSaveSummative = (e) => {
-    e.preventDefault()
-    if (!selectedCourse?.id) return
-    const saved = saveSummativeRecord(selectedCourse.id, selectedMonthKey, {
-      score: summativeForm.score,
-      total: summativeForm.total,
-      note: summativeForm.note,
-      date:
-        summativeForm.date ||
-        new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    })
-    setSummativeRecord(saved)
-    setIsEditingSummative(false)
-    setSaveSuccessNotice(true)
-    setTimeout(() => setSaveSuccessNotice(false), 3000)
-  }
-
   const handleOpenRemarksEditor = () => {
-    const initialSessionRemarks = { ...(summativeRecord?.sessionRemarks || {}) }
-    if (monthlyReport.sessions && monthlyReport.sessions.length > 0) {
-      monthlyReport.sessions.forEach((s) => {
-        if (initialSessionRemarks[s.sessionNumber] == null && s.remarks) {
-          initialSessionRemarks[s.sessionNumber] = s.remarks
-        }
-      })
-    }
-    setRemarksForm({
-      sessionRemarks: initialSessionRemarks,
-    })
+    const points =
+      summativeRecord?.totalRemarksPoints && summativeRecord.totalRemarksPoints.length > 0
+        ? summativeRecord.totalRemarksPoints
+        : monthlyReport.remarksPoints || []
+    setRemarksPointsText(points.map((p) => (p.startsWith('•') ? p : `• ${p}`)).join('\n'))
     setIsEditingRemarks(true)
-    setIsEditingSummative(false)
   }
 
   const handleSaveRemarks = (e) => {
     e.preventDefault()
     if (!selectedCourse?.id) return
 
+    const points = remarksPointsText
+      .split('\n')
+      .map((s) => s.trim().replace(/^[-•*]\s*/, ''))
+      .filter(Boolean)
+
     const saved = saveRemarksRecord(selectedCourse.id, selectedMonthKey, {
-      sessionRemarks: remarksForm.sessionRemarks,
+      totalRemarksPoints: points,
+      remarksText: remarksPointsText,
     })
     setSummativeRecord(saved)
     setIsEditingRemarks(false)
@@ -168,9 +135,8 @@ function ParentDashboard({
     if (!selectedCourse?.id) return
     const saved = resetRemarksRecord(selectedCourse.id, selectedMonthKey)
     setSummativeRecord(saved)
-    setRemarksForm({
-      sessionRemarks: {},
-    })
+    const defaultPoints = monthlyReport.defaultRemarksPoints || []
+    setRemarksPointsText(defaultPoints.map((p) => `• ${p}`).join('\n'))
     setIsEditingRemarks(false)
     setRemarksSuccessNotice('reset')
     setTimeout(() => setRemarksSuccessNotice(false), 3000)
@@ -661,36 +627,21 @@ function ParentDashboard({
 
             <div className="mr-controls-right">
               {isTeacherView && (
-                <>
-                  <button
-                    type="button"
-                    className={`mr-teacher-btn${isEditingSummative ? ' active' : ''}`}
-                    onClick={() => {
-                      setIsEditingSummative((prev) => !prev)
-                      if (isEditingRemarks) setIsEditingRemarks(false)
-                    }}
-                    title="Teacher only: Edit Summative Exam score and observations"
-                  >
-                    <ion-icon name={isEditingSummative ? 'close-outline' : 'create-outline'}></ion-icon>
-                    <span>{isEditingSummative ? 'Close Editor' : 'Edit Summative Score'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`mr-teacher-btn${isEditingRemarks ? ' active' : ''}`}
-                    onClick={() => {
-                      if (isEditingRemarks) {
-                        setIsEditingRemarks(false)
-                      } else {
-                        handleOpenRemarksEditor()
-                      }
-                    }}
-                    title="Teacher only: Edit Instructor Remarks & Observations"
-                  >
-                    <ion-icon name={isEditingRemarks ? 'close-outline' : 'chatbox-ellipses-outline'}></ion-icon>
-                    <span>{isEditingRemarks ? 'Close Remarks' : 'Edit Remarks'}</span>
-                  </button>
-                </>
+                <button
+                  type="button"
+                  className={`mr-teacher-btn${isEditingRemarks ? ' active' : ''}`}
+                  onClick={() => {
+                    if (isEditingRemarks) {
+                      setIsEditingRemarks(false)
+                    } else {
+                      handleOpenRemarksEditor()
+                    }
+                  }}
+                  title="Teacher only: Edit Instructor Remarks & Observations"
+                >
+                  <ion-icon name={isEditingRemarks ? 'close-outline' : 'chatbox-ellipses-outline'}></ion-icon>
+                  <span>{isEditingRemarks ? 'Close Remarks' : 'Edit Remarks'}</span>
+                </button>
               )}
 
               <button
@@ -705,103 +656,15 @@ function ParentDashboard({
             </div>
           </div>
 
-          {saveSuccessNotice && (
-            <div className="mr-alert-notice success">
-              <ion-icon name="checkmark-circle-outline"></ion-icon>
-              <span>Summative exam evaluation saved successfully to this monthly report card.</span>
-            </div>
-          )}
-
           {remarksSuccessNotice && (
             <div className="mr-alert-notice success">
               <ion-icon name="checkmark-circle-outline"></ion-icon>
               <span>
                 {remarksSuccessNotice === 'reset'
-                  ? 'Instructor remarks reverted to auto-generated narrative successfully.'
+                  ? 'Instructor remarks reverted to announcement narrative successfully.'
                   : 'Instructor Remarks & Observations saved successfully to this monthly report card.'}
               </span>
             </div>
-          )}
-
-          {/* Teacher Summative Editor (Screen Only, Teacher View Only) */}
-          {isTeacherView && isEditingSummative && (
-            <form className="mr-summative-editor-card" onSubmit={handleSaveSummative}>
-              <div className="mr-editor-header">
-                <div className="mr-editor-title-row">
-                  <ion-icon name="school-outline"></ion-icon>
-                  <h4 className="h4 mr-editor-title">Instructor Summative Exam Entry ({monthlyReport.academicCycle})</h4>
-                </div>
-                <span className="mr-editor-badge">Teacher-Only Tool</span>
-              </div>
-              <p className="mr-editor-sub">
-                Manual summative score and note are visible and editable exclusively when in teacher view. Saved values update the official monthly report card instantly.
-              </p>
-
-              <div className="mr-editor-fields-grid">
-                <div className="mr-form-group">
-                  <label htmlFor="mr-score-input">Summative Score:</label>
-                  <input
-                    id="mr-score-input"
-                    type="number"
-                    min="0"
-                    max={summativeForm.total || 100}
-                    placeholder="e.g. 88"
-                    value={summativeForm.score}
-                    onChange={(e) => setSummativeForm({ ...summativeForm, score: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="mr-form-group">
-                  <label htmlFor="mr-total-input">Total Points (Default 100):</label>
-                  <input
-                    id="mr-total-input"
-                    type="number"
-                    min="1"
-                    placeholder="100"
-                    value={summativeForm.total}
-                    onChange={(e) => setSummativeForm({ ...summativeForm, total: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="mr-form-group">
-                  <label htmlFor="mr-date-input">Exam Administered Date:</label>
-                  <input
-                    id="mr-date-input"
-                    type="text"
-                    placeholder="e.g. Oct 27"
-                    value={summativeForm.date}
-                    onChange={(e) => setSummativeForm({ ...summativeForm, date: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="mr-form-group full-width">
-                <label htmlFor="mr-notes-input">Instructor Qualitative Observation & Exam Feedback:</label>
-                <textarea
-                  id="mr-notes-input"
-                  rows="3"
-                  placeholder="e.g. Administered Oct 27. Excellent performance on factoring quadratics; minor calculation slips on rational denominators."
-                  value={summativeForm.note}
-                  onChange={(e) => setSummativeForm({ ...summativeForm, note: e.target.value })}
-                ></textarea>
-              </div>
-
-              <div className="mr-editor-actions">
-                <button type="submit" className="mr-save-btn">
-                  <ion-icon name="save-outline"></ion-icon>
-                  <span>Save to Report</span>
-                </button>
-                <button
-                  type="button"
-                  className="mr-cancel-btn"
-                  onClick={() => setIsEditingSummative(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
           )}
 
           {/* ========================================================== */}
@@ -838,27 +701,22 @@ function ParentDashboard({
               </div>
             </div>
 
-            {/* 3. KPI Grid (4 Cards: Sessions Attended, Homework Average, Summative Score, Punctuality Rate) */}
+            {/* 3. KPI Grid (3 Cards: Sessions Conducted, Homework Average, Attendance Rate) */}
             <div className="mr-kpi-grid">
-              <div className="mr-kpi-card" title="Completed Sessions / Total Sessions">
-                <div className="mr-kpi-number">{monthlyReport.kpis.sessionsAttended}</div>
-                <div className="mr-kpi-caption">Sessions Attended</div>
-                <div className="mr-kpi-sub-label">Completed / Total</div>
+              <div className="mr-kpi-card" title="Total Sessions Conducted">
+                <div className="mr-kpi-number">{monthlyReport.curriculum.sessionsCount}</div>
+                <div className="mr-kpi-caption">Sessions Conducted</div>
+                <div className="mr-kpi-sub-label">Announcement Stream</div>
               </div>
 
               <div className="mr-kpi-card">
                 <div className="mr-kpi-number">{monthlyReport.kpis.homeworkAverage}</div>
-                <div className="mr-kpi-caption">Homework Average</div>
-              </div>
-
-              <div className="mr-kpi-card">
-                <div className="mr-kpi-number">{monthlyReport.kpis.summativeScore}</div>
-                <div className="mr-kpi-caption">Summative Score</div>
+                <div className="mr-kpi-caption">Session Marks Average</div>
               </div>
 
               <div className="mr-kpi-card">
                 <div className="mr-kpi-number">{monthlyReport.kpis.punctualityRate}</div>
-                <div className="mr-kpi-caption">Punctuality Rate</div>
+                <div className="mr-kpi-caption">Attendance & Punctuality</div>
               </div>
             </div>
 
@@ -878,102 +736,80 @@ function ParentDashboard({
                     </tr>
                   </thead>
                   <tbody>
-                    {monthlyReport.curriculum.rows.map((row, idx) => (
-                      <tr key={row.id || idx}>
-                        <td className="mr-cell-date" data-label="Date / Session">{row.dateWeek}</td>
-                        <td className="mr-cell-topics" data-label="Core Topics Covered">{row.topics}</td>
-                        <td
-                          className={`mr-cell-marks ${isTeacherView ? 'mr-cell-interactive' : ''}`}
-                          data-label="Test Marks / Score"
-                          onClick={() => {
-                            if (!isTeacherView) return
-                            if (editingMarkSession === row.sessionNumber) return
-                            setEditingMarkSession(row.sessionNumber)
-                            setMarkInputValue(row.testMarks && row.testMarks !== '—' ? row.testMarks : '')
-                          }}
-                        >
-                          {isTeacherView && editingMarkSession === row.sessionNumber ? (
-                            <input
-                              type="text"
-                              autoFocus
-                              className="mr-inline-mark-input"
-                              value={markInputValue}
-                              placeholder="e.g. 18/20"
-                              onChange={(e) => setMarkInputValue(e.target.value)}
-                              onBlur={() => handleSaveSessionMark(row.sessionNumber, markInputValue)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault()
-                                  handleSaveSessionMark(row.sessionNumber, markInputValue)
-                                } else if (e.key === 'Escape') {
-                                  setEditingMarkSession(null)
-                                }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          ) : (
-                            <span
-                              className={`mr-marks-badge ${row.testMarks && row.testMarks !== '—' ? 'has-marks' : 'empty-marks'} ${isTeacherView ? 'clickable' : ''}`}
-                              title={isTeacherView ? 'Touch or click to enter/edit mark' : ''}
-                            >
-                              {row.testMarks && row.testMarks !== '—' ? (
-                                row.testMarks
-                              ) : isTeacherView ? (
-                                <span className="mr-marks-prompt">+ Enter Mark</span>
-                              ) : (
-                                '—'
-                              )}
-                              {isTeacherView && (
-                                <ion-icon name="create-outline" className="mr-mark-pencil-icon"></ion-icon>
-                              )}
-                            </span>
-                          )}
-                        </td>
-                        <td className="mr-cell-status" data-label="Status">
-                          <span
-                            className={`mr-status-pill ${row.status.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
-                          >
-                            {row.status}
-                          </span>
+                    {monthlyReport.curriculum.rows.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                          No session announcements published for this academic cycle.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      monthlyReport.curriculum.rows.map((row, idx) => (
+                        <tr key={row.id || idx}>
+                          <td className="mr-cell-date" data-label="Date / Session">{row.dateWeek}</td>
+                          <td className="mr-cell-topics" data-label="Core Topics Covered">{row.topics}</td>
+                          <td
+                            className={`mr-cell-marks ${isTeacherView ? 'mr-cell-interactive' : ''}`}
+                            data-label="Test Marks / Score"
+                            onClick={() => {
+                              if (!isTeacherView) return
+                              if (editingMarkSession === row.sessionNumber) return
+                              setEditingMarkSession(row.sessionNumber)
+                              setMarkInputValue(row.testMarks && row.testMarks !== '—' ? row.testMarks : '')
+                            }}
+                          >
+                            {isTeacherView && editingMarkSession === row.sessionNumber ? (
+                              <input
+                                type="text"
+                                autoFocus
+                                className="mr-inline-mark-input"
+                                value={markInputValue}
+                                placeholder="e.g. 18/20"
+                                onChange={(e) => setMarkInputValue(e.target.value)}
+                                onBlur={() => handleSaveSessionMark(row.sessionNumber, markInputValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault()
+                                    handleSaveSessionMark(row.sessionNumber, markInputValue)
+                                  } else if (e.key === 'Escape') {
+                                    setEditingMarkSession(null)
+                                  }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            ) : (
+                              <span
+                                className={`mr-marks-badge ${row.testMarks && row.testMarks !== '—' ? 'has-marks' : 'empty-marks'} ${isTeacherView ? 'clickable' : ''}`}
+                                title={isTeacherView ? 'Touch or click to enter/edit mark' : ''}
+                              >
+                                {row.testMarks && row.testMarks !== '—' ? (
+                                  row.testMarks
+                                ) : isTeacherView ? (
+                                  <span className="mr-marks-prompt">+ Enter Mark</span>
+                                ) : (
+                                  '—'
+                                )}
+                                {isTeacherView && (
+                                  <ion-icon name="create-outline" className="mr-mark-pencil-icon"></ion-icon>
+                                )}
+                              </span>
+                            )}
+                          </td>
+                          <td className="mr-cell-status" data-label="Status">
+                            <span
+                              className={`mr-status-pill ${row.status.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                            >
+                              {row.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
             </div>
 
-            {/* 5. Assessment & Task Performance */}
-            <div className="mr-section">
-              <h3 className="mr-section-heading">Assessment & Task Performance</h3>
-              <div className="mr-assessment-grid">
-                <div className="mr-assessment-card">
-                  <div className="mr-assessment-card-header">
-                    <span className="mr-assessment-title">Formative & Homework Average</span>
-                    <span className="mr-assessment-score">
-                      {monthlyReport.assessment.formative.scoreFormatted}
-                    </span>
-                  </div>
-                  <p className="mr-assessment-note">
-                    {monthlyReport.assessment.formative.note}
-                  </p>
-                </div>
-
-                <div className="mr-assessment-card">
-                  <div className="mr-assessment-card-header">
-                    <span className="mr-assessment-title">Monthly Summative Exam</span>
-                    <span className="mr-assessment-score">
-                      {monthlyReport.assessment.summative.scoreFormatted}
-                    </span>
-                  </div>
-                  <p className="mr-assessment-note">
-                    {monthlyReport.assessment.summative.note}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* 6. Instructor Remarks & Observations */}
+            {/* 5. Instructor Remarks & Observations */}
             <div className="mr-section" id="mr-instructor-remarks-section">
               <div className="mr-section-heading-row">
                 <h3 className="mr-section-heading">Instructor Remarks & Observations</h3>
@@ -992,7 +828,7 @@ function ParentDashboard({
                           handleOpenRemarksEditor()
                         }
                       }}
-                      title="Teacher only: Edit Session Remarks & Observations"
+                      title="Teacher only: Edit Instructor Remarks & Observations"
                     >
                       <ion-icon name={isEditingRemarks ? 'close-outline' : 'create-outline'}></ion-icon>
                       <span>{isEditingRemarks ? 'Cancel' : 'Edit Remarks'}</span>
@@ -1006,42 +842,26 @@ function ParentDashboard({
                   <div className="mr-editor-header">
                     <div className="mr-editor-title-row">
                       <ion-icon name="chatbox-ellipses-outline"></ion-icon>
-                      <h4 className="h4 mr-editor-title">Edit Session Remarks ({monthlyReport.academicCycle})</h4>
+                      <h4 className="h4 mr-editor-title">Edit Remarks ({monthlyReport.academicCycle})</h4>
                     </div>
                     <span className="mr-editor-badge">Teacher-Only Tool</span>
                   </div>
                   <p className="mr-editor-sub">
-                    Customize remarks for each session. Changes reflect on the official monthly report card instantly and are saved for this student and academic cycle.
+                    Enter remarks as points in this single box. Each bullet point updates the monthly report card instantly without session labels.
                   </p>
 
-                  <div className="mr-session-editor-list">
-                    {monthlyReport.sessions && monthlyReport.sessions.length > 0 ? (
-                      monthlyReport.sessions.map((sess, idx) => (
-                        <div className="mr-form-group full-width" key={sess.id || idx}>
-                          <label htmlFor={`mr-session-input-${sess.sessionNumber}`}>
-                            <strong>Session {sess.sessionNumber}: {sess.topicHeading}</strong>
-                            <span className="mr-field-hint">{sess.date} • {sess.topics}</span>
-                          </label>
-                          <textarea
-                            id={`mr-session-input-${sess.sessionNumber}`}
-                            rows="3"
-                            placeholder={`Enter remarks for Session ${sess.sessionNumber} (${sess.topicHeading})...`}
-                            value={remarksForm.sessionRemarks[sess.sessionNumber] ?? sess.remarks}
-                            onChange={(e) =>
-                              setRemarksForm({
-                                ...remarksForm,
-                                sessionRemarks: {
-                                  ...remarksForm.sessionRemarks,
-                                  [sess.sessionNumber]: e.target.value,
-                                },
-                              })
-                            }
-                          ></textarea>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="mr-editor-sub">No sessions recorded yet for this cycle.</p>
-                    )}
+                  <div className="mr-form-group full-width">
+                    <label htmlFor="mr-remarks-points-input">
+                      <strong>Overall Remarks & Observations (Points):</strong>
+                    </label>
+                    <textarea
+                      id="mr-remarks-points-input"
+                      rows="6"
+                      className="mr-remarks-textarea"
+                      placeholder="• Enter observation point 1...&#10;• Enter observation point 2..."
+                      value={remarksPointsText}
+                      onChange={(e) => setRemarksPointsText(e.target.value)}
+                    ></textarea>
                   </div>
 
                   <div className="mr-editor-actions">
@@ -1057,7 +877,7 @@ function ParentDashboard({
                         title="Revert back to stream-extracted remarks"
                       >
                         <ion-icon name="refresh-outline"></ion-icon>
-                        <span>Reset to Auto-Generated</span>
+                        <span>Reset to Announcement Remarks</span>
                       </button>
                     )}
                     <button
@@ -1070,28 +890,20 @@ function ParentDashboard({
                   </div>
                 </form>
               ) : (
-                <div className="mr-session-remarks-list">
-                  {monthlyReport.sessions && monthlyReport.sessions.length > 0 ? (
-                    monthlyReport.sessions.map((sess, idx) => (
-                      <div className="mr-session-remark-card" key={sess.id || idx}>
-                        <div className="mr-session-remark-header">
-                          <div className="mr-session-badge-group">
-                            <span className="mr-session-badge">Session {sess.sessionNumber}</span>
-                            <span className="mr-session-date-tag">{sess.date}</span>
-                          </div>
-                          <h4 className="mr-session-topic-heading">{sess.topicHeading}</h4>
-                        </div>
-                        <p className="mr-session-remark-text">
-                          {sess.remarks || 'Session concluded successfully. Core topics and problem sets reviewed.'}
-                        </p>
-                      </div>
-                    ))
+                <div className="mr-remarks-card mr-remarks-single-box">
+                  {monthlyReport.remarksPoints && monthlyReport.remarksPoints.length > 0 ? (
+                    <ul className="mr-remarks-points-list">
+                      {monthlyReport.remarksPoints.map((point, pIdx) => (
+                        <li key={pIdx} className="mr-remarks-point-item">
+                          <span className="mr-point-bullet">•</span>
+                          <span className="mr-point-text">{point}</span>
+                        </li>
+                      ))}
+                    </ul>
                   ) : (
-                    <div className="mr-remarks-card">
-                      <p className="mr-remark-line">
-                        <em>No session announcements recorded for this cycle yet.</em>
-                      </p>
-                    </div>
+                    <p className="mr-remark-line">
+                      <em>No session remarks recorded for this cycle yet.</em>
+                    </p>
                   )}
                 </div>
               )}

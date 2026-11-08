@@ -931,6 +931,8 @@ export function saveRemarksRecord(courseId, monthKey, remarks = {}) {
 
     const cleanRecord = {
       ...existing,
+      totalRemarksPoints: cleanBullets(remarks.totalRemarksPoints, existing.totalRemarksPoints),
+      remarksText: remarks.remarksText != null ? String(remarks.remarksText) : (existing.remarksText || ''),
       academicEngagement:
         remarks.academicEngagement != null
           ? String(remarks.academicEngagement).trim()
@@ -963,6 +965,8 @@ export function resetRemarksRecord(courseId, monthKey) {
     const key = `jivanaut_summative_report_${courseId}_${monthKey}`
     const existing = getSummativeRecord(courseId, monthKey) || {}
     const {
+      totalRemarksPoints: _totalRemarksPoints,
+      remarksText: _remarksText,
       academicEngagement: _academicEngagement,
       focusAreas: _focusAreas,
       targetedSupport: _targetedSupport,
@@ -973,6 +977,8 @@ export function resetRemarksRecord(courseId, monthKey) {
     } = existing
     const cleanRecord = {
       ...rest,
+      totalRemarksPoints: null,
+      remarksText: null,
       academicEngagement: null,
       focusAreas: null,
       targetedSupport: null,
@@ -1068,7 +1074,8 @@ export function generateMonthlyNarrative({
 }
 
 /**
- * Build structured monthly report matching Monthly Online Tutoring Report Card.pdf
+ * Build structured monthly report based strictly on Google Classroom announcements
+ * Excludes quiz/coursework scraping to ensure report card is 100% announcement-driven
  */
 export function buildMonthlyReport({
   courseWork = [],
@@ -1088,8 +1095,23 @@ export function buildMonthlyReport({
       ? rawStudentName
       : courseMeta?.section || 'Student'
 
+  // Extract Subject from announcements if available
+  let announcementSubject = ''
+  if (announcements && announcements.length > 0) {
+    for (const ann of announcements) {
+      if (ann?.text) {
+        const sub = extractSubjectFromAnnouncement(ann.text)
+        if (sub) {
+          announcementSubject = sub
+          break
+        }
+      }
+    }
+  }
+
   // Resolve Course Title & Classroom ID
-  const activeSubjectCourse = courseMeta?.name || 'Mathematics (Algebra II)'
+  const activeSubjectCourse =
+    announcementSubject || courseMeta?.name || 'AP Biology'
   const activeClassroomCode = courseMeta?.id || courseMeta?.enrollmentCode || 'gc-mth-9842'
 
   // Resolve Teacher Name (fallback to Steena Antony)
@@ -1101,128 +1123,9 @@ export function buildMonthlyReport({
       ? teacherName
       : 'Steena Antony'
 
-  // Filter courseWork by chosen monthKey
-  const getWorkMonthKey = (cw) => {
-    if (cw.dueDate?.year && cw.dueDate?.month) {
-      return `${cw.dueDate.year}-${String(cw.dueDate.month).padStart(2, '0')}`
-    }
-    if (cw.creationTime) return cw.creationTime.slice(0, 7)
-    if (cw.submission?.turnInTime) return cw.submission.turnInTime.slice(0, 7)
-    if (cw.updateTime) return cw.updateTime.slice(0, 7)
-    return null
-  }
-
-  // Sessions KPI rules:
-  // - include TURNED_IN even with no assignedGrade;
-  // - exclude state === 'ASSIGNED' with no submission;
-  // - count assignments only.
-  const assignmentsOnly = courseWork.filter((cw) => {
-    return !cw.workType || cw.workType === 'ASSIGNMENT'
-  })
-
-  let monthlyAssignments = assignmentsOnly.filter((cw) => {
-    const mk = getWorkMonthKey(cw)
-    return mk === activeMonthKey
-  })
-
-  // If no assignments strictly matched the monthKey, but this is the active current month,
-  // or assignments don't have explicit dates, use available assignments so reports are never empty
-  if (monthlyAssignments.length === 0 && assignmentsOnly.length > 0 && activeMonthKey === getMonthKey()) {
-    monthlyAssignments = assignmentsOnly
-  }
-
-  // Calculate session completions based on KPI rules:
-  // - Completed sessions strictly include submitted (TURNED_IN) and completed (RETURNED or graded);
-  // - Pending and assigned (ASSIGNED, NEW, CREATED, RECLAIMED_BY_STUDENT, or no submission) DO NOT add to completed count.
-  let completedCount = 0
-  let earnedPoints = 0
-  let totalPossiblePoints = 0
-  let onTimeCount = 0
-
-  monthlyAssignments.forEach((cw) => {
-    const sub = cw.submission
-    const isTurnedIn = sub?.state === 'TURNED_IN'
-    const isReturned = sub?.state === 'RETURNED'
-    const hasAssignedGrade = sub?.assignedGrade != null
-    const isPendingOrAssigned =
-      !sub ||
-      sub.state === 'ASSIGNED' ||
-      sub.state === 'NEW' ||
-      sub.state === 'CREATED' ||
-      sub.state === 'RECLAIMED_BY_STUDENT'
-
-    // Only submitted (turned in) and completed (returned / graded) count toward completed sessions:
-    const isCompletedSession = (isTurnedIn || isReturned || hasAssignedGrade) && !isPendingOrAssigned
-
-    if (isCompletedSession) {
-      completedCount++
-      if (!sub?.late) onTimeCount++
-      if (hasAssignedGrade) {
-        earnedPoints += Number(sub.assignedGrade)
-        totalPossiblePoints += Number(cw.maxPoints || 100)
-      }
-    }
-  })
-
-  const totalAssignments = monthlyAssignments.length
-
-  // KPI 1 — Sessions Attended: auto: completedSessions / totalSessions
-  // Format matching specification: "completed / total" (e.g. "1 / 1", "0 / 1", "2 / 3")
-  const sessionsAttended = `${completedCount} / ${totalAssignments}`
-
-  // KPI 2 — Homework Average: auto: calculateStudentAnalytics().avgGrade
-  const monthlyAnalytics = calculateStudentAnalytics(
-    monthlyAssignments.length > 0 ? monthlyAssignments : courseWork,
-    activeSubjectCourse,
-    activeTeacher
-  )
-  let homeworkAvg = monthlyAnalytics.avgGrade != null ? monthlyAnalytics.avgGrade : 100
-
-  // KPI 3 — Summative Score: manual, teacher-only (score/total, default total 100)
-  const storedSummative =
-    courseMeta?.id ? getSummativeRecord(courseMeta.id, activeMonthKey) : null
-  const summative = manual || storedSummative
-
-  let summativeScore = null
-  let summativeTotal = 100
-  let summativeNote = ''
-  let summativeDate = ''
-
-  if (summative && summative.score != null) {
-    summativeScore = Number(summative.score)
-    summativeTotal = Number(summative.total || 100)
-    summativeNote = summative.note || ''
-    summativeDate = summative.date || ''
-  } else if (
-    courseMeta?.id === 'demo-course' ||
-    courseMeta?.id === 'c1' ||
-    courseMeta?.isMock ||
-    (!courseMeta?.id && courseWork.length > 0)
-  ) {
-    // Sensible mock defaults matching PDF if demo/mock classroom
-    summativeScore = 88
-    summativeTotal = 100
-    summativeDate = 'Oct 27'
-    summativeNote =
-      'Administered Oct 27. Excellent performance on factoring quadratics; minor calculation slips on rational denominators.'
-  }
-
-  const summativePct =
-    summativeScore != null ? Math.round((summativeScore / summativeTotal) * 100) : null
-
-  // KPI 4 — Punctuality Rate: auto: completedCount / courseWork.length
-  const punctualityRate =
-    totalAssignments > 0
-      ? Math.round(((onTimeCount || completedCount) / totalAssignments) * 100)
-      : 100
-
-
-  const dirDetails = getClassroomDirectoryDetails(courseMeta?.id, courseMeta?.name)
-
   // -------------------------------------------------------------
-  // Stream Announcement Session Ingestion & Dynamic Parsing
+  // Stream Announcement Session Ingestion & Dynamic Parsing (Announcement-Only)
   // -------------------------------------------------------------
-  const extractedTopics = []
   const parsedSessions = []
 
   if (announcements && announcements.length > 0) {
@@ -1273,60 +1176,9 @@ export function buildMonthlyReport({
   // Sort sessions chronologically by session number
   activeSessions.sort((a, b) => a.sessionNumber - b.sessionNumber)
 
-  // Fallback high-standard sessions matching student curriculum if no announcements exist
-  if (activeSessions.length === 0) {
-    const defaultTopics =
-      dirDetails.topics && dirDetails.topics.length > 0
-        ? dirDetails.topics
-        : [
-            'Quadratic Equations, Factorization & Quadratic Formula',
-            'Polynomial Functions, Long Division & Synthetic Division',
-            'Rational Expressions & Solving Complex Equations',
-            'Summative Review & Diagnostic Assessment',
-          ]
-    const defaultRemarks =
-      dirDetails.defaultRemarks ||
-      'Revised concepts from the last classes and practiced problem sets. High conceptual engagement.'
-
-    const [y, m] = activeMonthKey.split('-')
-    const monthShort = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-US', {
-      month: 'short',
-    })
-
-    activeSessions = defaultTopics.slice(0, 3).map((top, idx) => {
-      const sessNum = idx + 1
-      const dayNum = String(idx * 7 + 4).padStart(2, '0')
-      const sessDate = `${monthShort} ${dayNum}`
-      const topHeading = extractTopicHeading(top)
-      const mockMarks =
-        idx === 0 ? '18 / 20 (90%)' : idx === 1 ? '19 / 20 (95%)' : '20 / 20 (100%)'
-      let sessRem = defaultRemarks
-      if (idx === 1) {
-        sessRem = `Strong conceptual mastery demonstrated in ${topHeading}. Solved multi-step application problems with minimal scaffolding.`
-      } else if (idx === 2) {
-        sessRem = `Excellent retention and procedural confidence during timed drills on ${topHeading}. Ready for advanced evaluative assessments.`
-      }
-
-      return {
-        id: `mock-sess-${sessNum}`,
-        sessionNumber: sessNum,
-        date: sessDate,
-        topics: top,
-        topicHeading: topHeading,
-        testMarks: mockMarks,
-        remarks: sessRem,
-        isDateInMonth: true,
-      }
-    })
-  }
-
-  activeSessions.forEach((s) => {
-    if (s.topicHeading && !extractedTopics.includes(s.topicHeading)) {
-      extractedTopics.push(s.topicHeading)
-    }
-  })
-
   // Resolve custom teacher overrides (session marks and session remarks)
+  const storedSummative =
+    courseMeta?.id ? getSummativeRecord(courseMeta.id, activeMonthKey) : null
   const customRecord = manual || storedSummative
   const customSessionMarks = customRecord?.sessionMarks || {}
   const customSessionRemarks = customRecord?.sessionRemarks || {}
@@ -1351,7 +1203,7 @@ export function buildMonthlyReport({
     }
   })
 
-  // Calculate Average from Test Marks if present
+  // Calculate Average from Test Marks in announcements if present
   let totalScorePct = 0
   let scoreCount = 0
   effectiveSessions.forEach((sess) => {
@@ -1370,12 +1222,10 @@ export function buildMonthlyReport({
     }
   })
   const testAverage = scoreCount > 0 ? Math.round(totalScorePct / scoreCount) : null
-  if (testAverage != null) {
-    homeworkAvg = testAverage
-  }
+  const homeworkAvg = testAverage != null ? `${testAverage}%` : '—'
 
-  // Build Curriculum & Topics Table rows (with dedicated TEST MARKS / SCORE column)
-  let curriculumRows = effectiveSessions.map((sess, idx) => {
+  // Build Curriculum & Topics Table rows strictly from announcement sessions
+  const curriculumRows = effectiveSessions.map((sess, idx) => {
     let status = 'Completed'
     if (sess.testMarks) {
       const pctMatch = sess.testMarks.match(/(\d+)%/)
@@ -1403,50 +1253,43 @@ export function buildMonthlyReport({
     }
   })
 
-  // Apply teacher custom remarks overrides per session if available
-  let isCustomRemarks = false
-
-  const sessions = effectiveSessions.map((sess) => {
-    const customText =
-      customSessionRemarks[sess.sessionNumber] != null
-        ? customSessionRemarks[sess.sessionNumber]
-        : customSessionRemarks[sess.id] != null
-        ? customSessionRemarks[sess.id]
-        : null
-
-    if (customText !== null && String(customText).trim() !== '') {
-      isCustomRemarks = true
-      return {
-        ...sess,
-        remarks: String(customText).trim(),
+  // Build consolidated remarks as points from announcement stream (no session labels)
+  let defaultRemarksPoints = []
+  effectiveSessions.forEach((sess) => {
+    if (sess.remarks && sess.remarks.trim()) {
+      const lines = sess.remarks
+        .split('\n')
+        .map((l) => l.trim().replace(/^[-•*]\s*/, ''))
+        .filter(Boolean)
+      if (lines.length > 0) {
+        defaultRemarksPoints.push(...lines)
+      } else {
+        defaultRemarksPoints.push(sess.remarks.trim())
       }
     }
-    return sess
   })
-
-  const narrative = {
-    isCustomRemarks,
+  defaultRemarksPoints = Array.from(new Set(defaultRemarksPoints))
+  if (defaultRemarksPoints.length === 0 && effectiveSessions.length > 0) {
+    defaultRemarksPoints = ['Session concluded successfully. Core topics and problem sets reviewed.']
   }
 
-  // Formative & Homework Average Assessment block text
-  const formativeEarned = totalPossiblePoints > 0 ? earnedPoints : Math.round(homeworkAvg * 0.5)
-  const formativeTotal = totalPossiblePoints > 0 ? totalPossiblePoints : 50
-  const formativeScoreFormatted = `${homeworkAvg}% (${formativeEarned} / ${formativeTotal})`
-  const formativeNote =
-    completedCount > 0
-      ? `Synchronized with Google Classroom: ${completedCount} homework module${completedCount > 1 ? 's' : ''} submitted on time with consistent procedural clarity.`
-      : `Synchronized with Google Classroom: ${totalAssignments} assignment${totalAssignments !== 1 ? 's' : ''} currently assigned/pending student submission.`
+  const customPoints = customRecord?.totalRemarksPoints
+  let totalRemarksPoints = defaultRemarksPoints
+  let isCustomRemarks = false
 
-  // Summative Assessment block text
-  const summativeScoreFormatted =
-    summativePct != null
-      ? `${summativePct}% (${summativeScore} / ${summativeTotal})`
-      : 'Pending Evaluation'
-  const finalSummativeNote =
-    summativeNote ||
-    (summativeScore != null
-      ? `Administered ${summativeDate || 'Oct 27'}. Excellent performance on factoring quadratics; minor calculation slips on rational denominators.`
-      : 'Summative exam evaluation will be recorded by instructor.')
+  if (Array.isArray(customPoints) && customPoints.length > 0) {
+    totalRemarksPoints = customPoints
+    isCustomRemarks = true
+  } else if (customRecord?.remarksText && typeof customRecord.remarksText === 'string' && customRecord.remarksText.trim()) {
+    totalRemarksPoints = customRecord.remarksText
+      .split('\n')
+      .map((l) => l.trim().replace(/^[-•*]\s*/, ''))
+      .filter(Boolean)
+    isCustomRemarks = true
+  }
+
+  const sessionsCount = curriculumRows.length
+  const punctualityRate = sessionsCount > 0 ? '100%' : '—'
 
   return {
     monthKey: activeMonthKey,
@@ -1457,42 +1300,29 @@ export function buildMonthlyReport({
       classroomCode: activeClassroomCode,
     },
     kpis: {
-      sessionsAttended,
-      homeworkAverage: `${homeworkAvg}%`,
-      summativeScore: summativePct != null ? `${summativePct}%` : 'Pending',
-      punctualityRate: `${punctualityRate}%`,
+      sessionsAttended: `${sessionsCount}`,
+      homeworkAverage: homeworkAvg,
+      summativeScore: '—',
+      punctualityRate,
       raw: {
-        completedCount,
-        totalAssignments,
+        completedCount: sessionsCount,
+        totalAssignments: sessionsCount,
         homeworkAvg,
-        summativeScore,
-        summativeTotal,
-        summativePct,
         punctualityRate,
       },
     },
     curriculum: {
-      sessionsCount: curriculumRows.length,
-      completedSessionsCount: completedCount,
+      sessionsCount,
+      completedSessionsCount: sessionsCount,
       rows: curriculumRows,
     },
-    assessment: {
-      formative: {
-        avg: homeworkAvg,
-        scoreFormatted: formativeScoreFormatted,
-        note: formativeNote,
-      },
-      summative: {
-        score: summativeScore,
-        total: summativeTotal,
-        pct: summativePct,
-        scoreFormatted: summativeScoreFormatted,
-        note: finalSummativeNote,
-        date: summativeDate,
-      },
+    remarksPoints: totalRemarksPoints,
+    defaultRemarksPoints,
+    sessions: effectiveSessions,
+    narrative: {
+      isCustomRemarks,
+      points: totalRemarksPoints,
     },
-    sessions,
-    narrative,
     footer: {
       tutorName: activeTeacher,
       contactEmail: 'jivanauttestprep@gmail.com',
@@ -1741,6 +1571,19 @@ export function extractTestMarksFromAnnouncement(text = '', hwStatus = '') {
 }
 
 /**
+ * Extract subject name from announcement text
+ * Matches "Course / Subject: AP Biology", "Subject: Chemistry", or header "AP Biology-session 2"
+ */
+export function extractSubjectFromAnnouncement(text = '') {
+  if (!text) return ''
+  const courseMatch = text.match(/(?:Course\s*\/\s*Subject|Subject)\s*:\s*([^\n\r]+)/i)
+  if (courseMatch && courseMatch[1]?.trim()) return courseMatch[1].trim()
+  const headerMatch = text.match(/^([A-Za-z0-9\s/&+-]+?)\s*[-–—]\s*session\s*\d+/im)
+  if (headerMatch && headerMatch[1]?.trim()) return headerMatch[1].trim()
+  return ''
+}
+
+/**
  * Extract instructor remarks from announcement text
  */
 export function extractRemarksFromAnnouncement(text = '') {
@@ -1773,6 +1616,7 @@ export function parseAnnouncementFields(text = '') {
   if (!text) return {}
   const parentName = parseParentNameFromText(text)
   const sessionNumber = parseSessionNumberFromText(text)
+  const subjectTitle = extractSubjectFromAnnouncement(text)
 
   const topicsMatch = text.match(/\b(?:Topics?\s*covered|Topic)\b\s*(?::\s*-|:\s*|-|\s*=\s*)\s*(.+?)(?=\n\s*(?:HW assigned|HW status|Test marks?|Marks?|Remarks|$))/is)
   const hwAssignedMatch = text.match(/HW assigned\s*(?::\s*-|:\s*|-|\s*=\s*)\s*(.+?)(?=\n\s*(?:HW status|Test marks?|Marks?|Remarks|$))/is)
@@ -1782,6 +1626,7 @@ export function parseAnnouncementFields(text = '') {
   const hwStatus = hwStatusMatch ? hwStatusMatch[1].trim().replace(/^[-–—:=•*]\s*/, '') : ''
 
   return {
+    subjectTitle,
     parentName: parentName || '',
     sessionNumber: sessionNumber || null,
     date: extractDateFromAnnouncement(text),

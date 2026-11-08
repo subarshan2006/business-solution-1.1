@@ -333,10 +333,13 @@ Regards and thanks, ${teacherName}`
     }
   }
 
-  // Formatted Email Subject
+  // Active login email for sending session reports
+  const userLoginEmail = auth?.user?.email || auth?.email || ''
+
+  // Formatted Email Subject (Option B: Subject - Session N - PST Date PST (IST Date IST))
   const emailSubject = useMemo(
-    () => `${subjectTitle} - Session ${sessionNumber} Updates`,
-    [subjectTitle, sessionNumber]
+    () => `${subjectTitle} - Session ${sessionNumber} - ${pstDateStr} PST (${istDateStr} IST)`,
+    [subjectTitle, sessionNumber, pstDateStr, istDateStr]
   )
 
   // WhatsApp Share URL
@@ -344,7 +347,9 @@ Regards and thanks, ${teacherName}`
 
   // Multi-Provider Email Handlers
   const handleGmailWeb = () => {
-    const url = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(
+    const authUserParam = userLoginEmail ? `authuser=${encodeURIComponent(userLoginEmail)}&` : ''
+    const userPath = userLoginEmail ? `u/${encodeURIComponent(userLoginEmail)}/` : ''
+    const url = `https://mail.google.com/mail/${userPath}?${authUserParam}view=cm&fs=1&su=${encodeURIComponent(
       emailSubject
     )}&body=${encodeURIComponent(announcementText)}`
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -385,7 +390,8 @@ Regards and thanks, ${teacherName}`
   }
 
   const handleCopyEmailDetails = async () => {
-    const fullEmailText = `Subject: ${emailSubject}\n\n${announcementText}`
+    const fromLine = userLoginEmail ? `From: ${userLoginEmail}\n` : ''
+    const fullEmailText = `${fromLine}Subject: ${emailSubject}\n\n${announcementText}`
     try {
       await navigator.clipboard.writeText(fullEmailText)
       setEmailCopied(true)
@@ -838,6 +844,11 @@ Regards and thanks, ${teacherName}`
                       <div className="email-options-menu" role="menu" aria-label="Email Providers">
                         <div className="email-menu-header">
                           <span>Send Session Report via:</span>
+                          {userLoginEmail && (
+                            <span className="email-sender-subtext" style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
+                              From: <strong>{userLoginEmail}</strong>
+                            </span>
+                          )}
                         </div>
 
                         <button
