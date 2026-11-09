@@ -7,6 +7,7 @@
 import {
   DEFAULT_CLASSROOMS_DIRECTORY,
   getClassroomDirectoryDetails,
+  saveClassroomOverride,
   isParentEmail,
   KNOWN_PARENTS,
   getParentClassroom,
@@ -870,11 +871,18 @@ export function getRecentMonthKeys(n = 12) {
  * Key: jivanaut_summative_report_{courseId}_{monthKey}
  */
 
+function getAppStorage() {
+  if (typeof localStorage !== 'undefined') return localStorage
+  if (typeof window !== 'undefined' && window.localStorage) return window.localStorage
+  return null
+}
+
 export function getSummativeRecord(courseId, monthKey) {
   if (!courseId || !monthKey) return null
   try {
     const key = `jivanaut_summative_report_${courseId}_${monthKey}`
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null
+    const storage = getAppStorage()
+    const raw = storage ? storage.getItem(key) : null
     return raw ? JSON.parse(raw) : null
   } catch (err) {
     console.warn('Error reading summative record:', err)
@@ -895,8 +903,9 @@ export function saveSummativeRecord(courseId, monthKey, record = {}) {
       date: record.date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       updatedAt: new Date().toISOString(),
     }
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(key, JSON.stringify(cleanRecord))
+    const storage = getAppStorage()
+    if (storage) {
+      storage.setItem(key, JSON.stringify(cleanRecord))
     }
     return cleanRecord
   } catch (err) {
@@ -949,8 +958,9 @@ export function saveRemarksRecord(courseId, monthKey, remarks = {}) {
       parentRecommendations: cleanBullets(remarks.parentRecommendations, existing.parentRecommendations),
       updatedAt: new Date().toISOString(),
     }
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(key, JSON.stringify(cleanRecord))
+    const storage = getAppStorage()
+    if (storage) {
+      storage.setItem(key, JSON.stringify(cleanRecord))
     }
     return cleanRecord
   } catch (err) {
@@ -987,8 +997,9 @@ export function resetRemarksRecord(courseId, monthKey) {
       sessionMarks: null,
       updatedAt: new Date().toISOString(),
     }
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(key, JSON.stringify(cleanRecord))
+    const storage = getAppStorage()
+    if (storage) {
+      storage.setItem(key, JSON.stringify(cleanRecord))
     }
     return cleanRecord
   } catch (err) {
@@ -1019,13 +1030,131 @@ export function saveSessionMark(courseId, monthKey, sessionNumber, mark) {
       sessionMarks,
       updatedAt: new Date().toISOString(),
     }
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(key, JSON.stringify(cleanRecord))
+    const storage = getAppStorage()
+    if (storage) {
+      storage.setItem(key, JSON.stringify(cleanRecord))
     }
     return cleanRecord
   } catch (err) {
     console.warn('Error saving session mark:', err)
     return null
+  }
+}
+
+/**
+ * Save custom Subject & Course name for a monthly report.
+ * Persisted per classroom (courseId) and monthKey, plus saved to classroom overrides
+ * so future reports automatically default to the updated subject.
+ */
+export function saveReportSubject(courseId, monthKey, subject) {
+  if (!courseId || !monthKey) return null
+  try {
+    const key = `jivanaut_summative_report_${courseId}_${monthKey}`
+    const existing = getSummativeRecord(courseId, monthKey) || {}
+    const cleanSubject = String(subject || '').trim()
+
+    const cleanRecord = {
+      ...existing,
+      customSubject: cleanSubject || null,
+      updatedAt: new Date().toISOString(),
+    }
+    const storage = getAppStorage()
+    if (storage) {
+      storage.setItem(key, JSON.stringify(cleanRecord))
+    }
+
+    // Persist as classroom override baseline as well
+    if (cleanSubject) {
+      saveClassroomOverride(courseId, { subject: cleanSubject })
+    }
+
+    return cleanRecord
+  } catch (err) {
+    console.warn('Error saving report subject:', err)
+    return null
+  }
+}
+
+/**
+ * Reset custom Subject & Course name for a monthly report
+ */
+export function resetReportSubject(courseId, monthKey) {
+  if (!courseId || !monthKey) return null
+  try {
+    const key = `jivanaut_summative_report_${courseId}_${monthKey}`
+    const existing = getSummativeRecord(courseId, monthKey) || {}
+    const { customSubject: _customSubject, ...rest } = existing
+
+    const cleanRecord = {
+      ...rest,
+      customSubject: null,
+      updatedAt: new Date().toISOString(),
+    }
+    const storage = getAppStorage()
+    if (storage) {
+      storage.setItem(key, JSON.stringify(cleanRecord))
+    }
+    return cleanRecord
+  } catch (err) {
+    console.warn('Error resetting report subject:', err)
+    return null
+  }
+}
+
+/**
+ * Extract student name and subject from classroom name.
+ * Teachers save the student name as the classroom name (e.g. "Rahul Sharma",
+ * "Rahul Sharma — AP Biology", "Rahul (AP Biology)", or "AP Biology - Rahul").
+ */
+export function extractStudentAndSubjectFromClassroom(courseName = '') {
+  if (!courseName || typeof courseName !== 'string') {
+    return { studentName: '', subject: '' }
+  }
+  const clean = courseName.trim()
+  if (!clean) return { studentName: '', subject: '' }
+
+  const subjectKeywords =
+    /\b(math|mathematics|algebra|calculus|geometry|pre-algebra|biology|chemistry|physics|science|history|psychology|english|literature|economics|usabo|sat|act|ap|biochemistry|grade\s*\d+|class\s*\d+)\b/i
+
+  // 1. Check parenthetical pattern: "Student Name (Subject)" or "Subject (Student Name)"
+  const parenMatch = clean.match(/^([^(]+?)\s*\(([^)]+)\)$/)
+  if (parenMatch) {
+    const p1 = parenMatch[1].trim()
+    const p2 = parenMatch[2].trim()
+    if (subjectKeywords.test(p1) && !subjectKeywords.test(p2)) {
+      return { studentName: p2, subject: p1 }
+    }
+    return { studentName: p1, subject: p2 }
+  }
+
+  // 2. Check delimiter patterns: "—", "–", " - ", "|", ":"
+  const delimMatch = clean.match(/^([^\-–—|:]+?)\s*(?:—|–|\s+-\s+|\||:)\s*(.+)$/)
+  if (delimMatch) {
+    const p1 = delimMatch[1].trim()
+    const p2 = delimMatch[2].trim()
+    if (subjectKeywords.test(p1) && !subjectKeywords.test(p2)) {
+      return { studentName: p2, subject: p1 }
+    }
+    return { studentName: p1, subject: p2 }
+  }
+
+  // 3. Delimiter without spaces (e.g. "Rahul-Biology")
+  const dashMatch = clean.match(/^([^\-]+?)-([^\-]+)$/)
+  if (dashMatch) {
+    const p1 = dashMatch[1].trim()
+    const p2 = dashMatch[2].trim()
+    if (subjectKeywords.test(p1) && !subjectKeywords.test(p2)) {
+      return { studentName: p2, subject: p1 }
+    }
+    if (subjectKeywords.test(p2) && !subjectKeywords.test(p1)) {
+      return { studentName: p1, subject: p2 }
+    }
+  }
+
+  // 4. If the entire classroom name is saved as the student name
+  return {
+    studentName: clean,
+    subject: '',
   }
 }
 
@@ -1084,18 +1213,41 @@ export function buildMonthlyReport({
   monthKey = null,
   manual = null,
   teacherName = 'Steena Antony',
+  customSubject = null,
 } = {}) {
   const activeMonthKey = monthKey || getMonthKey()
   const academicCycle = getMonthLabel(activeMonthKey)
 
-  // Resolve Student Name
-  const rawStudentName = courseMeta?.studentName || 'Student'
-  const cleanStudentName =
-    rawStudentName && rawStudentName !== 'Alex Rivera'
-      ? rawStudentName
-      : courseMeta?.section || 'Student'
+  // Resolve custom teacher overrides (stored per courseId and monthKey)
+  const storedSummative =
+    courseMeta?.id ? getSummativeRecord(courseMeta.id, activeMonthKey) : null
+  const customRecord = manual || storedSummative
 
-  // Extract Subject from announcements if available
+  // 1. Resolve Student Name from Classroom Name
+  // Teachers save the student name as the classroom name (e.g. "Rahul Sharma", "Rahul — AP Biology", "Rahul")
+  const classroomName = (courseMeta?.name || '').trim()
+  const extractedFromClassroom = extractStudentAndSubjectFromClassroom(classroomName)
+
+  let cleanStudentName = ''
+  if (customRecord?.studentName && String(customRecord.studentName).trim()) {
+    cleanStudentName = String(customRecord.studentName).trim()
+  } else if (
+    courseMeta?.studentName &&
+    courseMeta.studentName !== 'Student' &&
+    courseMeta.studentName !== 'Alex Rivera'
+  ) {
+    cleanStudentName = courseMeta.studentName
+  } else if (extractedFromClassroom.studentName) {
+    cleanStudentName = extractedFromClassroom.studentName
+  } else if (courseMeta?.studentName && courseMeta.studentName !== 'Student') {
+    cleanStudentName = courseMeta.studentName
+  } else if (classroomName) {
+    cleanStudentName = classroomName
+  } else {
+    cleanStudentName = courseMeta?.section || 'Student'
+  }
+
+  // 2. Resolve Subject & Course (with support for teacher editing)
   let announcementSubject = ''
   if (announcements && announcements.length > 0) {
     for (const ann of announcements) {
@@ -1109,9 +1261,44 @@ export function buildMonthlyReport({
     }
   }
 
-  // Resolve Course Title & Classroom ID
-  const activeSubjectCourse =
-    announcementSubject || courseMeta?.name || 'AP Biology'
+  let dirOverrideSubject = ''
+  if (courseMeta?.id) {
+    try {
+      const dirDetails = getClassroomDirectoryDetails(courseMeta.id, classroomName)
+      if (dirDetails?.hasCustomOverride && dirDetails?.subject) {
+        dirOverrideSubject = dirDetails.subject
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  let activeSubjectCourse = ''
+  let isCustomSubject = false
+
+  const effectiveCustomSubject =
+    customSubject ||
+    customRecord?.customSubject ||
+    (customRecord?.subjectCourse ? customRecord.subjectCourse : null)
+
+  if (effectiveCustomSubject && String(effectiveCustomSubject).trim()) {
+    activeSubjectCourse = String(effectiveCustomSubject).trim()
+    isCustomSubject = true
+  } else if (dirOverrideSubject) {
+    activeSubjectCourse = dirOverrideSubject
+    isCustomSubject = true
+  } else if (announcementSubject) {
+    activeSubjectCourse = announcementSubject
+  } else if (extractedFromClassroom.subject) {
+    activeSubjectCourse = extractedFromClassroom.subject
+  } else if (courseMeta?.subject && courseMeta.subject.toLowerCase() !== cleanStudentName.toLowerCase()) {
+    activeSubjectCourse = courseMeta.subject
+  } else if (classroomName && classroomName.toLowerCase() !== cleanStudentName.toLowerCase()) {
+    activeSubjectCourse = classroomName
+  } else {
+    activeSubjectCourse = '1-on-1 Mentorship'
+  }
+
   const activeClassroomCode = courseMeta?.id || courseMeta?.enrollmentCode || 'gc-mth-9842'
 
   // Resolve Teacher Name (fallback to Steena Antony)
@@ -1177,9 +1364,6 @@ export function buildMonthlyReport({
   activeSessions.sort((a, b) => a.sessionNumber - b.sessionNumber)
 
   // Resolve custom teacher overrides (session marks and session remarks)
-  const storedSummative =
-    courseMeta?.id ? getSummativeRecord(courseMeta.id, activeMonthKey) : null
-  const customRecord = manual || storedSummative
   const customSessionMarks = customRecord?.sessionMarks || {}
   const customSessionRemarks = customRecord?.sessionRemarks || {}
 
@@ -1298,6 +1482,7 @@ export function buildMonthlyReport({
       studentName: cleanStudentName,
       subjectCourse: activeSubjectCourse,
       classroomCode: activeClassroomCode,
+      isCustomSubject,
     },
     kpis: {
       sessionsAttended: `${sessionsCount}`,
@@ -1647,15 +1832,13 @@ export function parseAnnouncementFields(text = '') {
 export async function fetchClassroomSessionContext(courseId, accessToken, courseObj = null) {
   const dirDetails = getClassroomDirectoryDetails(courseId, courseObj?.name)
 
-  // Determine Subject
+  // Determine Subject & Student from classroom name
+  const extractedFromCourse = extractStudentAndSubjectFromClassroom(courseObj?.name || '')
   let subjectTitle = dirDetails.subject || 'AP Biology'
   if (courseObj?.subject) {
     subjectTitle = courseObj.subject
-  } else if (courseObj?.name) {
-    const parts = courseObj.name.split('—')
-    if (parts.length > 1) {
-      subjectTitle = parts[parts.length - 1].trim()
-    }
+  } else if (extractedFromCourse.subject) {
+    subjectTitle = extractedFromCourse.subject
   }
 
   // Handle Mock / Preview Mode
@@ -1669,6 +1852,7 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
       courseId,
       studentName: courseObj?.studentName || dirDetails.studentName,
       parentName: courseObj?.parentName || dirDetails.parentName,
+      parentEmail: courseObj?.parentEmail || dirDetails.parentEmail || '',
       subjectTitle,
       sessionNumber: String(nextSession),
       topicsCovered: dirDetails.topics?.[0] || 'Unit 2 :- Cell organelles',
@@ -1707,15 +1891,14 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
     const announcements = announcementsResult.status === 'fulfilled' ? announcementsResult.value : []
     const topics = topicsResult.status === 'fulfilled' ? topicsResult.value : []
 
-    // 1. Resolve Student Name
+    // 1. Resolve Student Name (the teacher saves student name as classroom name)
     let resolvedStudentName = ''
     if (students.length > 0 && students[0]?.profile?.name?.fullName) {
       resolvedStudentName = students[0].profile.name.fullName
-    } else if (courseObj?.name) {
-      const parts = courseObj.name.split('—')
-      if (parts.length > 1) {
-        resolvedStudentName = parts[0].trim()
-      }
+    } else if (extractedFromCourse.studentName) {
+      resolvedStudentName = extractedFromCourse.studentName
+    } else if (courseObj?.studentName) {
+      resolvedStudentName = courseObj.studentName
     }
     if (!resolvedStudentName) {
       resolvedStudentName = dirDetails.studentName || 'Student'
@@ -1825,6 +2008,7 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
       courseId,
       studentName: resolvedStudentName,
       parentName: resolvedParentName,
+      parentEmail: dirDetails.parentEmail || '',
       subjectTitle,
       sessionNumber: String(nextSessionNumber),
       topicsCovered: resolvedTopics,
@@ -1846,6 +2030,7 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
       courseId,
       studentName: dirDetails.studentName,
       parentName: dirDetails.parentName,
+      parentEmail: dirDetails.parentEmail || '',
       subjectTitle,
       sessionNumber: '1',
       topicsCovered: dirDetails.topics?.[0] || '',

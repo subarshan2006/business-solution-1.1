@@ -10,6 +10,9 @@ import {
   saveRemarksRecord,
   resetRemarksRecord,
   saveSessionMark,
+  saveReportSubject,
+  resetReportSubject,
+  extractStudentAndSubjectFromClassroom,
 } from '../services/classroomApi'
 
 function ParentDashboard({
@@ -28,6 +31,9 @@ function ParentDashboard({
   const [activeParentTab, setActiveParentTab] = useState('progress') // 'progress', 'pending', 'completed', 'upcoming', 'report'
   const [selectedMonthKey, setSelectedMonthKey] = useState(getMonthKey())
   const [isEditingRemarks, setIsEditingRemarks] = useState(false)
+  const [isEditingSubject, setIsEditingSubject] = useState(false)
+  const [subjectInputValue, setSubjectInputValue] = useState('')
+  const [subjectSuccessNotice, setSubjectSuccessNotice] = useState(false)
   const [summativeRecord, setSummativeRecord] = useState(null)
   const [remarksPointsText, setRemarksPointsText] = useState('')
   const [editingMarkSession, setEditingMarkSession] = useState(null)
@@ -36,9 +42,23 @@ function ParentDashboard({
   const [remarksSuccessNotice, setRemarksSuccessNotice] = useState(false)
 
   const activeCourseName = selectedCourse?.name || courseName
+  const extractedCourseMeta = useMemo(
+    () => extractStudentAndSubjectFromClassroom(activeCourseName),
+    [activeCourseName]
+  )
   const activeStudentName =
-    selectedCourse?.studentName ||
-    (studentName && studentName !== 'Alex Rivera' ? studentName : selectedCourse?.section ? selectedCourse.section : 'Student')
+    summativeRecord?.studentName ||
+    (selectedCourse?.studentName &&
+    selectedCourse.studentName !== 'Student' &&
+    selectedCourse.studentName !== 'Alex Rivera'
+      ? selectedCourse.studentName
+      : '') ||
+    extractedCourseMeta.studentName ||
+    (studentName && studentName !== 'Student' && studentName !== 'Alex Rivera'
+      ? studentName
+      : '') ||
+    activeCourseName ||
+    'Student'
 
   const displayTeacherName =
     teacherName &&
@@ -68,6 +88,7 @@ function ParentDashboard({
       setRemarksPointsText('')
     }
     setIsEditingRemarks(false)
+    setIsEditingSubject(false)
   }, [selectedCourse?.id, selectedMonthKey])
 
   const recentMonthKeys = useMemo(() => getRecentMonthKeys(12), [])
@@ -100,7 +121,39 @@ function ParentDashboard({
   ])
 
   const handlePrint = () => {
-    window.print()
+    setIsEditingSubject(false)
+    setIsEditingRemarks(false)
+    setEditingMarkSession(null)
+    setTimeout(() => {
+      window.print()
+    }, 50)
+  }
+
+  const handleOpenSubjectEditor = () => {
+    setSubjectInputValue(monthlyReport.meta.subjectCourse || '')
+    setIsEditingSubject(true)
+  }
+
+  const handleSaveSubject = (e) => {
+    if (e) e.preventDefault()
+    if (!selectedCourse?.id) return
+    const cleanSubject = subjectInputValue.trim()
+    if (!cleanSubject) return
+
+    const saved = saveReportSubject(selectedCourse.id, selectedMonthKey, cleanSubject)
+    setSummativeRecord(saved)
+    setIsEditingSubject(false)
+    setSubjectSuccessNotice(cleanSubject)
+    setTimeout(() => setSubjectSuccessNotice(false), 3000)
+  }
+
+  const handleResetSubject = () => {
+    if (!selectedCourse?.id) return
+    const saved = resetReportSubject(selectedCourse.id, selectedMonthKey)
+    setSummativeRecord(saved)
+    setIsEditingSubject(false)
+    setSubjectSuccessNotice('reset')
+    setTimeout(() => setSubjectSuccessNotice(false), 3000)
   }
 
   const handleOpenRemarksEditor = () => {
@@ -627,21 +680,39 @@ function ParentDashboard({
 
             <div className="mr-controls-right">
               {isTeacherView && (
-                <button
-                  type="button"
-                  className={`mr-teacher-btn${isEditingRemarks ? ' active' : ''}`}
-                  onClick={() => {
-                    if (isEditingRemarks) {
-                      setIsEditingRemarks(false)
-                    } else {
-                      handleOpenRemarksEditor()
-                    }
-                  }}
-                  title="Teacher only: Edit Instructor Remarks & Observations"
-                >
-                  <ion-icon name={isEditingRemarks ? 'close-outline' : 'chatbox-ellipses-outline'}></ion-icon>
-                  <span>{isEditingRemarks ? 'Close Remarks' : 'Edit Remarks'}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={`mr-teacher-btn mr-edit-subject-btn${isEditingSubject ? ' active' : ''}`}
+                    onClick={() => {
+                      if (isEditingSubject) {
+                        setIsEditingSubject(false)
+                      } else {
+                        handleOpenSubjectEditor()
+                      }
+                    }}
+                    title="Teacher only: Edit Monthly Report Subject Name"
+                  >
+                    <ion-icon name={isEditingSubject ? 'close-outline' : 'book-outline'}></ion-icon>
+                    <span>{isEditingSubject ? 'Close Subject' : 'Edit Subject'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`mr-teacher-btn${isEditingRemarks ? ' active' : ''}`}
+                    onClick={() => {
+                      if (isEditingRemarks) {
+                        setIsEditingRemarks(false)
+                      } else {
+                        handleOpenRemarksEditor()
+                      }
+                    }}
+                    title="Teacher only: Edit Instructor Remarks & Observations"
+                  >
+                    <ion-icon name={isEditingRemarks ? 'close-outline' : 'chatbox-ellipses-outline'}></ion-icon>
+                    <span>{isEditingRemarks ? 'Close Remarks' : 'Edit Remarks'}</span>
+                  </button>
+                </>
               )}
 
               <button
@@ -655,6 +726,17 @@ function ParentDashboard({
               </button>
             </div>
           </div>
+
+          {subjectSuccessNotice && (
+            <div className="mr-alert-notice success">
+              <ion-icon name="checkmark-circle-outline"></ion-icon>
+              <span>
+                {subjectSuccessNotice === 'reset'
+                  ? 'Subject name reset to default successfully.'
+                  : `Subject name updated to "${subjectSuccessNotice}" successfully.`}
+              </span>
+            </div>
+          )}
 
           {remarksSuccessNotice && (
             <div className="mr-alert-notice success">
@@ -693,7 +775,63 @@ function ParentDashboard({
               </div>
               <div className="mr-meta-item">
                 <span className="mr-meta-label">SUBJECT & COURSE</span>
-                <span className="mr-meta-value">{monthlyReport.meta.subjectCourse}</span>
+                {isEditingSubject ? (
+                  <form onSubmit={handleSaveSubject} className="mr-subject-inline-form">
+                    <input
+                      type="text"
+                      className="mr-subject-inline-input"
+                      value={subjectInputValue}
+                      onChange={(e) => setSubjectInputValue(e.target.value)}
+                      placeholder="e.g. AP Biology, Mathematics..."
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          setIsEditingSubject(false)
+                        }
+                      }}
+                    />
+                    <div className="mr-subject-inline-actions">
+                      <button type="submit" className="mr-subject-save-btn" title="Save subject name">
+                        <ion-icon name="checkmark-outline"></ion-icon>
+                        <span>Save</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="mr-subject-cancel-btn"
+                        onClick={() => setIsEditingSubject(false)}
+                        title="Cancel"
+                      >
+                        <ion-icon name="close-outline"></ion-icon>
+                        <span>Cancel</span>
+                      </button>
+                      {monthlyReport.meta.isCustomSubject && (
+                        <button
+                          type="button"
+                          className="mr-subject-reset-btn"
+                          onClick={handleResetSubject}
+                          title="Reset to default subject"
+                        >
+                          <ion-icon name="refresh-outline"></ion-icon>
+                          <span>Reset</span>
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                ) : (
+                  <span
+                    className={`mr-meta-value ${isTeacherView ? 'mr-meta-value-editable' : ''}`}
+                    onClick={() => {
+                      if (!isTeacherView) return
+                      handleOpenSubjectEditor()
+                    }}
+                    title={isTeacherView ? 'Click to edit subject name' : ''}
+                  >
+                    <span>{monthlyReport.meta.subjectCourse}</span>
+                    {isTeacherView && (
+                      <ion-icon name="create-outline" className="mr-meta-edit-icon"></ion-icon>
+                    )}
+                  </span>
+                )}
               </div>
               <div className="mr-meta-item">
                 <span className="mr-meta-label">GOOGLE CLASSROOM ID</span>

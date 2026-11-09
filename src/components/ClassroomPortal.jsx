@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   getStoredAuth,
@@ -16,6 +16,7 @@ import {
   calculateStudentAnalytics,
   listCourseAnnouncements,
   verifyParentSecurityPin,
+  extractStudentAndSubjectFromClassroom,
   MOCK_20_CLASSROOMS,
   MOCK_ASSIGNMENTS,
 } from '../services/classroomApi'
@@ -624,8 +625,21 @@ function ClassroomPortal() {
     return matchesSearch && matchesGrade
   })
 
-  // Extract student name for the selected course
-  const currentStudentName = selectedCourse?.studentName || (role === 'student' ? auth?.user?.name : 'Alex Rivera')
+  // Extract student name for the selected course (the teacher saves the student name as classroom name)
+  const currentStudentName = useMemo(() => {
+    if (role === 'student' && auth?.user?.name) {
+      return auth.user.name
+    }
+    if (selectedCourse?.name) {
+      const extracted = extractStudentAndSubjectFromClassroom(selectedCourse.name)
+      if (extracted.studentName) return extracted.studentName
+      return selectedCourse.name
+    }
+    if (selectedCourse?.studentName && selectedCourse.studentName !== 'Student') {
+      return selectedCourse.studentName
+    }
+    return role === 'student' && auth?.user?.name ? auth.user.name : 'Student'
+  }, [selectedCourse, role, auth?.user?.name])
   const analytics = calculateStudentAnalytics(courseWork)
 
   return (
@@ -1764,7 +1778,7 @@ function ClassroomPortal() {
                 onSelectAssignment={(item) => setSelectedAssignment(item)}
                 allCourses={courses}
                 onSelectCourse={(course) => setSelectedCourse(course)}
-                isTeacherView={role === 'teacher'}
+                isTeacherView={isTeacher || role === 'teacher'}
                 teacherName={
                   auth?.user?.name && !auth.user.name.toLowerCase().includes('subarshan')
                     ? auth.user.name

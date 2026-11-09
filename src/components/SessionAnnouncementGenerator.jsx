@@ -52,6 +52,8 @@ export default function SessionAnnouncementGenerator({
   )
 
   // Form State
+  const FIXED_SENDER_EMAIL = 'jivanautprep@gmail.com'
+  const [recipientEmail, setRecipientEmail] = useState('')
   const [subjectTitle, setSubjectTitle] = useState('AP Biology')
   const [sessionNumber, setSessionNumber] = useState('3')
   const [pstDateStr, setPstDateStr] = useState(() => formatDateWithOrdinal(today))
@@ -164,6 +166,7 @@ export default function SessionAnnouncementGenerator({
         if (ctx) {
           if (ctx.studentName) setStudentName(ctx.studentName)
           if (ctx.parentName) setParentName(ctx.parentName)
+          if (ctx.parentEmail) setRecipientEmail(ctx.parentEmail)
           if (ctx.subjectTitle) setSubjectTitle(ctx.subjectTitle)
           if (ctx.sessionNumber) setSessionNumber(ctx.sessionNumber)
           if (ctx.topicsCovered) setTopicsCovered(ctx.topicsCovered)
@@ -333,8 +336,8 @@ Regards and thanks, ${teacherName}`
     }
   }
 
-  // Active login email for sending session reports
-  const userLoginEmail = auth?.user?.email || auth?.email || ''
+  // Fixed official teacher sender email
+  const SENDER_EMAIL = FIXED_SENDER_EMAIL
 
   // Formatted Email Subject (Option B: Subject - Session N - PST Date PST (IST Date IST))
   const emailSubject = useMemo(
@@ -347,9 +350,10 @@ Regards and thanks, ${teacherName}`
 
   // Multi-Provider Email Handlers
   const handleGmailWeb = () => {
-    const authUserParam = userLoginEmail ? `authuser=${encodeURIComponent(userLoginEmail)}&` : ''
-    const userPath = userLoginEmail ? `u/${encodeURIComponent(userLoginEmail)}/` : ''
-    const url = `https://mail.google.com/mail/${userPath}?${authUserParam}view=cm&fs=1&su=${encodeURIComponent(
+    const authUserParam = `authuser=${encodeURIComponent(SENDER_EMAIL)}&`
+    const userPath = `u/${encodeURIComponent(SENDER_EMAIL)}/`
+    const toParam = recipientEmail?.trim() ? `to=${encodeURIComponent(recipientEmail.trim())}&` : ''
+    const url = `https://mail.google.com/mail/${userPath}?${authUserParam}view=cm&fs=1&${toParam}su=${encodeURIComponent(
       emailSubject
     )}&body=${encodeURIComponent(announcementText)}`
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -357,7 +361,8 @@ Regards and thanks, ${teacherName}`
   }
 
   const handleOutlookWeb = () => {
-    const url = `https://outlook.live.com/mail/0/deeplink/compose?subject=${encodeURIComponent(
+    const toParam = recipientEmail?.trim() ? `to=${encodeURIComponent(recipientEmail.trim())}&` : ''
+    const url = `https://outlook.live.com/mail/0/deeplink/compose?${toParam}subject=${encodeURIComponent(
       emailSubject
     )}&body=${encodeURIComponent(announcementText)}`
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -365,9 +370,10 @@ Regards and thanks, ${teacherName}`
   }
 
   const handleDesktopMail = async () => {
+    const encodedTo = recipientEmail?.trim() ? encodeURIComponent(recipientEmail.trim()) : ''
     const encodedSubject = encodeURIComponent(emailSubject)
     const encodedFullBody = encodeURIComponent(announcementText)
-    const fullMailtoUrl = `mailto:?subject=${encodedSubject}&body=${encodedFullBody}`
+    const fullMailtoUrl = `mailto:${encodedTo}?subject=${encodedSubject}&body=${encodedFullBody}`
 
     // Safe Length Guard for Windows ShellExecute 2,048-char limitation
     if (fullMailtoUrl.length > 1800) {
@@ -382,7 +388,7 @@ Regards and thanks, ${teacherName}`
       const fallbackBody = encodeURIComponent(
         `Hi ${parentName},\n\n[Full session report copied to clipboard — please paste here (Ctrl+V / Cmd+V)]\n\nRegards and thanks,\n${teacherName}`
       )
-      window.location.href = `mailto:?subject=${encodedSubject}&body=${fallbackBody}`
+      window.location.href = `mailto:${encodedTo}?subject=${encodedSubject}&body=${fallbackBody}`
     } else {
       window.location.href = fullMailtoUrl
     }
@@ -390,12 +396,13 @@ Regards and thanks, ${teacherName}`
   }
 
   const handleCopyEmailDetails = async () => {
-    const fromLine = userLoginEmail ? `From: ${userLoginEmail}\n` : ''
-    const fullEmailText = `${fromLine}Subject: ${emailSubject}\n\n${announcementText}`
+    const fromLine = `From: ${SENDER_EMAIL}\n`
+    const toLine = recipientEmail?.trim() ? `To: ${recipientEmail.trim()}\n` : ''
+    const fullEmailText = `${fromLine}${toLine}Subject: ${emailSubject}\n\n${announcementText}`
     try {
       await navigator.clipboard.writeText(fullEmailText)
       setEmailCopied(true)
-      setEmailNotice('✓ Email subject and session report copied to clipboard!')
+      setEmailNotice(`✓ Email details (From: ${SENDER_EMAIL}) and session report copied to clipboard!`)
       setTimeout(() => setEmailCopied(false), 2500)
       setTimeout(() => setShowEmailMenu(false), 500)
     } catch (err) {
@@ -686,6 +693,47 @@ Regards and thanks, ${teacherName}`
               </div>
             </div>
 
+            {/* Email Dispatch Configuration: Fixed Sender & Any Recipient */}
+            <div className="form-row two-col">
+              <div className="form-group">
+                <div className="label-with-presets">
+                  <label htmlFor={`${formId}-sender-email`} className="form-label">
+                    Email Sender (Teacher / From):
+                  </label>
+                  <span className="field-source-pill fixed-pill" title="Official fixed sender email address">
+                    Fixed Official
+                  </span>
+                </div>
+                <input
+                  id={`${formId}-sender-email`}
+                  type="email"
+                  className="form-input email-readonly-input"
+                  value={FIXED_SENDER_EMAIL}
+                  readOnly
+                  title="Sender email is permanently fixed to jivanautprep@gmail.com"
+                />
+              </div>
+
+              <div className="form-group">
+                <div className="label-with-presets">
+                  <label htmlFor={`${formId}-recipient-email`} className="form-label">
+                    Recipient Email (Send To):
+                  </label>
+                  <span className="field-source-pill" title="Send session update to any recipient email">
+                    Send to Anyone
+                  </span>
+                </div>
+                <input
+                  id={`${formId}-recipient-email`}
+                  type="email"
+                  className="form-input"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="Enter parent, student, or guardian email..."
+                />
+              </div>
+            </div>
+
             {/* Topics Covered */}
             <div className="form-group">
               <div className="label-with-presets">
@@ -844,9 +892,12 @@ Regards and thanks, ${teacherName}`
                       <div className="email-options-menu" role="menu" aria-label="Email Providers">
                         <div className="email-menu-header">
                           <span>Send Session Report via:</span>
-                          {userLoginEmail && (
-                            <span className="email-sender-subtext" style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
-                              From: <strong>{userLoginEmail}</strong>
+                          <span className="email-sender-subtext" style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
+                            From: <strong>{FIXED_SENDER_EMAIL}</strong> <span style={{ color: '#22c55e', fontSize: '10px', fontWeight: 600 }}>(Fixed)</span>
+                          </span>
+                          {recipientEmail?.trim() && (
+                            <span className="email-recipient-subtext" style={{ display: 'block', fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>
+                              To: <strong>{recipientEmail.trim()}</strong>
                             </span>
                           )}
                         </div>

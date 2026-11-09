@@ -294,9 +294,10 @@ const LOCAL_STORAGE_KEY = 'jivanaut_classroom_overrides'
  * Retrieve saved overrides from localStorage
  */
 export function getSavedClassroomOverrides() {
-  if (typeof window === 'undefined' || !window.localStorage) return {}
+  const storage = typeof localStorage !== 'undefined' ? localStorage : typeof window !== 'undefined' ? window.localStorage : null
+  if (!storage) return {}
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
+    const raw = storage.getItem(LOCAL_STORAGE_KEY)
     return raw ? JSON.parse(raw) : {}
   } catch (err) {
     console.warn('Failed to load classroom overrides from localStorage:', err)
@@ -309,7 +310,8 @@ export function getSavedClassroomOverrides() {
  */
 export function saveClassroomOverride(courseId, details) {
   if (!courseId || !details) return
-  if (typeof window === 'undefined' || !window.localStorage) return
+  const storage = typeof localStorage !== 'undefined' ? localStorage : typeof window !== 'undefined' ? window.localStorage : null
+  if (!storage) return
   try {
     const existing = getSavedClassroomOverrides()
     existing[courseId] = {
@@ -317,7 +319,7 @@ export function saveClassroomOverride(courseId, details) {
       ...details,
       updatedAt: new Date().toISOString(),
     }
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existing))
+    storage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existing))
   } catch (err) {
     console.warn('Failed to save classroom override:', err)
   }
@@ -357,11 +359,16 @@ export function getClassroomDirectoryDetails(courseId = '', courseName = '') {
   const defaultEntry = findDirectoryEntry(courseId, courseName) || DEFAULT_CLASSROOMS_DIRECTORY[0]
   const overrides = getSavedClassroomOverrides()
   const custom = overrides[courseId] || overrides[courseName] || {}
+  const fallbackEmail =
+    defaultEntry?.parentEmail ||
+    (defaultEntry?.parentName
+      ? `${defaultEntry.parentName.toLowerCase().replace(/^(mr|ms|mrs|dr)\.?\s+/i, '').replace(/[^a-z0-9]/g, '')}.parent@gmail.com`
+      : '')
 
   return {
     studentName: custom.studentName || defaultEntry.studentName,
     parentName: custom.parentName || defaultEntry.parentName,
-    parentEmail: custom.parentEmail || defaultEntry.parentEmail,
+    parentEmail: custom.parentEmail || fallbackEmail,
     subject: custom.subject || defaultEntry.subject,
     grade: custom.grade || defaultEntry.grade,
     topics: custom.topics || defaultEntry.topics,
