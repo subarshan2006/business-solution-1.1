@@ -54,6 +54,8 @@ export default function SessionAnnouncementGenerator({
   // Form State
   const FIXED_SENDER_EMAIL = 'jivanautprep@gmail.com'
   const [recipientEmail, setRecipientEmail] = useState('')
+  const [secondaryRecipientEmail, setSecondaryRecipientEmail] = useState('')
+  const [previewMode, setPreviewMode] = useState('formatted') // 'formatted' | 'raw'
   const [subjectTitle, setSubjectTitle] = useState('AP Biology')
   const [sessionNumber, setSessionNumber] = useState('3')
   const [pstDateStr, setPstDateStr] = useState(() => formatDateWithOrdinal(today))
@@ -166,7 +168,8 @@ export default function SessionAnnouncementGenerator({
         if (ctx) {
           if (ctx.studentName) setStudentName(ctx.studentName)
           if (ctx.parentName) setParentName(ctx.parentName)
-          if (ctx.parentEmail) setRecipientEmail(ctx.parentEmail)
+          if (ctx.parentEmail !== undefined) setRecipientEmail(ctx.parentEmail || '')
+          if (ctx.secondaryParentEmail !== undefined) setSecondaryRecipientEmail(ctx.secondaryParentEmail || '')
           if (ctx.subjectTitle) setSubjectTitle(ctx.subjectTitle)
           if (ctx.sessionNumber) setSessionNumber(ctx.sessionNumber)
           if (ctx.topicsCovered) setTopicsCovered(ctx.topicsCovered)
@@ -194,9 +197,34 @@ export default function SessionAnnouncementGenerator({
     }
   }, [courseId, syncClassroomDetails])
 
-  // Build the exact announcement text matching requested format
+  // Active recipients list (Father & Mother)
+  const activeRecipients = useMemo(() => {
+    return [recipientEmail, secondaryRecipientEmail]
+      .map((e) => (typeof e === 'string' ? e.trim() : ''))
+      .filter(Boolean)
+  }, [recipientEmail, secondaryRecipientEmail])
+
+  // Helper to highlight module/unit and numbers (e.g. Unit 2, Module 1, Chapter 3)
+  const formatTopicsMarkdown = useCallback((text) => {
+    if (!text) return ''
+    return text.replace(
+      /\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/gi,
+      '**$1**'
+    )
+  }, [])
+
+  const formatTopicsWhatsApp = useCallback((text) => {
+    if (!text) return ''
+    return text.replace(
+      /\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/gi,
+      '*$1*'
+    )
+  }, [])
+
+  // Build the bold-formatted announcement text (Markdown format for Google Classroom / Plain Text)
   const announcementText = useMemo(() => {
-    return `${subjectTitle}-session ${sessionNumber} - ${pstDateStr} PST (${istDateStr} IST)
+    const formattedTopics = formatTopicsMarkdown(topicsCovered)
+    return `**${subjectTitle} - Session ${sessionNumber}** - ${pstDateStr} PST (${istDateStr} IST)
 
 Hi ${parentName},
 
@@ -204,17 +232,93 @@ Hi ${parentName},
 Please find the session updates for the last class below:-
 
 
-Topics covered:- ${topicsCovered}
+**Topics covered:-** ${formattedTopics}
 
-HW assigned:- ${hwAssigned}
+**HW assigned:-** ${hwAssigned}
 
-HW status/score:- ${hwStatus}
+**HW status/score:-** **${hwStatus}**
 
-Remarks:- ${remarks}
+**Remarks:-** ${remarks}
 
 Kindly check the google classroom for the materials and HW.
 
-Regards and thanks, ${teacherName}`
+Regards and thanks, **${teacherName}**`
+  }, [
+    subjectTitle,
+    sessionNumber,
+    pstDateStr,
+    istDateStr,
+    parentName,
+    topicsCovered,
+    hwAssigned,
+    hwStatus,
+    remarks,
+    teacherName,
+    formatTopicsMarkdown,
+  ])
+
+  // Build WhatsApp formatted text (using native *bold* markers)
+  const whatsappText = useMemo(() => {
+    const formattedTopics = formatTopicsWhatsApp(topicsCovered)
+    return `*${subjectTitle} - Session ${sessionNumber}* - ${pstDateStr} PST (${istDateStr} IST)
+
+Hi ${parentName},
+
+
+Please find the session updates for the last class below:-
+
+
+*Topics covered:-* ${formattedTopics}
+
+*HW assigned:-* ${hwAssigned}
+
+*HW status/score:-* *${hwStatus}*
+
+*Remarks:-* ${remarks}
+
+Kindly check the google classroom for the materials and HW.
+
+Regards and thanks, *${teacherName}*`
+  }, [
+    subjectTitle,
+    sessionNumber,
+    pstDateStr,
+    istDateStr,
+    parentName,
+    topicsCovered,
+    hwAssigned,
+    hwStatus,
+    remarks,
+    teacherName,
+    formatTopicsWhatsApp,
+  ])
+
+  // Build Rich HTML format (for clipboard pasting directly into Gmail, Outlook, Apple Mail)
+  const announcementHtml = useMemo(() => {
+    const escapeHtml = (str) =>
+      String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+
+    const formattedTopics = escapeHtml(topicsCovered).replace(
+      /\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/gi,
+      '<strong>$1</strong>'
+    )
+
+    return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.65; color: #1e293b;">
+  <p style="margin: 0 0 14px 0; font-size: 16px;">
+    <strong>${escapeHtml(subjectTitle)} — Session ${escapeHtml(sessionNumber)}</strong> — ${escapeHtml(pstDateStr)} PST (${escapeHtml(istDateStr)} IST)
+  </p>
+  <p style="margin: 0 0 14px 0;">Hi <strong>${escapeHtml(parentName)}</strong>,</p>
+  <p style="margin: 0 0 14px 0;">Please find the session updates for the last class below:-</p>
+  <p style="margin: 0 0 12px 0;"><strong>Topics covered:-</strong> ${formattedTopics}</p>
+  <p style="margin: 0 0 12px 0;"><strong>HW assigned:-</strong> ${escapeHtml(hwAssigned)}</p>
+  <p style="margin: 0 0 12px 0;"><strong>HW status/score:-</strong> <strong>${escapeHtml(hwStatus)}</strong></p>
+  <p style="margin: 0 0 14px 0;"><strong>Remarks:-</strong> ${escapeHtml(remarks)}</p>
+  <p style="margin: 0 0 14px 0;">Kindly check the google classroom for the materials and HW.</p>
+  <p style="margin: 0;">Regards and thanks,<br/><strong>${escapeHtml(teacherName)}</strong></p>
+</div>`
   }, [
     subjectTitle,
     sessionNumber,
@@ -253,26 +357,53 @@ Regards and thanks, ${teacherName}`
     setHwStatus(status)
   }
 
-  // Save manual overrides for this specific classroom
+  // Save manual overrides for this specific classroom (including both Father & Mother emails)
   const handleSaveClassroomOverrides = () => {
     if (!courseId) return
     saveClassroomOverride(courseId, {
       studentName,
       parentName,
       subject: subjectTitle,
+      parentEmail: recipientEmail,
+      secondaryParentEmail: secondaryRecipientEmail,
     })
     setSaveSuccess(true)
     setTimeout(() => setSaveSuccess(false), 2800)
   }
 
-  // Copy to clipboard
-  const handleCopy = async () => {
+  // Helper to copy dual payload (text/plain and text/html) so rich bold formats paste natively into Gmail / Outlook / Docs
+  const copyFormattedPayload = async (plainText, htmlText) => {
     try {
-      await navigator.clipboard.writeText(announcementText)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
+      if (typeof window !== 'undefined' && navigator?.clipboard && window.ClipboardItem) {
+        const textBlob = new Blob([plainText], { type: 'text/plain' })
+        const htmlBlob = new Blob([htmlText], { type: 'text/html' })
+        await navigator.clipboard.write([
+          new window.ClipboardItem({
+            'text/plain': textBlob,
+            'text/html': htmlBlob,
+          }),
+        ])
+        return true
+      }
+    } catch (e) {
+      console.warn('Rich ClipboardItem write failed, using plain writeText:', e)
+    }
+    try {
+      await navigator.clipboard.writeText(plainText)
+      return true
     } catch (err) {
-      console.error('Failed to copy:', err)
+      console.error('Failed to copy to clipboard:', err)
+      return false
+    }
+  }
+
+  // Copy to clipboard with rich bold styling
+  const handleCopy = async () => {
+    const ok = await copyFormattedPayload(announcementText, announcementHtml)
+    if (ok) {
+      setCopied(true)
+      setEmailNotice('✓ Bold formatted session update copied to clipboard! (Pastes with rich bold styling in Gmail/Outlook)')
+      setTimeout(() => setCopied(false), 2500)
     }
   }
 
@@ -345,43 +476,53 @@ Regards and thanks, ${teacherName}`
     [subjectTitle, sessionNumber, pstDateStr, istDateStr]
   )
 
-  // WhatsApp Share URL
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(announcementText)}`
+  // WhatsApp Share URL (using WhatsApp *bold* markers)
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappText)}`
 
-  // Multi-Provider Email Handlers
-  const handleGmailWeb = () => {
+  // Multi-Provider Email Handlers with Dual Father & Mother Recipients
+  const handleGmailWeb = async () => {
     const authUserParam = `authuser=${encodeURIComponent(SENDER_EMAIL)}&`
     const userPath = `u/${encodeURIComponent(SENDER_EMAIL)}/`
-    const toParam = recipientEmail?.trim() ? `to=${encodeURIComponent(recipientEmail.trim())}&` : ''
+    const toParam = activeRecipients.length > 0 ? `to=${encodeURIComponent(activeRecipients.join(','))}&` : ''
     const url = `https://mail.google.com/mail/${userPath}?${authUserParam}view=cm&fs=1&${toParam}su=${encodeURIComponent(
       emailSubject
     )}&body=${encodeURIComponent(announcementText)}`
+
+    await copyFormattedPayload(announcementText, announcementHtml)
+    const recipientMsg =
+      activeRecipients.length > 1
+        ? `both ${activeRecipients.join(' and ')}`
+        : activeRecipients.length === 1
+        ? activeRecipients[0]
+        : 'recipients'
+    setEmailNotice(`✓ Gmail opened for ${recipientMsg}! Bold formatted text copied to clipboard (paste with Ctrl+V / Cmd+V in compose).`)
+
     window.open(url, '_blank', 'noopener,noreferrer')
     setShowEmailMenu(false)
   }
 
-  const handleOutlookWeb = () => {
-    const toParam = recipientEmail?.trim() ? `to=${encodeURIComponent(recipientEmail.trim())}&` : ''
+  const handleOutlookWeb = async () => {
+    const toParam = activeRecipients.length > 0 ? `to=${encodeURIComponent(activeRecipients.join('; '))}&` : ''
     const url = `https://outlook.live.com/mail/0/deeplink/compose?${toParam}subject=${encodeURIComponent(
       emailSubject
     )}&body=${encodeURIComponent(announcementText)}`
+
+    await copyFormattedPayload(announcementText, announcementHtml)
+    setEmailNotice(`✓ Outlook opened! Bold formatted text copied to clipboard (paste with Ctrl+V / Cmd+V).`)
+
     window.open(url, '_blank', 'noopener,noreferrer')
     setShowEmailMenu(false)
   }
 
   const handleDesktopMail = async () => {
-    const encodedTo = recipientEmail?.trim() ? encodeURIComponent(recipientEmail.trim()) : ''
+    const encodedTo = activeRecipients.length > 0 ? encodeURIComponent(activeRecipients.join(',')) : ''
     const encodedSubject = encodeURIComponent(emailSubject)
     const encodedFullBody = encodeURIComponent(announcementText)
     const fullMailtoUrl = `mailto:${encodedTo}?subject=${encodedSubject}&body=${encodedFullBody}`
 
     // Safe Length Guard for Windows ShellExecute 2,048-char limitation
     if (fullMailtoUrl.length > 1800) {
-      try {
-        await navigator.clipboard.writeText(announcementText)
-      } catch (err) {
-        console.warn('Could not copy full report to clipboard:', err)
-      }
+      await copyFormattedPayload(announcementText, announcementHtml)
       setEmailNotice(
         'Full session report copied to clipboard! Opening mail app (paste with Ctrl+V / Cmd+V)...'
       )
@@ -390,6 +531,7 @@ Regards and thanks, ${teacherName}`
       )
       window.location.href = `mailto:${encodedTo}?subject=${encodedSubject}&body=${fallbackBody}`
     } else {
+      await copyFormattedPayload(announcementText, announcementHtml)
       window.location.href = fullMailtoUrl
     }
     setShowEmailMenu(false)
@@ -397,16 +539,23 @@ Regards and thanks, ${teacherName}`
 
   const handleCopyEmailDetails = async () => {
     const fromLine = `From: ${SENDER_EMAIL}\n`
-    const toLine = recipientEmail?.trim() ? `To: ${recipientEmail.trim()}\n` : ''
+    const toLine = activeRecipients.length > 0 ? `To: ${activeRecipients.join(', ')}\n` : ''
     const fullEmailText = `${fromLine}${toLine}Subject: ${emailSubject}\n\n${announcementText}`
-    try {
-      await navigator.clipboard.writeText(fullEmailText)
+    const fullEmailHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b;">
+      <p style="margin: 0 0 6px 0; color: #64748b; font-size: 13px;"><strong>From:</strong> ${SENDER_EMAIL}</p>
+      ${activeRecipients.length > 0 ? `<p style="margin: 0 0 12px 0; color: #64748b; font-size: 13px;"><strong>To:</strong> ${activeRecipients.join(', ')}</p>` : ''}
+      <p style="margin: 0 0 16px 0; font-size: 15px;"><strong>Subject:</strong> <strong>${emailSubject}</strong></p>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 16px 0;" />
+      ${announcementHtml}
+    </div>`
+
+    const ok = await copyFormattedPayload(fullEmailText, fullEmailHtml)
+    if (ok) {
       setEmailCopied(true)
-      setEmailNotice(`✓ Email details (From: ${SENDER_EMAIL}) and session report copied to clipboard!`)
+      const noteCount = activeRecipients.length > 1 ? ` (${activeRecipients.length} recipients: Father & Mother)` : ''
+      setEmailNotice(`✓ Email details & bold session report${noteCount} copied to clipboard! Ready to paste into any email client.`)
       setTimeout(() => setEmailCopied(false), 2500)
       setTimeout(() => setShowEmailMenu(false), 500)
-    } catch (err) {
-      console.error('Failed to copy email details:', err)
     }
   }
 
@@ -693,44 +842,117 @@ Regards and thanks, ${teacherName}`
               </div>
             </div>
 
-            {/* Email Dispatch Configuration: Fixed Sender & Any Recipient */}
-            <div className="form-row two-col">
-              <div className="form-group">
-                <div className="label-with-presets">
-                  <label htmlFor={`${formId}-sender-email`} className="form-label">
-                    Email Sender (Teacher / From):
-                  </label>
-                  <span className="field-source-pill fixed-pill" title="Official fixed sender email address">
-                    Fixed Official
+            {/* Email Dispatch Configuration: Multiple Receivers (Father & Mother) with Spacious Modern Card */}
+            <div className="email-dispatch-card">
+              {/* Card Header with Breathing Room */}
+              <div className="email-dispatch-header">
+                <div className="email-dispatch-header-left">
+                  <div className="email-dispatch-icon">
+                    <ion-icon name="mail-unread-outline"></ion-icon>
+                  </div>
+                  <div>
+                    <h5 className="email-dispatch-title">Email Dispatch & Parent Receivers</h5>
+                    <p className="email-dispatch-subtitle">
+                      Session updates will be sent to Father & Mother simultaneously
+                    </p>
+                  </div>
+                </div>
+                <div className="email-sender-pill-box">
+                  <span className="email-sender-badge" title="Official fixed sender address for Jivanaut Prep">
+                    <ion-icon name="shield-checkmark"></ion-icon>
+                    <span>From: <strong>{FIXED_SENDER_EMAIL}</strong></span>
+                    <span className="sender-fixed-tag">Fixed</span>
                   </span>
                 </div>
-                <input
-                  id={`${formId}-sender-email`}
-                  type="email"
-                  className="form-input email-readonly-input"
-                  value={FIXED_SENDER_EMAIL}
-                  readOnly
-                  title="Sender email is permanently fixed to jivanautprep@gmail.com"
-                />
               </div>
 
-              <div className="form-group">
-                <div className="label-with-presets">
-                  <label htmlFor={`${formId}-recipient-email`} className="form-label">
-                    Recipient Email (Send To):
-                  </label>
-                  <span className="field-source-pill" title="Send session update to any recipient email">
-                    Send to Anyone
-                  </span>
+              {/* Dual Parent Receivers Section: Clean 2-Column with Generous Spacing */}
+              <div className="email-receivers-grid">
+                {/* Receiver 1: Father / Primary Parent */}
+                <div className="receiver-card primary">
+                  <div className="receiver-card-header">
+                    <div className="receiver-title-wrap">
+                      <ion-icon name="person" className="receiver-icon"></ion-icon>
+                      <label htmlFor={`${formId}-recipient-email`} className="receiver-label">
+                        Primary Receiver (Father / Parent 1)
+                      </label>
+                    </div>
+                    <span className="receiver-badge primary">Receiver 1</span>
+                  </div>
+                  <div className="receiver-input-wrap">
+                    <ion-icon name="mail-outline" className="input-leading-icon"></ion-icon>
+                    <input
+                      id={`${formId}-recipient-email`}
+                      type="email"
+                      className="form-input receiver-input"
+                      value={recipientEmail}
+                      onChange={(e) => setRecipientEmail(e.target.value)}
+                      placeholder="e.g. father.email@gmail.com"
+                    />
+                  </div>
+                  <span className="receiver-hint">Primary recipient for session updates</span>
                 </div>
-                <input
-                  id={`${formId}-recipient-email`}
-                  type="email"
-                  className="form-input"
-                  value={recipientEmail}
-                  onChange={(e) => setRecipientEmail(e.target.value)}
-                  placeholder="Enter parent, student, or guardian email..."
-                />
+
+                {/* Receiver 2: Mother / Secondary Parent */}
+                <div className="receiver-card secondary">
+                  <div className="receiver-card-header">
+                    <div className="receiver-title-wrap">
+                      <ion-icon name="person-add" className="receiver-icon"></ion-icon>
+                      <label htmlFor={`${formId}-secondary-recipient-email`} className="receiver-label">
+                        Secondary Receiver (Mother / Parent 2)
+                      </label>
+                    </div>
+                    <span className="receiver-badge secondary">Receiver 2 (Optional)</span>
+                  </div>
+                  <div className="receiver-input-wrap">
+                    <ion-icon name="mail-outline" className="input-leading-icon"></ion-icon>
+                    <input
+                      id={`${formId}-secondary-recipient-email`}
+                      type="email"
+                      className="form-input receiver-input"
+                      value={secondaryRecipientEmail}
+                      onChange={(e) => setSecondaryRecipientEmail(e.target.value)}
+                      placeholder="Enter mother's or second parent's email..."
+                    />
+                  </div>
+                  <span className="receiver-hint">Add mother's email to notify both parents in one click</span>
+                </div>
+              </div>
+
+              {/* Full-Width Receiver Status Banner with Spacious Padding */}
+              <div className="email-dispatch-status-banner">
+                {activeRecipients.length === 2 ? (
+                  <div className="status-banner-content dual-active">
+                    <div className="status-icon-circle dual">
+                      <ion-icon name="checkmark-done-circle"></ion-icon>
+                    </div>
+                    <div className="status-text-wrap">
+                      <strong>Both Parents Configured (2 Receivers Active):</strong>
+                      <span>Session updates will be sent simultaneously to <em>{activeRecipients[0]}</em> and <em>{activeRecipients[1]}</em> via Gmail, Outlook, or Desktop Mail.</span>
+                    </div>
+                  </div>
+                ) : activeRecipients.length === 1 ? (
+                  <div className="status-banner-content single-active">
+                    <div className="status-icon-circle single">
+                      <ion-icon name="person-circle-outline"></ion-icon>
+                    </div>
+                    <div className="status-text-wrap">
+                      <strong>1 Receiver Active:</strong>
+                      <span>{activeRecipients[0]}</span>
+                      <span className="status-tip">• Tip: Add mother's email in Receiver 2 above to dispatch to both parents simultaneously</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="status-banner-content empty-active">
+                    <div className="status-icon-circle empty">
+                      <ion-icon name="alert-circle-outline"></ion-icon>
+                    </div>
+                    <div className="status-text-wrap">
+                      <strong>No receiver email configured yet:</strong>
+                      <span>Enter father's and/or mother's email address above to dispatch session updates.</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -895,9 +1117,13 @@ Regards and thanks, ${teacherName}`
                           <span className="email-sender-subtext" style={{ display: 'block', fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
                             From: <strong>{FIXED_SENDER_EMAIL}</strong> <span style={{ color: '#22c55e', fontSize: '10px', fontWeight: 600 }}>(Fixed)</span>
                           </span>
-                          {recipientEmail?.trim() && (
+                          {activeRecipients.length > 0 ? (
                             <span className="email-recipient-subtext" style={{ display: 'block', fontSize: '11px', color: '#38bdf8', marginTop: '2px' }}>
-                              To: <strong>{recipientEmail.trim()}</strong>
+                              To: <strong>{activeRecipients.join(', ')}</strong> ({activeRecipients.length === 2 ? 'Both Father & Mother' : '1 Receiver'})
+                            </span>
+                          ) : (
+                            <span className="email-recipient-subtext" style={{ display: 'block', fontSize: '11px', color: '#f59e0b', marginTop: '2px' }}>
+                              To: <em>(No receiver email configured yet)</em>
                             </span>
                           )}
                         </div>
@@ -991,10 +1217,32 @@ Regards and thanks, ${teacherName}`
                 <ion-icon name="eye-outline"></ion-icon>
                 <span>Live Announcement Preview</span>
               </div>
-              <span className="format-verified-badge">
-                <ion-icon name="shield-checkmark-outline"></ion-icon>
-                <span>Standard Format Verified</span>
-              </span>
+              <div className="preview-header-controls">
+                <div className="preview-view-toggle">
+                  <button
+                    type="button"
+                    className={`view-toggle-btn${previewMode === 'formatted' ? ' active' : ''}`}
+                    onClick={() => setPreviewMode('formatted')}
+                    title="View formatted preview with bold headings and badges"
+                  >
+                    <ion-icon name="sparkles-outline"></ion-icon>
+                    <span>Rich Bold View</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`view-toggle-btn${previewMode === 'raw' ? ' active' : ''}`}
+                    onClick={() => setPreviewMode('raw')}
+                    title="View plain markdown / raw text"
+                  >
+                    <ion-icon name="code-slash-outline"></ion-icon>
+                    <span>Raw Text</span>
+                  </button>
+                </div>
+                <span className="format-verified-badge">
+                  <ion-icon name="shield-checkmark-outline"></ion-icon>
+                  <span>Standard Format Verified</span>
+                </span>
+              </div>
             </div>
 
             {/* Classroom Stream Card Visual Mock */}
@@ -1012,7 +1260,85 @@ Regards and thanks, ${teacherName}`
               </div>
 
               <div className="stream-post-content">
-                <pre className="announcement-pre-text">{announcementText}</pre>
+                {previewMode === 'formatted' ? (
+                  <div className="announcement-rich-preview">
+                    <div className="preview-subject-banner">
+                      <strong className="preview-subject-title">{subjectTitle} — Session {sessionNumber}</strong>
+                      <span className="preview-date-pill">{pstDateStr} PST ({istDateStr} IST)</span>
+                    </div>
+
+                    <div className="preview-greeting">
+                      Hi <strong>{parentName || 'Parent / Guardian'}</strong>,
+                    </div>
+
+                    <div className="preview-intro">
+                      Please find the session updates for the last class below:-
+                    </div>
+
+                    <div className="preview-sections-list">
+                      {/* Topics Covered with Bold Label and Highlighted Unit/Module */}
+                      <div className="preview-section-item">
+                        <strong className="preview-section-label bold-label">Topics covered:-</strong>
+                        <div className="preview-section-body">
+                          {(() => {
+                            const unitMatch = topicsCovered.match(/\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/i)
+                            if (unitMatch) {
+                              const [before, ...afterParts] = topicsCovered.split(unitMatch[0])
+                              const after = afterParts.join(unitMatch[0])
+                              return (
+                                <>
+                                  {before}
+                                  <strong className="preview-highlight-unit">{unitMatch[0]}</strong>
+                                  {after}
+                                </>
+                              )
+                            }
+                            return topicsCovered
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* HW Assigned with Bold Label */}
+                      <div className="preview-section-item">
+                        <strong className="preview-section-label bold-label">HW assigned:-</strong>
+                        <div className="preview-section-body">{hwAssigned}</div>
+                      </div>
+
+                      {/* HW Status / Score with Bold Label and Status Pill */}
+                      <div className="preview-section-item">
+                        <strong className="preview-section-label bold-label">HW status/score:-</strong>
+                        <div className="preview-section-body">
+                          <span className={`preview-status-pill ${hwStatus.toLowerCase().includes('not') ? 'pending' : 'completed'}`}>
+                            <strong>{hwStatus}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Remarks with Bold Label */}
+                      <div className="preview-section-item">
+                        <strong className="preview-section-label bold-label">Remarks:-</strong>
+                        <div className="preview-section-body">{remarks}</div>
+                      </div>
+                    </div>
+
+                    <div className="preview-callout">
+                      Kindly check the google classroom for the materials and HW.
+                    </div>
+
+                    <div className="preview-signoff">
+                      Regards and thanks, <strong className="preview-teacher-name">{teacherName}</strong>
+                    </div>
+
+                    {activeRecipients.length > 0 && (
+                      <div className="preview-recipients-footer">
+                        <ion-icon name="mail-unread-outline"></ion-icon>
+                        <span>Dispatch To: <strong>{activeRecipients.join(', ')}</strong> ({activeRecipients.length === 2 ? 'Both Father & Mother' : '1 Receiver'})</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <pre className="announcement-pre-text">{announcementText}</pre>
+                )}
               </div>
 
               <div className="stream-post-footer">

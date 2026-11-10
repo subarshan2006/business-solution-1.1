@@ -369,12 +369,13 @@ export function getClassroomDirectoryDetails(courseId = '', courseName = '') {
     studentName: custom.studentName || defaultEntry.studentName,
     parentName: custom.parentName || defaultEntry.parentName,
     parentEmail: custom.parentEmail || fallbackEmail,
+    secondaryParentEmail: custom.secondaryParentEmail || defaultEntry.secondaryParentEmail || '',
     subject: custom.subject || defaultEntry.subject,
     grade: custom.grade || defaultEntry.grade,
     topics: custom.topics || defaultEntry.topics,
     defaultHw: custom.defaultHw || defaultEntry.defaultHw,
     defaultRemarks: custom.defaultRemarks || defaultEntry.defaultRemarks,
-    hasCustomOverride: Boolean(custom.studentName || custom.parentName || custom.parentEmail),
+    hasCustomOverride: Boolean(custom.studentName || custom.parentName || custom.parentEmail || custom.secondaryParentEmail),
   }
 }
 
@@ -417,7 +418,9 @@ export function isParentEmail(email) {
   // Check default directory
   if (
     DEFAULT_CLASSROOMS_DIRECTORY.some(
-      (c) => c.parentEmail && c.parentEmail.toLowerCase().trim() === norm
+      (c) =>
+        (c.parentEmail && c.parentEmail.toLowerCase().trim() === norm) ||
+        (c.secondaryParentEmail && c.secondaryParentEmail.toLowerCase().trim() === norm)
     )
   ) {
     return true
@@ -426,7 +429,9 @@ export function isParentEmail(email) {
   // Check saved overrides in localStorage
   const overrides = getSavedClassroomOverrides()
   const hasOverride = Object.values(overrides).some(
-    (o) => o.parentEmail && o.parentEmail.toLowerCase().trim() === norm
+    (o) =>
+      (o.parentEmail && o.parentEmail.toLowerCase().trim() === norm) ||
+      (o.secondaryParentEmail && o.secondaryParentEmail.toLowerCase().trim() === norm)
   )
   if (hasOverride) return true
 
@@ -443,13 +448,19 @@ export function getParentClassroom(email) {
   if (!email) return null
   const norm = email.toLowerCase().trim()
   const found = DEFAULT_CLASSROOMS_DIRECTORY.find(
-    (c) => c.parentEmail && c.parentEmail.toLowerCase().trim() === norm
+    (c) =>
+      (c.parentEmail && c.parentEmail.toLowerCase().trim() === norm) ||
+      (c.secondaryParentEmail && c.secondaryParentEmail.toLowerCase().trim() === norm)
   )
   if (found) return found
 
   const overrides = getSavedClassroomOverrides()
   for (const courseId of Object.keys(overrides)) {
-    if (overrides[courseId]?.parentEmail?.toLowerCase().trim() === norm) {
+    const o = overrides[courseId]
+    if (
+      (o?.parentEmail && o.parentEmail.toLowerCase().trim() === norm) ||
+      (o?.secondaryParentEmail && o.secondaryParentEmail.toLowerCase().trim() === norm)
+    ) {
       return findDirectoryEntry(courseId)
     }
   }
