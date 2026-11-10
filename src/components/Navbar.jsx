@@ -88,7 +88,7 @@ function Navbar({ activePage, theme, toggleTheme, showThemeToggle = true }) {
               className={`navbar-link navbar-login-link${activePage === 'classroom' ? ' active' : ''}`}
               data-nav-link
             >
-              Student Login
+              Login
             </Link>
           </li>
           {showThemeToggle && (
@@ -156,7 +156,7 @@ function Navbar({ activePage, theme, toggleTheme, showThemeToggle = true }) {
               className={`mobile-menu-link${activePage === 'classroom' ? ' active' : ''}`}
               onClick={() => setMenuOpen(false)}
             >
-              Student Login
+              Login
             </Link>
           </li>
           <li style={{ marginTop: '8px' }}>
