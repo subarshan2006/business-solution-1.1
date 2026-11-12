@@ -9,7 +9,10 @@ export const DEFAULT_CLASSROOMS_DIRECTORY = [
   {
     index: 1,
     studentName: 'Samyuktha',
+    studentEmail: 'samyuktha.student@gmail.com',
     parentName: 'Ms. Sambhrama',
+    parentEmail: 'sambhrama.parent@gmail.com',
+    secondaryParentEmail: 'sambhrama.father@gmail.com',
     subject: 'AP Biology',
     grade: 'Grade 10',
     topics: [
@@ -364,9 +367,15 @@ export function getClassroomDirectoryDetails(courseId = '', courseName = '') {
     (defaultEntry?.parentName
       ? `${defaultEntry.parentName.toLowerCase().replace(/^(mr|ms|mrs|dr)\.?\s+/i, '').replace(/[^a-z0-9]/g, '')}.parent@gmail.com`
       : '')
+  const fallbackStudentEmail =
+    defaultEntry?.studentEmail ||
+    (defaultEntry?.studentName
+      ? `${defaultEntry.studentName.toLowerCase().replace(/[^a-z0-9]/g, '')}.student@gmail.com`
+      : '')
 
   return {
     studentName: custom.studentName || defaultEntry.studentName,
+    studentEmail: custom.studentEmail || defaultEntry.studentEmail || fallbackStudentEmail,
     parentName: custom.parentName || defaultEntry.parentName,
     parentEmail: custom.parentEmail || fallbackEmail,
     secondaryParentEmail: custom.secondaryParentEmail || defaultEntry.secondaryParentEmail || '',
@@ -375,7 +384,7 @@ export function getClassroomDirectoryDetails(courseId = '', courseName = '') {
     topics: custom.topics || defaultEntry.topics,
     defaultHw: custom.defaultHw || defaultEntry.defaultHw,
     defaultRemarks: custom.defaultRemarks || defaultEntry.defaultRemarks,
-    hasCustomOverride: Boolean(custom.studentName || custom.parentName || custom.parentEmail || custom.secondaryParentEmail),
+    hasCustomOverride: Boolean(custom.studentName || custom.studentEmail || custom.parentName || custom.parentEmail || custom.secondaryParentEmail),
   }
 }
 

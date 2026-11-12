@@ -1851,6 +1851,7 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
     return {
       courseId,
       studentName: courseObj?.studentName || dirDetails.studentName,
+      studentEmail: courseObj?.studentEmail || dirDetails.studentEmail || '',
       parentName: courseObj?.parentName || dirDetails.parentName,
       parentEmail: courseObj?.parentEmail || dirDetails.parentEmail || '',
       secondaryParentEmail: courseObj?.secondaryParentEmail || dirDetails.secondaryParentEmail || '',
@@ -1892,17 +1893,32 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
     const announcements = announcementsResult.status === 'fulfilled' ? announcementsResult.value : []
     const topics = topicsResult.status === 'fulfilled' ? topicsResult.value : []
 
-    // 1. Resolve Student Name (the teacher saves student name as classroom name)
+    // 1. Resolve Student Name & Email (from Google Classroom roster, overrides, or directory)
     let resolvedStudentName = ''
-    if (students.length > 0 && students[0]?.profile?.name?.fullName) {
-      resolvedStudentName = students[0].profile.name.fullName
-    } else if (extractedFromCourse.studentName) {
-      resolvedStudentName = extractedFromCourse.studentName
-    } else if (courseObj?.studentName) {
-      resolvedStudentName = courseObj.studentName
+    let resolvedStudentEmail = ''
+    if (students.length > 0) {
+      if (students[0]?.profile?.name?.fullName) {
+        resolvedStudentName = students[0].profile.name.fullName
+      }
+      if (students[0]?.profile?.emailAddress) {
+        resolvedStudentEmail = students[0].profile.emailAddress
+      }
     }
     if (!resolvedStudentName) {
-      resolvedStudentName = dirDetails.studentName || 'Student'
+      if (extractedFromCourse.studentName) {
+        resolvedStudentName = extractedFromCourse.studentName
+      } else if (courseObj?.studentName) {
+        resolvedStudentName = courseObj.studentName
+      } else {
+        resolvedStudentName = dirDetails.studentName || 'Student'
+      }
+    }
+    if (!resolvedStudentEmail) {
+      if (courseObj?.studentEmail) {
+        resolvedStudentEmail = courseObj.studentEmail
+      } else if (dirDetails.studentEmail) {
+        resolvedStudentEmail = dirDetails.studentEmail
+      }
     }
 
     // 2. Resolve Parent Name (Option A: Auto-extract from previous announcement!)
@@ -2008,6 +2024,7 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
     return {
       courseId,
       studentName: resolvedStudentName,
+      studentEmail: resolvedStudentEmail,
       parentName: resolvedParentName,
       parentEmail: dirDetails.parentEmail || '',
       secondaryParentEmail: dirDetails.secondaryParentEmail || '',
@@ -2031,6 +2048,7 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
     return {
       courseId,
       studentName: dirDetails.studentName,
+      studentEmail: dirDetails.studentEmail || '',
       parentName: dirDetails.parentName,
       parentEmail: dirDetails.parentEmail || '',
       secondaryParentEmail: dirDetails.secondaryParentEmail || '',
