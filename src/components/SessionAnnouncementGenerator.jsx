@@ -56,6 +56,19 @@ export function toUnicodeBold(text) {
   })
 }
 
+/**
+ * Strip any unwanted markdown asterisks (** or single *) from text to prevent
+ * broken formatting or visible literal asterisks in WhatsApp and plain-text outputs.
+ */
+export function stripMarkdownAsterisks(text) {
+  if (!text) return ''
+  return String(text)
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/\*/g, '')
+    .trim()
+}
+
 export default function SessionAnnouncementGenerator({
   courses = [],
   selectedCourse = null,
@@ -234,7 +247,8 @@ export default function SessionAnnouncementGenerator({
   // Helper to highlight module/unit and numbers using Unicode Bold glyphs (e.g. Unit 2 -> 𝗨𝗻𝗶𝘁 𝟮)
   const formatTopicsUnicode = useCallback((text) => {
     if (!text) return ''
-    return text.replace(
+    const clean = stripMarkdownAsterisks(text)
+    return clean.replace(
       /\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/gi,
       (match) => toUnicodeBold(match)
     )
@@ -243,31 +257,40 @@ export default function SessionAnnouncementGenerator({
   // Helper to highlight module/unit and numbers (Markdown ** syntax)
   const formatTopicsMarkdown = useCallback((text) => {
     if (!text) return ''
-    return text.replace(
+    const clean = stripMarkdownAsterisks(text)
+    return clean.replace(
       /\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/gi,
       '**$1**'
     )
   }, [])
 
+  // Helper to highlight module/unit and numbers for WhatsApp (*Unit 2* syntax without broken formatting)
   const formatTopicsWhatsApp = useCallback((text) => {
     if (!text) return ''
-    return text.replace(
+    const clean = stripMarkdownAsterisks(text)
+    return clean.replace(
       /\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/gi,
       '*$1*'
     )
   }, [])
 
-  // Build the bold-formatted announcement text (using Unicode Bold glyphs for true bold in Gmail, Outlook, Desktop Mail, and Google Classroom)
-  const announcementText = useMemo(() => {
-    const formattedTopics = formatTopicsUnicode(topicsCovered)
+  // Clean email body text without subject header (for compose URL query params)
+  const emailBodyText = useMemo(() => {
+    const cleanTopics = stripMarkdownAsterisks(topicsCovered)
+    const formattedTopics = formatTopicsUnicode(cleanTopics)
+    const cleanParent = stripMarkdownAsterisks(parentName)
     const topicsLabel = toUnicodeBold('Topics covered:-')
     const hwAssignedLabel = toUnicodeBold('HW assigned:-')
+    const cleanHwAssigned = stripMarkdownAsterisks(hwAssigned)
     const hwStatusLabel = toUnicodeBold('HW status/score:-')
-    const hwStatusValue = toUnicodeBold(hwStatus)
+    const cleanHwStatus = stripMarkdownAsterisks(hwStatus)
+    const hwStatusValue = toUnicodeBold(cleanHwStatus)
     const remarksLabel = toUnicodeBold('Remarks:-')
-    const teacherSignoff = toUnicodeBold(teacherName)
+    const cleanRemarks = stripMarkdownAsterisks(remarks)
+    const cleanTeacher = stripMarkdownAsterisks(teacherName)
+    const teacherSignoff = toUnicodeBold(cleanTeacher)
 
-    return `Hi ${parentName},
+    return `Hi ${cleanParent},
 
 
 Please find the session updates for the last class below:-
@@ -275,11 +298,11 @@ Please find the session updates for the last class below:-
 
 ${topicsLabel} ${formattedTopics}
 
-${hwAssignedLabel} ${hwAssigned}
+${hwAssignedLabel} ${cleanHwAssigned}
 
 ${hwStatusLabel} ${hwStatusValue}
 
-${remarksLabel} ${remarks}
+${remarksLabel} ${cleanRemarks}
 
 Kindly check the google classroom for the materials and HW.
 
@@ -294,10 +317,39 @@ Regards and thanks, ${teacherSignoff}`
     formatTopicsUnicode,
   ])
 
+  // Build the bold-formatted announcement text with Subject header (for Google Classroom Stream and Clipboard)
+  const announcementText = useMemo(() => {
+    const cleanSubject = stripMarkdownAsterisks(subjectTitle)
+    const cleanSession = stripMarkdownAsterisks(sessionNumber)
+    const subjectHeader = `${toUnicodeBold(`${cleanSubject} - Session ${cleanSession}`)} - ${pstDateStr} PST (${istDateStr} IST)`
+
+    return `${subjectHeader}
+
+
+${emailBodyText}`
+  }, [
+    subjectTitle,
+    sessionNumber,
+    pstDateStr,
+    istDateStr,
+    emailBodyText,
+  ])
+
   // Markdown formatted text fallback (with ** asterisks)
   const markdownAnnouncementText = useMemo(() => {
-    const formattedTopics = formatTopicsMarkdown(topicsCovered)
-    return `Hi ${parentName},
+    const cleanSubject = stripMarkdownAsterisks(subjectTitle)
+    const cleanSession = stripMarkdownAsterisks(sessionNumber)
+    const cleanParent = stripMarkdownAsterisks(parentName)
+    const cleanTopics = stripMarkdownAsterisks(topicsCovered)
+    const formattedTopics = formatTopicsMarkdown(cleanTopics)
+    const cleanHwAssigned = stripMarkdownAsterisks(hwAssigned)
+    const cleanHwStatus = stripMarkdownAsterisks(hwStatus)
+    const cleanRemarks = stripMarkdownAsterisks(remarks)
+    const cleanTeacher = stripMarkdownAsterisks(teacherName)
+
+    return `**${cleanSubject} - Session ${cleanSession}** - ${pstDateStr} PST (${istDateStr} IST)
+
+Hi ${cleanParent},
 
 
 Please find the session updates for the last class below:-
@@ -305,16 +357,20 @@ Please find the session updates for the last class below:-
 
 **Topics covered:-** ${formattedTopics}
 
-**HW assigned:-** ${hwAssigned}
+**HW assigned:-** ${cleanHwAssigned}
 
-**HW status/score:-** **${hwStatus}**
+**HW status/score:-** **${cleanHwStatus}**
 
-**Remarks:-** ${remarks}
+**Remarks:-** ${cleanRemarks}
 
 Kindly check the google classroom for the materials and HW.
 
-Regards and thanks, **${teacherName}**`
+Regards and thanks, **${cleanTeacher}**`
   }, [
+    subjectTitle,
+    sessionNumber,
+    pstDateStr,
+    istDateStr,
     parentName,
     topicsCovered,
     hwAssigned,
@@ -324,28 +380,37 @@ Regards and thanks, **${teacherName}**`
     formatTopicsMarkdown,
   ])
 
-  // Build WhatsApp formatted text (using native *bold* markers)
+  // Build WhatsApp formatted text (using native WhatsApp bold markers without broken punctuation)
   const whatsappText = useMemo(() => {
-    const formattedTopics = formatTopicsWhatsApp(topicsCovered)
-    return `*${subjectTitle} - Session ${sessionNumber}* - ${pstDateStr} PST (${istDateStr} IST)
+    const cleanSubject = stripMarkdownAsterisks(subjectTitle)
+    const cleanSession = stripMarkdownAsterisks(sessionNumber)
+    const cleanParent = stripMarkdownAsterisks(parentName)
+    const cleanTopics = stripMarkdownAsterisks(topicsCovered)
+    const formattedTopics = formatTopicsWhatsApp(cleanTopics)
+    const cleanHwAssigned = stripMarkdownAsterisks(hwAssigned)
+    const cleanHwStatus = stripMarkdownAsterisks(hwStatus)
+    const cleanRemarks = stripMarkdownAsterisks(remarks)
+    const cleanTeacher = stripMarkdownAsterisks(teacherName)
 
-Hi ${parentName},
+    return `*${cleanSubject} - Session ${cleanSession}* - ${pstDateStr} PST (${istDateStr} IST)
+
+Hi ${cleanParent},
 
 
 Please find the session updates for the last class below:-
 
 
-*Topics covered:-* ${formattedTopics}
+*Topics covered*:- ${formattedTopics}
 
-*HW assigned:-* ${hwAssigned}
+*HW assigned*:- ${cleanHwAssigned}
 
-*HW status/score:-* *${hwStatus}*
+*HW status/score*:- *${cleanHwStatus}*
 
-*Remarks:-* ${remarks}
+*Remarks*:- ${cleanRemarks}
 
 Kindly check the google classroom for the materials and HW.
 
-Regards and thanks, *${teacherName}*`
+Regards and thanks, *${cleanTeacher}*`
   }, [
     subjectTitle,
     sessionNumber,
@@ -368,22 +433,36 @@ Regards and thanks, *${teacherName}*`
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
 
-    const formattedTopics = escapeHtml(topicsCovered).replace(
+    const cleanSubject = stripMarkdownAsterisks(subjectTitle)
+    const cleanSession = stripMarkdownAsterisks(sessionNumber)
+    const cleanParent = stripMarkdownAsterisks(parentName)
+    const cleanTopics = stripMarkdownAsterisks(topicsCovered)
+    const cleanHwAssigned = stripMarkdownAsterisks(hwAssigned)
+    const cleanHwStatus = stripMarkdownAsterisks(hwStatus)
+    const cleanRemarks = stripMarkdownAsterisks(remarks)
+    const cleanTeacher = stripMarkdownAsterisks(teacherName)
+
+    const formattedTopics = escapeHtml(cleanTopics).replace(
       /\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/gi,
       '<strong>$1</strong>'
     )
 
     return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.65; color: #1e293b;">
-  <p style="margin: 0 0 14px 0;">Hi <strong>${escapeHtml(parentName)}</strong>,</p>
+  <p style="margin: 0 0 14px 0;"><strong>${escapeHtml(cleanSubject)} - Session ${escapeHtml(cleanSession)}</strong> - ${escapeHtml(pstDateStr)} PST (${escapeHtml(istDateStr)} IST)</p>
+  <p style="margin: 0 0 14px 0;">Hi <strong>${escapeHtml(cleanParent)}</strong>,</p>
   <p style="margin: 0 0 14px 0;">Please find the session updates for the last class below:-</p>
   <p style="margin: 0 0 12px 0;"><strong>Topics covered:-</strong> ${formattedTopics}</p>
-  <p style="margin: 0 0 12px 0;"><strong>HW assigned:-</strong> ${escapeHtml(hwAssigned)}</p>
-  <p style="margin: 0 0 12px 0;"><strong>HW status/score:-</strong> <strong>${escapeHtml(hwStatus)}</strong></p>
-  <p style="margin: 0 0 14px 0;"><strong>Remarks:-</strong> ${escapeHtml(remarks)}</p>
+  <p style="margin: 0 0 12px 0;"><strong>HW assigned:-</strong> ${escapeHtml(cleanHwAssigned)}</p>
+  <p style="margin: 0 0 12px 0;"><strong>HW status/score:-</strong> <strong>${escapeHtml(cleanHwStatus)}</strong></p>
+  <p style="margin: 0 0 14px 0;"><strong>Remarks:-</strong> ${escapeHtml(cleanRemarks)}</p>
   <p style="margin: 0 0 14px 0;">Kindly check the google classroom for the materials and HW.</p>
-  <p style="margin: 0;">Regards and thanks,<br/><strong>${escapeHtml(teacherName)}</strong></p>
+  <p style="margin: 0;">Regards and thanks,<br/><strong>${escapeHtml(cleanTeacher)}</strong></p>
 </div>`
   }, [
+    subjectTitle,
+    sessionNumber,
+    pstDateStr,
+    istDateStr,
     parentName,
     topicsCovered,
     hwAssigned,
@@ -547,7 +626,7 @@ Regards and thanks, *${teacherName}*`
     const toParam = activeRecipients.length > 0 ? `to=${encodeURIComponent(activeRecipients.join(','))}&` : ''
     const url = `https://mail.google.com/mail/${userPath}?${authUserParam}view=cm&fs=1&${toParam}su=${encodeURIComponent(
       emailSubject
-    )}&body=${encodeURIComponent(announcementText)}`
+    )}&body=${encodeURIComponent(emailBodyText)}`
 
     await copyFormattedPayload(announcementText, announcementHtml)
     const recipientMsg =
@@ -568,7 +647,7 @@ Regards and thanks, *${teacherName}*`
     const toParam = activeRecipients.length > 0 ? `to=${encodeURIComponent(activeRecipients.join('; '))}&` : ''
     const url = `https://outlook.live.com/mail/0/deeplink/compose?${toParam}subject=${encodeURIComponent(
       emailSubject
-    )}&body=${encodeURIComponent(announcementText)}`
+    )}&body=${encodeURIComponent(emailBodyText)}`
 
     await copyFormattedPayload(announcementText, announcementHtml)
     setEmailNotice(`✓ Outlook opened! Bold formatted session report loaded.`)
@@ -580,7 +659,7 @@ Regards and thanks, *${teacherName}*`
   const handleDesktopMail = async () => {
     const encodedTo = activeRecipients.length > 0 ? encodeURIComponent(activeRecipients.join(',')) : ''
     const encodedSubject = encodeURIComponent(emailSubject)
-    const encodedFullBody = encodeURIComponent(announcementText)
+    const encodedFullBody = encodeURIComponent(emailBodyText)
     const fullMailtoUrl = `mailto:${encodedTo}?subject=${encodedSubject}&body=${encodedFullBody}`
 
     // Safe Length Guard for Windows ShellExecute 2,048-char limitation
@@ -604,7 +683,7 @@ Regards and thanks, *${teacherName}*`
     const fromLine = `From: ${SENDER_EMAIL}\n`
     const toLine = activeRecipients.length > 0 ? `To: ${activeRecipients.join(', ')}\n` : ''
     const subjectLine = `${toUnicodeBold('Subject:')} ${emailSubject}\n\n`
-    const fullEmailText = `${fromLine}${toLine}${subjectLine}${announcementText}`
+    const fullEmailText = `${fromLine}${toLine}${subjectLine}${emailBodyText}`
     const fullEmailHtml = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #1e293b;">
       <p style="margin: 0 0 6px 0; color: #64748b; font-size: 13px;"><strong>From:</strong> ${SENDER_EMAIL}</p>
       ${activeRecipients.length > 0 ? `<p style="margin: 0 0 12px 0; color: #64748b; font-size: 13px;"><strong>To:</strong> ${activeRecipients.join(', ')}</p>` : ''}
@@ -1199,7 +1278,16 @@ Regards and thanks, *${teacherName}*`
                     target="_blank"
                     rel="noopener noreferrer"
                     className="share-icon-btn whatsapp"
-                    title="Share directly via WhatsApp"
+                    title="Share directly via WhatsApp (also copies bold text to clipboard)"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(whatsappText)
+                        setEmailNotice('✓ WhatsApp session update copied to clipboard & opening WhatsApp!')
+                        setTimeout(() => setEmailNotice(''), 3000)
+                      } catch {
+                        // ignore if clipboard write fails
+                      }
+                    }}
                   >
                     <ion-icon name="logo-whatsapp"></ion-icon>
                     <span>WhatsApp</span>

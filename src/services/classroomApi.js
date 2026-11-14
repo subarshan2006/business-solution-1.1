@@ -1756,14 +1756,28 @@ export function extractTestMarksFromAnnouncement(text = '', hwStatus = '') {
 }
 
 /**
+ * Convert Unicode Mathematical Sans-Serif Bold glyphs and markdown asterisks to clean ASCII
+ */
+export function normalizeAnnouncementText(text = '') {
+  if (!text) return ''
+  return String(text)
+    .replace(/[\u{1D5D4}-\u{1D5ED}]/gu, (c) => String.fromCharCode(65 + c.codePointAt(0) - 0x1D5D4))
+    .replace(/[\u{1D5EE}-\u{1D607}]/gu, (c) => String.fromCharCode(97 + c.codePointAt(0) - 0x1D5EE))
+    .replace(/[\u{1D7EC}-\u{1D7F5}]/gu, (c) => String.fromCharCode(48 + c.codePointAt(0) - 0x1D7EC))
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+}
+
+/**
  * Extract subject name from announcement text
  * Matches "Course / Subject: AP Biology", "Subject: Chemistry", or header "AP Biology-session 2"
  */
 export function extractSubjectFromAnnouncement(text = '') {
   if (!text) return ''
-  const courseMatch = text.match(/(?:Course\s*\/\s*Subject|Subject)\s*:\s*([^\n\r]+)/i)
+  const clean = normalizeAnnouncementText(text)
+  const courseMatch = clean.match(/(?:Course\s*\/\s*Subject|Subject)\s*:\s*([^\n\r]+)/i)
   if (courseMatch && courseMatch[1]?.trim()) return courseMatch[1].trim()
-  const headerMatch = text.match(/^([A-Za-z0-9\s/&+-]+?)\s*[-–—]\s*session\s*\d+/im)
+  const headerMatch = clean.match(/^\s*(?:\*\*)?([A-Za-z0-9\s/&+-]+?)\s*[-–—]\s*session\s*\d+/im)
   if (headerMatch && headerMatch[1]?.trim()) return headerMatch[1].trim()
   return ''
 }
@@ -1773,9 +1787,10 @@ export function extractSubjectFromAnnouncement(text = '') {
  */
 export function extractRemarksFromAnnouncement(text = '') {
   if (!text) return ''
-  const remarksMatch = text.match(/\b(?:Instructor\s*Remarks?|Session\s*Remarks?|Remarks)\b\s*(?::\s*-|:\s*|-|\s*=\s*)\s*(.+?)(?=\n\s*(?:Kindly check|Regards|Thanks|Best|Sincerely|$))/is)
+  const clean = normalizeAnnouncementText(text)
+  const remarksMatch = clean.match(/\b(?:Instructor\s*Remarks?|Session\s*Remarks?|Remarks)\b\s*(?::\s*-|:\s*|-|\s*=\s*)\s*(.+?)(?=\n\s*(?:Kindly check|Regards|Thanks|Best|Sincerely|$))/is)
   if (remarksMatch && remarksMatch[1]) {
-    return remarksMatch[1].trim().replace(/^[-–—:=•*]\s*/, '')
+    return remarksMatch[1].trim().replace(/^[-–—:=•*]\s*/, '').replace(/\*\*/g, '')
   }
   return ''
 }
@@ -1786,7 +1801,8 @@ export function extractRemarksFromAnnouncement(text = '') {
  */
 export function parseSessionNumberFromText(text = '') {
   if (!text) return null
-  const match = text.match(/(?:session|-session)\s*(\d+)/i)
+  const clean = normalizeAnnouncementText(text)
+  const match = clean.match(/(?:session|-session)\s*(\d+)/i)
   if (match && match[1]) {
     const num = parseInt(match[1], 10)
     if (!isNaN(num) && num > 0) return num
@@ -1797,8 +1813,9 @@ export function parseSessionNumberFromText(text = '') {
 /**
  * Parse structured fields from past announcement text
  */
-export function parseAnnouncementFields(text = '') {
-  if (!text) return {}
+export function parseAnnouncementFields(rawText = '') {
+  if (!rawText) return {}
+  const text = normalizeAnnouncementText(rawText)
   const parentName = parseParentNameFromText(text)
   const sessionNumber = parseSessionNumberFromText(text)
   const subjectTitle = extractSubjectFromAnnouncement(text)
@@ -1807,8 +1824,8 @@ export function parseAnnouncementFields(text = '') {
   const hwAssignedMatch = text.match(/HW assigned\s*(?::\s*-|:\s*|-|\s*=\s*)\s*(.+?)(?=\n\s*(?:HW status|Test marks?|Marks?|Remarks|$))/is)
   const hwStatusMatch = text.match(/HW status(?:\/score)?\s*(?::\s*-|:\s*|-|\s*=\s*)\s*(.+?)(?=\n\s*(?:Test marks?|Marks?|Remarks|$))/is)
 
-  const rawTopics = topicsMatch ? topicsMatch[1].trim().replace(/^[-–—:=•*]\s*/, '') : ''
-  const hwStatus = hwStatusMatch ? hwStatusMatch[1].trim().replace(/^[-–—:=•*]\s*/, '') : ''
+  const rawTopics = topicsMatch ? topicsMatch[1].trim().replace(/^[-–—:=•*]\s*/, '').replace(/\*\*/g, '') : ''
+  const hwStatus = hwStatusMatch ? hwStatusMatch[1].trim().replace(/^[-–—:=•*]\s*/, '').replace(/\*\*/g, '') : ''
 
   return {
     subjectTitle,
@@ -1817,7 +1834,7 @@ export function parseAnnouncementFields(text = '') {
     date: extractDateFromAnnouncement(text),
     topicsCovered: rawTopics,
     topicHeading: extractTopicHeading(rawTopics),
-    hwAssigned: hwAssignedMatch ? hwAssignedMatch[1].trim().replace(/^[-–—:=•*]\s*/, '') : '',
+    hwAssigned: hwAssignedMatch ? hwAssignedMatch[1].trim().replace(/^[-–—:=•*]\s*/, '').replace(/\*\*/g, '') : '',
     hwStatus,
     testMarks: extractTestMarksFromAnnouncement(text, hwStatus),
     remarks: extractRemarksFromAnnouncement(text),
