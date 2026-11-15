@@ -496,17 +496,31 @@ Regards and thanks, *${cleanTeacher}*`
     setHwStatus(status)
   }
 
-  // Save manual overrides for this specific classroom (including Father, Mother & Student emails)
+  // Save manual overrides for this specific classroom (including Father, Mother & Student emails, Session, and Subject)
   const handleSaveClassroomOverrides = () => {
     if (!courseId) return
-    saveClassroomOverride(courseId, {
-      studentName,
-      studentEmail,
-      parentName,
-      subject: subjectTitle,
+    const currentCourse = courses.find((c) => String(c.id) === String(courseId)) || selectedCourse
+    saveClassroomOverride(
+      courseId,
+      {
+        studentName,
+        studentEmail,
+        parentName,
+        subject: subjectTitle,
+        parentEmail: recipientEmail,
+        secondaryParentEmail: secondaryRecipientEmail,
+        sessionNumber,
+      },
+      currentCourse?.name || ''
+    )
+    setSyncMeta((prev) => ({
+      ...(prev || {}),
+      parentSource: 'Saved Override (Remembered)',
+      hasCustomOverride: true,
       parentEmail: recipientEmail,
+      studentEmail,
       secondaryParentEmail: secondaryRecipientEmail,
-    })
+    }))
     setSaveSuccess(true)
     setTimeout(() => setSaveSuccess(false), 2800)
   }
@@ -779,6 +793,15 @@ Regards and thanks, *${cleanTeacher}*`
             </div>
             <div className="sync-banner-text">
               <strong>Classroom Synced:</strong> Enrolled Student: <em>{studentName}</em> • Parent (Option A): <em>{parentName}</em> • Session: <em>#{sessionNumber}</em>
+              {recipientEmail && (
+                <> • Primary Email: <em>{recipientEmail}</em></>
+              )}
+              {secondaryRecipientEmail && (
+                <> • Mother Email: <em>{secondaryRecipientEmail}</em></>
+              )}
+              {studentEmail && (
+                <> • Student Email: <em>{studentEmail}</em></>
+              )}
               {syncMeta.parentSource && (
                 <span className="sync-source-tag">Source: {syncMeta.parentSource}</span>
               )}
@@ -786,14 +809,14 @@ Regards and thanks, *${cleanTeacher}*`
           </div>
           {saveSuccess ? (
             <span className="saved-confirm-pill">
-              <ion-icon name="checkmark-circle"></ion-icon> Saved for this classroom!
+              <ion-icon name="checkmark-circle"></ion-icon> Saved & Remembered (including Emails) for this classroom!
             </span>
           ) : (
             <button
               type="button"
               className="save-classroom-btn"
               onClick={handleSaveClassroomOverrides}
-              title="Save current Student and Parent names for this classroom"
+              title="Remember Student, Parent, Session, and Email details for this classroom"
             >
               <ion-icon name="save-outline"></ion-icon>
               <span>Remember Details</span>
@@ -1003,7 +1026,7 @@ Regards and thanks, *${cleanTeacher}*`
                   <div>
                     <h5 className="email-dispatch-title">Email Dispatch & Multi-Receiver Routing</h5>
                     <p className="email-dispatch-subtitle">
-                      Session updates dispatched simultaneously to Father, Mother & Student
+                      Session updates dispatched simultaneously to Father, Mother & Student (saved & remembered per classroom)
                     </p>
                   </div>
                 </div>

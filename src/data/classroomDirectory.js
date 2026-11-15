@@ -311,16 +311,24 @@ export function getSavedClassroomOverrides() {
 /**
  * Save per-classroom overrides to localStorage
  */
-export function saveClassroomOverride(courseId, details) {
+export function saveClassroomOverride(courseId, details, courseName = '') {
   if (!courseId || !details) return
   const storage = typeof localStorage !== 'undefined' ? localStorage : typeof window !== 'undefined' ? window.localStorage : null
   if (!storage) return
   try {
     const existing = getSavedClassroomOverrides()
-    existing[courseId] = {
-      ...existing[courseId],
+    const idKey = String(courseId)
+    const updatedDetails = {
+      ...existing[idKey],
       ...details,
       updatedAt: new Date().toISOString(),
+    }
+    existing[idKey] = updatedDetails
+    if (courseName && String(courseName) !== idKey) {
+      existing[String(courseName)] = {
+        ...existing[String(courseName)],
+        ...updatedDetails,
+      }
     }
     storage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existing))
   } catch (err) {
@@ -361,7 +369,7 @@ export function findDirectoryEntry(courseId = '', courseName = '') {
 export function getClassroomDirectoryDetails(courseId = '', courseName = '') {
   const defaultEntry = findDirectoryEntry(courseId, courseName) || DEFAULT_CLASSROOMS_DIRECTORY[0]
   const overrides = getSavedClassroomOverrides()
-  const custom = overrides[courseId] || overrides[courseName] || {}
+  const custom = (courseId && overrides[String(courseId)]) || (courseName && overrides[String(courseName)]) || {}
   const fallbackEmail =
     defaultEntry?.parentEmail ||
     (defaultEntry?.parentName
@@ -375,16 +383,25 @@ export function getClassroomDirectoryDetails(courseId = '', courseName = '') {
 
   return {
     studentName: custom.studentName || defaultEntry.studentName,
-    studentEmail: custom.studentEmail || defaultEntry.studentEmail || fallbackStudentEmail,
+    studentEmail: custom.studentEmail !== undefined ? custom.studentEmail : (defaultEntry.studentEmail || fallbackStudentEmail),
     parentName: custom.parentName || defaultEntry.parentName,
-    parentEmail: custom.parentEmail || fallbackEmail,
-    secondaryParentEmail: custom.secondaryParentEmail || defaultEntry.secondaryParentEmail || '',
+    parentEmail: custom.parentEmail !== undefined ? custom.parentEmail : fallbackEmail,
+    secondaryParentEmail: custom.secondaryParentEmail !== undefined ? custom.secondaryParentEmail : (defaultEntry.secondaryParentEmail || ''),
+    sessionNumber: custom.sessionNumber || null,
     subject: custom.subject || defaultEntry.subject,
     grade: custom.grade || defaultEntry.grade,
     topics: custom.topics || defaultEntry.topics,
     defaultHw: custom.defaultHw || defaultEntry.defaultHw,
     defaultRemarks: custom.defaultRemarks || defaultEntry.defaultRemarks,
-    hasCustomOverride: Boolean(custom.studentName || custom.studentEmail || custom.parentName || custom.parentEmail || custom.secondaryParentEmail),
+    hasCustomOverride: Boolean(
+      custom.studentName ||
+      custom.studentEmail ||
+      custom.parentName ||
+      custom.parentEmail ||
+      custom.secondaryParentEmail ||
+      custom.sessionNumber ||
+      custom.subject
+    ),
   }
 }
 

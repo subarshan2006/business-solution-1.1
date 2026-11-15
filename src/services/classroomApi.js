@@ -1867,13 +1867,13 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
 
     return {
       courseId,
-      studentName: courseObj?.studentName || dirDetails.studentName,
-      studentEmail: courseObj?.studentEmail || dirDetails.studentEmail || '',
-      parentName: courseObj?.parentName || dirDetails.parentName,
-      parentEmail: courseObj?.parentEmail || dirDetails.parentEmail || '',
-      secondaryParentEmail: courseObj?.secondaryParentEmail || dirDetails.secondaryParentEmail || '',
-      subjectTitle,
-      sessionNumber: String(nextSession),
+      studentName: (dirDetails.hasCustomOverride && dirDetails.studentName) || courseObj?.studentName || dirDetails.studentName,
+      studentEmail: (dirDetails.hasCustomOverride && dirDetails.studentEmail) || courseObj?.studentEmail || dirDetails.studentEmail || '',
+      parentName: (dirDetails.hasCustomOverride && dirDetails.parentName) || courseObj?.parentName || dirDetails.parentName,
+      parentEmail: (dirDetails.hasCustomOverride && dirDetails.parentEmail) || courseObj?.parentEmail || dirDetails.parentEmail || '',
+      secondaryParentEmail: (dirDetails.hasCustomOverride && dirDetails.secondaryParentEmail) || courseObj?.secondaryParentEmail || dirDetails.secondaryParentEmail || '',
+      subjectTitle: (dirDetails.hasCustomOverride && dirDetails.subject) || subjectTitle,
+      sessionNumber: dirDetails.sessionNumber || String(nextSession),
       topicsCovered: dirDetails.topics?.[0] || 'Unit 2 :- Cell organelles',
       availableTopics: dirDetails.topics || [],
       hwAssigned: dirDetails.defaultHw || 'Workbook practice set',
@@ -1889,9 +1889,13 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
       ],
       meta: {
         isMock: true,
-        parentSource: 'Directory + Announcement Pattern (Option A)',
-        studentSource: 'Classroom Roster',
-        lastSessionFound: simulatedLastSession,
+        parentSource: dirDetails.hasCustomOverride ? 'Saved Override (Remembered)' : 'Directory + Announcement Pattern (Option A)',
+        studentSource: dirDetails.hasCustomOverride ? 'Saved Override (Remembered)' : 'Classroom Roster',
+        lastSessionFound: dirDetails.sessionNumber ? parseInt(dirDetails.sessionNumber, 10) - 1 : simulatedLastSession,
+        hasCustomOverride: dirDetails.hasCustomOverride,
+        parentEmail: dirDetails.parentEmail,
+        studentEmail: dirDetails.studentEmail,
+        secondaryParentEmail: dirDetails.secondaryParentEmail,
       },
     }
   }
@@ -1938,6 +1942,12 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
       }
     }
 
+    // Explicit user-saved overrides take top priority when remembered
+    if (dirDetails.hasCustomOverride) {
+      if (dirDetails.studentName) resolvedStudentName = dirDetails.studentName
+      if (dirDetails.studentEmail) resolvedStudentEmail = dirDetails.studentEmail
+    }
+
     // 2. Resolve Parent Name (Option A: Auto-extract from previous announcement!)
     let resolvedParentName = ''
     let parentSource = 'default'
@@ -1975,11 +1985,19 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
     // Fallback: directory / saved local storage
     if (!resolvedParentName) {
       resolvedParentName = dirDetails.parentName || 'Parent / Guardian'
-      parentSource = dirDetails.hasCustomOverride ? 'Saved Override' : 'Directory Default'
+      parentSource = dirDetails.hasCustomOverride ? 'Saved Override (Remembered)' : 'Directory Default'
+    }
+
+    // Explicit user-saved override takes top priority for parent name if remembered
+    if (dirDetails.hasCustomOverride && dirDetails.parentName) {
+      resolvedParentName = dirDetails.parentName
+      parentSource = 'Saved Override (Remembered)'
     }
 
     // 3. Resolve Next Session Number
-    const nextSessionNumber = lastSessionNumber != null ? lastSessionNumber + 1 : 1
+    const nextSessionNumber = dirDetails.sessionNumber
+      ? dirDetails.sessionNumber
+      : (lastSessionNumber != null ? lastSessionNumber + 1 : 1)
 
     // 4. Resolve HW Assigned & HW Status from latest CourseWork
     let resolvedHwAssigned = dirDetails.defaultHw || ''
@@ -2045,7 +2063,7 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
       parentName: resolvedParentName,
       parentEmail: dirDetails.parentEmail || '',
       secondaryParentEmail: dirDetails.secondaryParentEmail || '',
-      subjectTitle,
+      subjectTitle: (dirDetails.hasCustomOverride && dirDetails.subject) || subjectTitle,
       sessionNumber: String(nextSessionNumber),
       topicsCovered: resolvedTopics,
       availableTopics,
@@ -2058,6 +2076,10 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
         parentSource,
         studentSource: 'Google Classroom Roster',
         lastSessionFound: lastSessionNumber,
+        hasCustomOverride: dirDetails.hasCustomOverride,
+        parentEmail: dirDetails.parentEmail,
+        studentEmail: resolvedStudentEmail,
+        secondaryParentEmail: dirDetails.secondaryParentEmail,
       },
     }
   } catch (err) {
@@ -2069,8 +2091,8 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
       parentName: dirDetails.parentName,
       parentEmail: dirDetails.parentEmail || '',
       secondaryParentEmail: dirDetails.secondaryParentEmail || '',
-      subjectTitle,
-      sessionNumber: '1',
+      subjectTitle: (dirDetails.hasCustomOverride && dirDetails.subject) || subjectTitle,
+      sessionNumber: dirDetails.sessionNumber || '1',
       topicsCovered: dirDetails.topics?.[0] || '',
       availableTopics: dirDetails.topics || [],
       hwAssigned: dirDetails.defaultHw || '',
@@ -2079,8 +2101,12 @@ export async function fetchClassroomSessionContext(courseId, accessToken, course
       recentCourseWork: [],
       meta: {
         isMock: false,
-        parentSource: 'Directory Fallback',
-        studentSource: 'Directory Fallback',
+        parentSource: dirDetails.hasCustomOverride ? 'Saved Override (Remembered)' : 'Directory Fallback',
+        studentSource: dirDetails.hasCustomOverride ? 'Saved Override (Remembered)' : 'Directory Fallback',
+        hasCustomOverride: dirDetails.hasCustomOverride,
+        parentEmail: dirDetails.parentEmail,
+        studentEmail: dirDetails.studentEmail,
+        secondaryParentEmail: dirDetails.secondaryParentEmail,
         error: err.message,
       },
     }
