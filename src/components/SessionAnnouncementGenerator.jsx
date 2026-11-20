@@ -94,7 +94,9 @@ export default function SessionAnnouncementGenerator({
   const [recipientEmail, setRecipientEmail] = useState('')
   const [secondaryRecipientEmail, setSecondaryRecipientEmail] = useState('')
   const [studentEmail, setStudentEmail] = useState('')
-  const [previewMode, setPreviewMode] = useState('formatted') // 'formatted' | 'raw'
+  const [previewMode, setPreviewMode] = useState('formatted') // 'formatted' | 'proofread' | 'raw'
+  const [showProofreadModal, setShowProofreadModal] = useState(false)
+  const [expandedField, setExpandedField] = useState(null) // null | 'topics' | 'hw' | 'remarks'
   const [subjectTitle, setSubjectTitle] = useState('AP Biology')
   const [sessionNumber, setSessionNumber] = useState('3')
   const [pstDateStr, setPstDateStr] = useState(() => formatDateWithOrdinal(today))
@@ -1172,9 +1174,20 @@ Regards and thanks, *${cleanTeacher}*`
             {/* Topics Covered */}
             <div className="form-group">
               <div className="label-with-presets">
-                <label htmlFor={`${formId}-topics`} className="form-label">
-                  Topics covered:-
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <label htmlFor={`${formId}-topics`} className="form-label">
+                    Topics covered:-
+                  </label>
+                  <button
+                    type="button"
+                    className="box-expand-toggle-btn"
+                    onClick={() => setExpandedField((prev) => (prev === 'topics' ? null : 'topics'))}
+                    title={expandedField === 'topics' ? 'Collapse box to normal height' : 'Expand box for more room'}
+                  >
+                    <ion-icon name={expandedField === 'topics' ? 'contract-outline' : 'expand-outline'}></ion-icon>
+                    <span>{expandedField === 'topics' ? 'Normal' : 'Expand Box'}</span>
+                  </button>
+                </div>
                 {availableTopics.length > 0 && (
                   <div className="quick-chips">
                     {availableTopics.map((top, idx) => {
@@ -1195,20 +1208,35 @@ Regards and thanks, *${cleanTeacher}*`
               </div>
               <textarea
                 id={`${formId}-topics`}
-                className="form-textarea"
-                rows="2"
+                className={`form-textarea form-textarea-large${expandedField === 'topics' ? ' expanded' : ''}`}
+                rows={expandedField === 'topics' ? 8 : 4}
                 value={topicsCovered}
                 onChange={(e) => setTopicsCovered(e.target.value)}
                 placeholder="Unit 2 :- Cell organelles..."
+                spellCheck="true"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                lang="en"
               />
             </div>
 
             {/* HW Assigned */}
             <div className="form-group">
               <div className="label-with-presets">
-                <label htmlFor={`${formId}-hw-assigned`} className="form-label">
-                  HW assigned:-
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <label htmlFor={`${formId}-hw-assigned`} className="form-label">
+                    HW assigned:-
+                  </label>
+                  <button
+                    type="button"
+                    className="box-expand-toggle-btn"
+                    onClick={() => setExpandedField((prev) => (prev === 'hw' ? null : 'hw'))}
+                    title={expandedField === 'hw' ? 'Collapse box to normal height' : 'Expand box for more room'}
+                  >
+                    <ion-icon name={expandedField === 'hw' ? 'contract-outline' : 'expand-outline'}></ion-icon>
+                    <span>{expandedField === 'hw' ? 'Normal' : 'Expand Box'}</span>
+                  </button>
+                </div>
                 {recentCourseWork.length > 0 && (
                   <div className="quick-chips">
                     {recentCourseWork.map((cw) => (
@@ -1224,13 +1252,17 @@ Regards and thanks, *${cleanTeacher}*`
                   </div>
                 )}
               </div>
-              <input
+              <textarea
                 id={`${formId}-hw-assigned`}
-                type="text"
-                className="form-input"
+                className={`form-textarea${expandedField === 'hw' ? ' expanded' : ''}`}
+                rows={expandedField === 'hw' ? 5 : 2}
                 value={hwAssigned}
                 onChange={(e) => setHwAssigned(e.target.value)}
                 placeholder="Unit 2 workbook page numbers 7 through 20"
+                spellCheck="true"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                lang="en"
               />
             </div>
 
@@ -1259,21 +1291,41 @@ Regards and thanks, *${cleanTeacher}*`
                 value={hwStatus}
                 onChange={(e) => setHwStatus(e.target.value)}
                 placeholder="Not submitted"
+                spellCheck="true"
+                autoCorrect="on"
+                lang="en"
               />
             </div>
 
             {/* Remarks */}
             <div className="form-group">
-              <label htmlFor={`${formId}-remarks`} className="form-label">
-                Remarks:-
-              </label>
+              <div className="label-with-presets">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <label htmlFor={`${formId}-remarks`} className="form-label">
+                    Remarks:-
+                  </label>
+                  <button
+                    type="button"
+                    className="box-expand-toggle-btn"
+                    onClick={() => setExpandedField((prev) => (prev === 'remarks' ? null : 'remarks'))}
+                    title={expandedField === 'remarks' ? 'Collapse box to normal height' : 'Expand box for more room'}
+                  >
+                    <ion-icon name={expandedField === 'remarks' ? 'contract-outline' : 'expand-outline'}></ion-icon>
+                    <span>{expandedField === 'remarks' ? 'Normal' : 'Expand Box'}</span>
+                  </button>
+                </div>
+              </div>
               <textarea
                 id={`${formId}-remarks`}
-                className="form-textarea"
-                rows="3"
+                className={`form-textarea form-textarea-large${expandedField === 'remarks' ? ' expanded' : ''}`}
+                rows={expandedField === 'remarks' ? 10 : 5}
                 value={remarks}
                 onChange={(e) => setRemarks(e.target.value)}
                 placeholder="Revised the concepts from the last classes..."
+                spellCheck="true"
+                autoCorrect="on"
+                autoCapitalize="sentences"
+                lang="en"
               />
             </div>
 
@@ -1290,12 +1342,24 @@ Regards and thanks, *${cleanTeacher}*`
                   value={teacherName}
                   onChange={(e) => setTeacherName(e.target.value)}
                   placeholder="Steena"
+                  spellCheck="true"
+                  autoCorrect="on"
+                  lang="en"
                 />
               </div>
 
               <div className="form-group share-actions-box">
                 <label className="form-label">Quick Share Shortcuts:</label>
                 <div className="share-buttons-row">
+                  <button
+                    type="button"
+                    className="share-icon-btn proofread-btn"
+                    onClick={() => setShowProofreadModal(true)}
+                    title="Review full message in large window with active spellcheck before sending"
+                  >
+                    <ion-icon name="checkmark-done-circle-outline"></ion-icon>
+                    <span>Check Spelling</span>
+                  </button>
                   <a
                     href={whatsappUrl}
                     target="_blank"
@@ -1452,6 +1516,15 @@ Regards and thanks, *${cleanTeacher}*`
                   </button>
                   <button
                     type="button"
+                    className={`view-toggle-btn${previewMode === 'proofread' ? ' active' : ''}`}
+                    onClick={() => setPreviewMode('proofread')}
+                    title="Interactive spellcheck with red squiggly underlines on typos"
+                  >
+                    <ion-icon name="checkmark-done-circle-outline" style={{ color: '#38bdf8' }}></ion-icon>
+                    <span>Spellcheck View</span>
+                  </button>
+                  <button
+                    type="button"
                     className={`view-toggle-btn${previewMode === 'raw' ? ' active' : ''}`}
                     onClick={() => setPreviewMode('raw')}
                     title="View plain markdown / raw text"
@@ -1460,6 +1533,15 @@ Regards and thanks, *${cleanTeacher}*`
                     <span>Raw Text</span>
                   </button>
                 </div>
+                <button
+                  type="button"
+                  className="preview-fullscreen-btn"
+                  onClick={() => setShowProofreadModal(true)}
+                  title="Open full-screen proofread view"
+                >
+                  <ion-icon name="expand-outline"></ion-icon>
+                  <span>Full Screen</span>
+                </button>
                 <span className="format-verified-badge">
                   <ion-icon name="shield-checkmark-outline"></ion-icon>
                   <span>Standard Format Verified</span>
@@ -1498,10 +1580,31 @@ Regards and thanks, *${cleanTeacher}*`
                     </div>
 
                     <div className="preview-sections-list">
+                      <div className="preview-spellcheck-hint">
+                        <ion-icon name="information-circle-outline"></ion-icon>
+                        <span><strong>Live Spellcheck Active:</strong> Red underlines appear below for typos. Click any text to edit directly here.</span>
+                      </div>
+
                       {/* Topics Covered with Bold Label and Highlighted Unit/Module */}
                       <div className="preview-section-item">
-                        <strong className="preview-section-label bold-label">Topics covered:-</strong>
-                        <div className="preview-section-body">
+                        <div className="preview-section-item-header">
+                          <strong className="preview-section-label bold-label">Topics covered:-</strong>
+                          <span className="preview-edit-tag">Editable</span>
+                        </div>
+                        <div
+                          className="preview-section-body editable-preview-body"
+                          contentEditable={true}
+                          spellCheck="true"
+                          lang="en"
+                          suppressContentEditableWarning={true}
+                          title="Click to edit or fix spelling mistakes directly here"
+                          onBlur={(e) => {
+                            const txt = e.currentTarget.innerText || ''
+                            if (txt.trim() && txt !== topicsCovered) {
+                              setTopicsCovered(txt)
+                            }
+                          }}
+                        >
                           {(() => {
                             const unitMatch = topicsCovered.match(/\b(Unit\s+\d+|Module\s+\d+|Chapter\s+\d+|Session\s+\d+|Part\s+[A-Za-z0-9]+)\b/i)
                             if (unitMatch) {
@@ -1522,8 +1625,26 @@ Regards and thanks, *${cleanTeacher}*`
 
                       {/* HW Assigned with Bold Label */}
                       <div className="preview-section-item">
-                        <strong className="preview-section-label bold-label">HW assigned:-</strong>
-                        <div className="preview-section-body">{hwAssigned}</div>
+                        <div className="preview-section-item-header">
+                          <strong className="preview-section-label bold-label">HW assigned:-</strong>
+                          <span className="preview-edit-tag">Editable</span>
+                        </div>
+                        <div
+                          className="preview-section-body editable-preview-body"
+                          contentEditable={true}
+                          spellCheck="true"
+                          lang="en"
+                          suppressContentEditableWarning={true}
+                          title="Click to edit or fix spelling mistakes directly here"
+                          onBlur={(e) => {
+                            const txt = e.currentTarget.innerText || ''
+                            if (txt !== hwAssigned) {
+                              setHwAssigned(txt)
+                            }
+                          }}
+                        >
+                          {hwAssigned}
+                        </div>
                       </div>
 
                       {/* HW Status / Score with Bold Label and Status Pill */}
@@ -1538,8 +1659,26 @@ Regards and thanks, *${cleanTeacher}*`
 
                       {/* Remarks with Bold Label */}
                       <div className="preview-section-item">
-                        <strong className="preview-section-label bold-label">Remarks:-</strong>
-                        <div className="preview-section-body">{remarks}</div>
+                        <div className="preview-section-item-header">
+                          <strong className="preview-section-label bold-label">Remarks:-</strong>
+                          <span className="preview-edit-tag">Editable</span>
+                        </div>
+                        <div
+                          className="preview-section-body editable-preview-body"
+                          contentEditable={true}
+                          spellCheck="true"
+                          lang="en"
+                          suppressContentEditableWarning={true}
+                          title="Click to edit or fix spelling mistakes directly here"
+                          onBlur={(e) => {
+                            const txt = e.currentTarget.innerText || ''
+                            if (txt !== remarks) {
+                              setRemarks(txt)
+                            }
+                          }}
+                        >
+                          {remarks}
+                        </div>
                       </div>
                     </div>
 
@@ -1557,6 +1696,90 @@ Regards and thanks, *${cleanTeacher}*`
                         <span>Dispatch To: <strong>{activeRecipients.join(', ')}</strong> ({activeRecipients.length === 3 ? 'Father, Mother & Student' : activeRecipients.length === 2 ? 'Both Parents' : '1 Receiver'})</span>
                       </div>
                     )}
+                  </div>
+                ) : previewMode === 'proofread' ? (
+                  <div className="announcement-proofread-view">
+                    <div className="proofread-status-card">
+                      <div className="proofread-card-icon">
+                        <ion-icon name="shield-checkmark-outline"></ion-icon>
+                      </div>
+                      <div className="proofread-card-info">
+                        <strong>Interactive Proofread & Spellcheck Mode</strong>
+                        <span>Browser spellcheck is active with red squiggly lines on any typos. Edit below to refine before sending.</span>
+                      </div>
+                    </div>
+
+                    <div className="proofread-fields-grid">
+                      <div className="proofread-field-card">
+                        <label className="proofread-label">
+                          <span>Topics Covered:-</span>
+                          <span className="spellcheck-tag">Spellcheck Active</span>
+                        </label>
+                        <textarea
+                          className="proofread-textarea"
+                          rows="4"
+                          spellCheck="true"
+                          autoCorrect="on"
+                          lang="en"
+                          value={topicsCovered}
+                          onChange={(e) => setTopicsCovered(e.target.value)}
+                          placeholder="Topics covered..."
+                        />
+                      </div>
+
+                      <div className="proofread-field-card">
+                        <label className="proofread-label">
+                          <span>HW Assigned:-</span>
+                          <span className="spellcheck-tag">Spellcheck Active</span>
+                        </label>
+                        <textarea
+                          className="proofread-textarea"
+                          rows="3"
+                          spellCheck="true"
+                          autoCorrect="on"
+                          lang="en"
+                          value={hwAssigned}
+                          onChange={(e) => setHwAssigned(e.target.value)}
+                          placeholder="HW assigned..."
+                        />
+                      </div>
+
+                      <div className="proofread-field-card">
+                        <label className="proofread-label">
+                          <span>Remarks:-</span>
+                          <span className="spellcheck-tag">Spellcheck Active</span>
+                        </label>
+                        <textarea
+                          className="proofread-textarea"
+                          rows="6"
+                          spellCheck="true"
+                          autoCorrect="on"
+                          lang="en"
+                          value={remarks}
+                          onChange={(e) => setRemarks(e.target.value)}
+                          placeholder="Remarks..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="proofread-quick-actions">
+                      <button
+                        type="button"
+                        className="proofread-send-gmail-btn"
+                        onClick={handleGmailWeb}
+                      >
+                        <ion-icon name="logo-google"></ion-icon>
+                        <span>Open in Gmail (Send to {activeRecipients.length > 0 ? activeRecipients[0] : 'Parent'})</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="proofread-copy-btn"
+                        onClick={handleCopy}
+                      >
+                        <ion-icon name={copied ? 'checkmark-circle' : 'copy-outline'}></ion-icon>
+                        <span>{copied ? 'Copied!' : 'Copy Formatted'}</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <pre className="announcement-pre-text">{announcementText}</pre>
@@ -1631,6 +1854,122 @@ Regards and thanks, *${cleanTeacher}*`
           </div>
         </div>
       </div>
+
+      {/* Proofread & Full-Screen Spellcheck Modal */}
+      {showProofreadModal && (
+        <div className="proofread-modal-backdrop" onClick={() => setShowProofreadModal(false)}>
+          <div className="proofread-modal-window" onClick={(e) => e.stopPropagation()}>
+            <div className="proofread-modal-header">
+              <div className="proofread-modal-title">
+                <ion-icon name="checkmark-done-circle-outline" style={{ color: '#38bdf8' }}></ion-icon>
+                <div>
+                  <h3>Full-Screen Proofread & Spellcheck</h3>
+                  <p>Spacious editor with active red squiggly underlines on misspelled words. Edit anything here before sending.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="proofread-modal-close"
+                onClick={() => setShowProofreadModal(false)}
+                aria-label="Close modal"
+              >
+                <ion-icon name="close-outline"></ion-icon>
+              </button>
+            </div>
+
+            <div className="proofread-modal-body">
+              <div className="proofread-field-group">
+                <label className="proofread-modal-label">
+                  <span>Topics Covered:-</span>
+                  <span className="spellcheck-tag">Spellcheck Active</span>
+                </label>
+                <textarea
+                  className="proofread-modal-textarea"
+                  rows="4"
+                  spellCheck="true"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  lang="en"
+                  value={topicsCovered}
+                  onChange={(e) => setTopicsCovered(e.target.value)}
+                  placeholder="Unit 2 :- Cell organelles..."
+                />
+              </div>
+
+              <div className="proofread-field-group">
+                <label className="proofread-modal-label">
+                  <span>HW Assigned:-</span>
+                  <span className="spellcheck-tag">Spellcheck Active</span>
+                </label>
+                <textarea
+                  className="proofread-modal-textarea"
+                  rows="3"
+                  spellCheck="true"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  lang="en"
+                  value={hwAssigned}
+                  onChange={(e) => setHwAssigned(e.target.value)}
+                  placeholder="Unit 2 workbook page numbers..."
+                />
+              </div>
+
+              <div className="proofread-field-group">
+                <label className="proofread-modal-label">
+                  <span>Remarks:-</span>
+                  <span className="spellcheck-tag">Spellcheck Active</span>
+                </label>
+                <textarea
+                  className="proofread-modal-textarea"
+                  rows="6"
+                  spellCheck="true"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  lang="en"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  placeholder="Revised concepts..."
+                />
+              </div>
+            </div>
+
+            <div className="proofread-modal-footer">
+              <div className="proofread-modal-tip">
+                <ion-icon name="bulb-outline"></ion-icon>
+                <span>Changes save automatically to the session update.</span>
+              </div>
+              <div className="proofread-modal-actions">
+                <button
+                  type="button"
+                  className="proofread-modal-btn cancel"
+                  onClick={() => setShowProofreadModal(false)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="proofread-modal-btn copy"
+                  onClick={handleCopy}
+                >
+                  <ion-icon name={copied ? 'checkmark-circle' : 'copy-outline'}></ion-icon>
+                  <span>{copied ? 'Copied!' : 'Copy Bold Update'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="proofread-modal-btn primary"
+                  onClick={() => {
+                    setShowProofreadModal(false)
+                    handleGmailWeb()
+                  }}
+                >
+                  <ion-icon name="logo-google"></ion-icon>
+                  <span>Send via Gmail</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
