@@ -1,4 +1,5 @@
 import { useState, useId, useMemo, useEffect, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import {
   createCourseAnnouncement,
   fetchClassroomSessionContext,
@@ -188,6 +189,21 @@ export default function SessionAnnouncementGenerator({
       }
     }
   }, [courses, selectedCourse?.id, courseId])
+
+  // When proofread modal is open, prevent background scroll and allow Escape key to dismiss
+  useEffect(() => {
+    if (!showProofreadModal) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setShowProofreadModal(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [showProofreadModal])
 
   // Fetch and auto-populate classroom-specific details whenever courseId changes
   const syncClassroomDetails = useCallback(
@@ -1856,120 +1872,122 @@ Regards and thanks, *${cleanTeacher}*`
       </div>
 
       {/* Proofread & Full-Screen Spellcheck Modal */}
-      {showProofreadModal && (
-        <div className="proofread-modal-backdrop" onClick={() => setShowProofreadModal(false)}>
-          <div className="proofread-modal-window" onClick={(e) => e.stopPropagation()}>
-            <div className="proofread-modal-header">
-              <div className="proofread-modal-title">
-                <ion-icon name="checkmark-done-circle-outline" style={{ color: '#38bdf8' }}></ion-icon>
-                <div>
-                  <h3>Full-Screen Proofread & Spellcheck</h3>
-                  <p>Spacious editor with active red squiggly underlines on misspelled words. Edit anything here before sending.</p>
+      {showProofreadModal &&
+        createPortal(
+          <div className="proofread-modal-backdrop" onClick={() => setShowProofreadModal(false)}>
+            <div className="proofread-modal-window" onClick={(e) => e.stopPropagation()}>
+              <div className="proofread-modal-header">
+                <div className="proofread-modal-title">
+                  <ion-icon name="checkmark-done-circle-outline" style={{ color: '#38bdf8' }}></ion-icon>
+                  <div>
+                    <h3>Full-Screen Proofread & Spellcheck</h3>
+                    <p>Spacious editor with active red squiggly underlines on misspelled words. Edit anything here before sending.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="proofread-modal-close"
+                  onClick={() => setShowProofreadModal(false)}
+                  aria-label="Close modal"
+                >
+                  <ion-icon name="close-outline"></ion-icon>
+                </button>
+              </div>
+
+              <div className="proofread-modal-body">
+                <div className="proofread-field-group">
+                  <label className="proofread-modal-label">
+                    <span>Topics Covered:-</span>
+                    <span className="spellcheck-tag">Spellcheck Active</span>
+                  </label>
+                  <textarea
+                    className="proofread-modal-textarea"
+                    rows="4"
+                    spellCheck="true"
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    lang="en"
+                    value={topicsCovered}
+                    onChange={(e) => setTopicsCovered(e.target.value)}
+                    placeholder="Unit 2 :- Cell organelles..."
+                  />
+                </div>
+
+                <div className="proofread-field-group">
+                  <label className="proofread-modal-label">
+                    <span>HW Assigned:-</span>
+                    <span className="spellcheck-tag">Spellcheck Active</span>
+                  </label>
+                  <textarea
+                    className="proofread-modal-textarea"
+                    rows="3"
+                    spellCheck="true"
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    lang="en"
+                    value={hwAssigned}
+                    onChange={(e) => setHwAssigned(e.target.value)}
+                    placeholder="Unit 2 workbook page numbers..."
+                  />
+                </div>
+
+                <div className="proofread-field-group">
+                  <label className="proofread-modal-label">
+                    <span>Remarks:-</span>
+                    <span className="spellcheck-tag">Spellcheck Active</span>
+                  </label>
+                  <textarea
+                    className="proofread-modal-textarea"
+                    rows="6"
+                    spellCheck="true"
+                    autoCorrect="on"
+                    autoCapitalize="sentences"
+                    lang="en"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Revised concepts..."
+                  />
                 </div>
               </div>
-              <button
-                type="button"
-                className="proofread-modal-close"
-                onClick={() => setShowProofreadModal(false)}
-                aria-label="Close modal"
-              >
-                <ion-icon name="close-outline"></ion-icon>
-              </button>
-            </div>
 
-            <div className="proofread-modal-body">
-              <div className="proofread-field-group">
-                <label className="proofread-modal-label">
-                  <span>Topics Covered:-</span>
-                  <span className="spellcheck-tag">Spellcheck Active</span>
-                </label>
-                <textarea
-                  className="proofread-modal-textarea"
-                  rows="4"
-                  spellCheck="true"
-                  autoCorrect="on"
-                  autoCapitalize="sentences"
-                  lang="en"
-                  value={topicsCovered}
-                  onChange={(e) => setTopicsCovered(e.target.value)}
-                  placeholder="Unit 2 :- Cell organelles..."
-                />
-              </div>
-
-              <div className="proofread-field-group">
-                <label className="proofread-modal-label">
-                  <span>HW Assigned:-</span>
-                  <span className="spellcheck-tag">Spellcheck Active</span>
-                </label>
-                <textarea
-                  className="proofread-modal-textarea"
-                  rows="3"
-                  spellCheck="true"
-                  autoCorrect="on"
-                  autoCapitalize="sentences"
-                  lang="en"
-                  value={hwAssigned}
-                  onChange={(e) => setHwAssigned(e.target.value)}
-                  placeholder="Unit 2 workbook page numbers..."
-                />
-              </div>
-
-              <div className="proofread-field-group">
-                <label className="proofread-modal-label">
-                  <span>Remarks:-</span>
-                  <span className="spellcheck-tag">Spellcheck Active</span>
-                </label>
-                <textarea
-                  className="proofread-modal-textarea"
-                  rows="6"
-                  spellCheck="true"
-                  autoCorrect="on"
-                  autoCapitalize="sentences"
-                  lang="en"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Revised concepts..."
-                />
+              <div className="proofread-modal-footer">
+                <div className="proofread-modal-tip">
+                  <ion-icon name="bulb-outline"></ion-icon>
+                  <span>Changes save automatically to the session update.</span>
+                </div>
+                <div className="proofread-modal-actions">
+                  <button
+                    type="button"
+                    className="proofread-modal-btn cancel"
+                    onClick={() => setShowProofreadModal(false)}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    className="proofread-modal-btn copy"
+                    onClick={handleCopy}
+                  >
+                    <ion-icon name={copied ? 'checkmark-circle' : 'copy-outline'}></ion-icon>
+                    <span>{copied ? 'Copied!' : 'Copy Bold Update'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="proofread-modal-btn primary"
+                    onClick={() => {
+                      setShowProofreadModal(false)
+                      handleGmailWeb()
+                    }}
+                  >
+                    <ion-icon name="logo-google"></ion-icon>
+                    <span>Send via Gmail</span>
+                  </button>
+                </div>
               </div>
             </div>
-
-            <div className="proofread-modal-footer">
-              <div className="proofread-modal-tip">
-                <ion-icon name="bulb-outline"></ion-icon>
-                <span>Changes save automatically to the session update.</span>
-              </div>
-              <div className="proofread-modal-actions">
-                <button
-                  type="button"
-                  className="proofread-modal-btn cancel"
-                  onClick={() => setShowProofreadModal(false)}
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  className="proofread-modal-btn copy"
-                  onClick={handleCopy}
-                >
-                  <ion-icon name={copied ? 'checkmark-circle' : 'copy-outline'}></ion-icon>
-                  <span>{copied ? 'Copied!' : 'Copy Bold Update'}</span>
-                </button>
-                <button
-                  type="button"
-                  className="proofread-modal-btn primary"
-                  onClick={() => {
-                    setShowProofreadModal(false)
-                    handleGmailWeb()
-                  }}
-                >
-                  <ion-icon name="logo-google"></ion-icon>
-                  <span>Send via Gmail</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

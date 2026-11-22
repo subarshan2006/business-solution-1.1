@@ -16113,7 +16113,7 @@ body:has(.qb-quiz-overlay-modal) .sidebar {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 99999;
   padding: 20px;
   box-sizing: border-box;
 }
